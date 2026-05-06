@@ -1,0 +1,1052 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cadastro de Clientes</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main id="welcomeScreen" class="welcome-screen">
+      <section class="welcome-panel">
+        <div class="welcome-copy">
+          <p class="eyebrow">Central de cadastros</p>
+          <h1>Bem-vindo</h1>
+          <p>Entre como administrador para cadastrar, editar e manter as informacoes dos clientes.</p>
+          <small id="appVersion">Versao 2026.05.06.6</small>
+        </div>
+
+        <form id="loginForm" class="login-form" action="#" method="post">
+          <label>
+            <span>Login</span>
+            <input id="loginUser" autocomplete="username" required />
+          </label>
+
+          <label>
+            <span>Senha</span>
+            <input id="loginPassword" type="password" autocomplete="current-password" required />
+          </label>
+
+          <p id="loginMessage" class="login-message" aria-live="polite"></p>
+
+          <button class="primary" type="submit">Entrar</button>
+        </form>
+      </section>
+    </main>
+
+    <main id="appScreen" class="dashboard-shell hidden">
+      <aside class="dashboard-sidebar-panel">
+        <header class="dashboard-header">
+          <div>
+            <p class="eyebrow">Painel</p>
+            <h1>Administração</h1>
+          </div>
+        </header>
+
+        <nav class="dashboard-tabs" aria-label="Areas do painel">
+          <button class="dashboard-tab active" type="button" data-dashboard-tab="overview">Dashboard</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="clients">Cadastro de clientes</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="agenda">Agenda</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="serviceOrders">Ordem de Servico</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="users">Usuarios</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="logs">Logs</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="permissions">Permissoes</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="reports">Relatorios</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="settings">Configuracoes</button>
+        </nav>
+
+      </aside>
+
+      <section class="dashboard-content">
+        <header class="topbar">
+          <span></span>
+
+          <div class="user-top-actions">
+            <div class="notification-wrap">
+              <button id="notificationButton" class="notification-button" type="button" aria-label="Notificacoes" title="Notificacoes">
+                <span aria-hidden="true">🔔</span>
+                <strong id="notificationCount">0</strong>
+              </button>
+              <div id="notificationPanel" class="notification-panel hidden">
+                <div class="settings-header">
+                  <div>
+                    <p class="eyebrow">Central</p>
+                    <h3>Notificacoes</h3>
+                  </div>
+                </div>
+                <div id="notificationList" class="notification-list"></div>
+              </div>
+            </div>
+            <span class="user-name">Administrador conectado</span>
+            <button id="logoutButton" class="subtle" type="button">Sair</button>
+          </div>
+        </header>
+
+      <section id="overviewDashboardPanel" class="dashboard-panel active">
+        <div class="panel-hero">
+          <p class="eyebrow">Dashboard</p>
+          <h2>Visao geral do sistema</h2>
+          <p>Acompanhe os principais numeros e use o menu lateral para acessar as areas disponiveis.</p>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="dashboard-card">
+            <span class="label">Clientes</span>
+            <strong id="dashboardClientTotal">0</strong>
+          </article>
+          <article class="dashboard-card">
+            <span class="label">Usuarios</span>
+            <strong id="dashboardUserTotal">0</strong>
+          </article>
+          <article class="dashboard-card">
+            <span class="label">Logs</span>
+            <strong id="dashboardLogTotal">0</strong>
+          </article>
+          <article class="dashboard-card">
+            <span class="label">Agenda</span>
+            <strong id="dashboardAgendaTotal">0</strong>
+          </article>
+        </div>
+      </section>
+
+      <section id="clientsDashboardPanel" class="dashboard-panel app-shell">
+      <section class="sidebar" aria-label="Clientes cadastrados">
+        <div class="brand">
+          <div>
+            <p class="eyebrow">Cadastro</p>
+            <h1>Clientes</h1>
+          </div>
+          <span id="clientCount" class="counter">0</span>
+        </div>
+
+        <label class="search">
+          <span>Buscar cliente</span>
+          <input id="searchInput" type="search" placeholder="Nome, telefone ou e-mail" />
+        </label>
+
+        <div id="clientList" class="client-list" role="list"></div>
+      </section>
+
+      <section class="workspace" aria-label="Informacoes do cliente">
+        <div class="toolbar">
+          <div>
+            <p class="eyebrow">Selecionado</p>
+            <h2 id="selectedTitle">Novo cliente</h2>
+          </div>
+          <div class="actions">
+            <button id="newClientButton" class="ghost symbol-button" type="button" title="Novo cliente" aria-label="Novo cliente">+</button>
+            <button id="deleteClientButton" class="danger symbol-button" type="button" title="Excluir cliente" aria-label="Excluir cliente">x</button>
+          </div>
+        </div>
+        <p id="clientActionMessage" class="action-message" aria-live="polite"></p>
+
+        <div class="tabs" role="tablist" aria-label="Areas do cliente">
+          <button class="tab active" type="button" data-tab="profile" role="tab" aria-selected="true">Perfil</button>
+          <button class="tab" type="button" data-tab="equipment" role="tab" aria-selected="false">Equipamentos</button>
+          <button class="tab" type="button" data-tab="network" role="tab" aria-selected="false">Rede</button>
+          <button class="tab" type="button" data-tab="emails" role="tab" aria-selected="false">E-mails cadastrados</button>
+        </div>
+
+        <section id="profilePanel" class="tab-panel active" aria-label="Perfil do cliente">
+          <form id="clientForm" class="client-form">
+            <div class="form-grid">
+              <label>
+                <span>Nome completo</span>
+                <input id="name" name="name" autocomplete="name" required />
+              </label>
+
+              <label>
+                <span>CPF/CNPJ</span>
+                <input id="document" name="document" />
+              </label>
+
+              <label>
+                <span>Telefone</span>
+                <input id="phone" name="phone" autocomplete="tel" />
+              </label>
+
+              <label>
+                <span>E-mail principal</span>
+                <input id="email" name="email" type="email" autocomplete="email" />
+              </label>
+
+              <label>
+                <span>Cidade</span>
+                <input id="city" name="city" autocomplete="address-level2" />
+              </label>
+
+              <label>
+                <span>Status</span>
+                <select id="status" name="status">
+                  <option value="Ativo">Ativo</option>
+                  <option value="Em acompanhamento">Em acompanhamento</option>
+                  <option value="Inativo">Inativo</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              <span>Endereco</span>
+              <input id="address" name="address" autocomplete="street-address" />
+            </label>
+
+            <label>
+              <span>Observacoes</span>
+              <textarea id="notes" name="notes" rows="6" placeholder="Preferencias, historico, pendencias ou detalhes importantes"></textarea>
+            </label>
+
+            <div class="summary">
+              <div>
+                <span class="label">Ultima atualizacao</span>
+                <strong id="updatedAt">Ainda nao salvo</strong>
+              </div>
+              <div>
+                <span class="label">Identificador</span>
+                <strong id="clientId">Novo cadastro</strong>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="primary" type="submit">Salvar perfil</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="equipmentPanel" class="tab-panel" aria-label="Equipamentos do cliente">
+          <form id="equipmentForm" class="inline-form">
+            <label>
+              <span>Categoria</span>
+              <select id="equipmentCategory" name="category" required></select>
+            </label>
+            <label id="newCategoryLabel" class="hidden">
+              <span>Nova categoria</span>
+              <input id="newEquipmentCategory" name="newCategory" placeholder="Ex.: Servidores" />
+            </label>
+            <label>
+              <span>Marca</span>
+              <select id="equipmentBrand" name="brand" required></select>
+            </label>
+            <label>
+              <span>Modelo</span>
+              <select id="equipmentModel" name="model" required></select>
+            </label>
+            <div id="newEquipmentBrandModel" class="equipment-extra-fields hidden">
+              <label>
+                <span>Nova marca</span>
+                <input id="newEquipmentBrand" name="newBrand" placeholder="Ex.: Dell" />
+              </label>
+              <label>
+                <span>Novo modelo</span>
+                <input id="newEquipmentModel" name="newModel" placeholder="Ex.: Latitude 5420" />
+              </label>
+            </div>
+            <label>
+              <span>Rede</span>
+              <select id="equipmentNetworkType" name="networkType">
+                <option value="DHCP">DHCP</option>
+                <option value="Estatico">Estatico</option>
+              </select>
+            </label>
+            <label id="equipmentIpLabel" class="hidden">
+              <span>IP</span>
+              <input id="equipmentIp" name="ipAddress" placeholder="Ex.: 192.168.0.25" inputmode="decimal" />
+            </label>
+            <button class="primary symbol-button" type="submit" title="Adicionar equipamento" aria-label="Adicionar equipamento">+</button>
+          </form>
+
+          <label class="equipment-filter">
+            <span>Filtrar equipamentos</span>
+            <input id="equipmentFilter" type="search" placeholder="Categoria, marca, modelo ou rede" />
+          </label>
+
+          <div id="equipmentList" class="record-list"></div>
+        </section>
+
+        <section id="networkPanel" class="tab-panel" aria-label="Rede do cliente">
+          <div id="networkSettingsGuide" class="settings-guide">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Guia de configuracao</p>
+                <h3>Rede</h3>
+              </div>
+              <button id="editNetworkSettingsButton" class="subtle" type="button">Editar</button>
+            </div>
+            <div id="networkSettingsSummary" class="settings-summary"></div>
+          </div>
+
+          <form id="networkSettingsForm" class="settings-form">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Configuracao</p>
+                <h3>Rede</h3>
+              </div>
+              <button class="primary" type="submit">Salvar configuracao</button>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                <span>Hostname do servidor</span>
+                <input id="serverHostname" name="serverHostname" placeholder="Ex.: srv-cliente" />
+              </label>
+
+              <label>
+                <span>Dominio local</span>
+                <input id="localDomain" name="localDomain" placeholder="Ex.: dominio.local" />
+              </label>
+
+              <label>
+                <span>IP do servidor</span>
+                <input id="serverIp" name="serverIp" placeholder="Ex.: 192.168.0.10" inputmode="decimal" />
+              </label>
+
+              <label>
+                <span>Mascara de subrede</span>
+                <input id="subnetMask" name="subnetMask" placeholder="Ex.: 255.255.255.0" inputmode="decimal" />
+              </label>
+
+              <label>
+                <span>DNS</span>
+                <input id="dns" name="dns" placeholder="Ex.: 8.8.8.8, 1.1.1.1" />
+              </label>
+
+              <label>
+                <span>WINS</span>
+                <input id="wins" name="wins" placeholder="Ex.: 192.168.0.11" />
+              </label>
+            </div>
+          </form>
+        </section>
+
+        <section id="emailsPanel" class="tab-panel" aria-label="E-mails cadastrados">
+          <div id="emailSettingsGuide" class="settings-guide">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Guia de configuracao</p>
+                <h3>Servidor de e-mail</h3>
+              </div>
+              <button id="editEmailSettingsButton" class="subtle" type="button">Editar</button>
+            </div>
+            <div id="emailSettingsSummary" class="settings-summary"></div>
+          </div>
+
+          <form id="emailSettingsForm" class="settings-form">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Configuracao</p>
+                <h3>Servidor de e-mail</h3>
+              </div>
+              <button class="primary" type="submit">Salvar configuracao</button>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                <span>Tipo de conta</span>
+                <select id="emailAccountType" name="accountType">
+                  <option value="POP">POP</option>
+                  <option value="IMAP">IMAP</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Dominio dos e-mails</span>
+                <input id="emailDomain" name="domain" placeholder="@dominiocliente.com.br" />
+              </label>
+
+              <label>
+                <span>Servidor de entrada</span>
+                <input id="incomingServer" name="incomingServer" placeholder="mail.dominiocliente.com.br" />
+              </label>
+
+              <label>
+                <span>Porta de entrada</span>
+                <input id="incomingPort" name="incomingPort" inputmode="numeric" placeholder="993" />
+              </label>
+
+              <label>
+                <span>Servidor de saida</span>
+                <input id="outgoingServer" name="outgoingServer" placeholder="smtp.dominiocliente.com.br" />
+              </label>
+
+              <label>
+                <span>Porta de saida</span>
+                <input id="outgoingPort" name="outgoingPort" inputmode="numeric" placeholder="587" />
+              </label>
+
+              <label>
+                <span>Seguranca</span>
+                <select id="emailSecurity" name="security">
+                  <option value="SSL">SSL</option>
+                  <option value="SSL/TLS">SSL/TLS</option>
+                  <option value="STARTTLS">STARTTLS</option>
+                  <option value="Automatico">Automatico</option>
+                </select>
+              </label>
+
+              <label class="check-row">
+                <input id="smtpAuth" name="smtpAuth" type="checkbox" />
+                <span>Meu servidor de saida (SMTP) requer autenticacao</span>
+              </label>
+            </div>
+          </form>
+
+          <form id="emailForm" class="inline-form email-form">
+            <label>
+              <span>E-mail</span>
+              <input id="extraEmail" name="email" type="email" placeholder="contato@empresa.com" required />
+            </label>
+            <label>
+              <span>Tipo</span>
+              <select id="extraEmailType" name="type">
+                <option value="Comercial">Comercial</option>
+                <option value="Financeiro">Financeiro</option>
+                <option value="Suporte">Suporte</option>
+                <option value="Pessoal">Pessoal</option>
+              </select>
+            </label>
+            <button class="primary symbol-button" type="submit" title="Adicionar e-mail" aria-label="Adicionar e-mail">+</button>
+          </form>
+
+          <div id="emailList" class="record-list"></div>
+        </section>
+      </section>
+      </section>
+
+      <section id="agendaDashboardPanel" class="dashboard-panel">
+        <div class="panel-hero">
+          <p class="eyebrow">Atendimentos</p>
+          <h2>Agenda</h2>
+          <p>Registre ocorrencias solicitadas pelos clientes e acompanhe o status de cada uma.</p>
+        </div>
+
+        <div class="section-actions">
+          <button id="openAgendaDialogButton" class="primary symbol-button" type="button" title="Adicionar agendamento" aria-label="Adicionar agendamento">+</button>
+          <p id="agendaActionMessage" class="action-message" aria-live="polite"></p>
+        </div>
+
+        <div id="agendaList" class="record-list"></div>
+      </section>
+
+      <section id="serviceOrdersDashboardPanel" class="dashboard-panel">
+        <div class="panel-hero">
+          <p class="eyebrow">Atendimentos</p>
+          <h2>Ordem de Servico</h2>
+          <p>Abra e acompanhe ordens de servico com cliente, equipamento, defeito, status e responsavel pela abertura.</p>
+        </div>
+
+        <div class="service-order-tabs" aria-label="Opcoes de ordem de servico">
+          <button class="service-order-tab active" type="button" data-service-order-view="list">Ordens de Servicos</button>
+          <button class="service-order-tab" type="button" data-service-order-view="create">Adicionar Ordem de Servico</button>
+        </div>
+
+        <section id="serviceOrderListPanel" class="service-order-view active">
+          <div class="settings-form service-order-filter">
+            <label>
+              <span>Filtrar ordens</span>
+              <select id="serviceOrderStatusFilter">
+                <option value="all">Todas</option>
+                <option value="open">Em aberto</option>
+                <option value="inProgress">Em andamento</option>
+                <option value="closed">Fechadas</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="serviceOrderList" class="record-list"></div>
+        </section>
+
+        <form id="serviceOrderForm" class="settings-form service-order-view">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Nova OS</p>
+              <h3 id="serviceOrderFormTitle">Dados da ordem</h3>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              <span>Data de abertura</span>
+              <input id="serviceOrderDate" name="openedAt" type="date" />
+            </label>
+
+            <label>
+              <span>Cliente</span>
+              <select id="serviceOrderClient" name="clientId" required></select>
+            </label>
+
+            <label>
+              <span>Equipamento</span>
+              <select id="serviceOrderEquipment" name="equipmentType" required>
+                <option value="Notebook">Notebook</option>
+                <option value="Computador">Computador</option>
+                <option value="All-In-One">All-In-One</option>
+                <option value="Impressora">Impressora</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </label>
+
+            <label id="newServiceOrderEquipmentTypeLabel" class="hidden">
+              <span>Novo tipo</span>
+              <input id="newServiceOrderEquipmentType" name="newEquipmentType" placeholder="Ex.: Nobreak" />
+            </label>
+
+            <label>
+              <span>Status da OS</span>
+              <select id="serviceOrderStatus" name="status" required>
+                <option value="Aberta">Aberta</option>
+                <option value="Em analise">Em analise</option>
+                <option value="Aguardando orcamento">Aguardando orcamento</option>
+                <option value="Em conserto">Em conserto</option>
+                <option value="Fechada">Fechada</option>
+                <option value="Concluida">Concluida</option>
+                <option value="Cancelada">Cancelada</option>
+              </select>
+            </label>
+
+          </div>
+
+          <div id="commonServiceOrderEquipmentFields" class="settings-form compact-nested-form">
+            <div class="form-grid equipment-main-row">
+              <label>
+                <span>Marca/Modelo</span>
+                <input id="serviceOrderBrandModel" name="brandModel" required />
+              </label>
+
+              <div id="powerSupplyServiceOrderFields" class="hidden">
+                <span class="field-title">Possui fonte</span>
+                <div class="check-options">
+                  <label class="check-row">
+                    <input id="serviceOrderPowerSupplyYes" name="powerSupplyYes" type="checkbox" value="Sim" />
+                    <span>Sim</span>
+                  </label>
+                  <label class="check-row">
+                    <input id="serviceOrderPowerSupplyNo" name="powerSupplyNo" type="checkbox" value="Nao" />
+                    <span>Nao</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="computerServiceOrderFields" class="settings-form compact-nested-form hidden">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Equipamento</p>
+                <h3>Detalhes tecnicos</h3>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                <span>S/N</span>
+                <input id="serviceOrderSerialNumber" name="serialNumber" />
+              </label>
+
+              <label>
+                <span>Processador</span>
+                <input id="serviceOrderProcessor" name="processor" />
+              </label>
+
+              <label>
+                <span>Memoria RAM</span>
+                <select id="serviceOrderMemory" name="memory">
+                  <option value="">Selecione</option>
+                  <option value="2 GB">2 GB</option>
+                  <option value="4 GB">4 GB</option>
+                  <option value="6 GB">6 GB</option>
+                  <option value="8 GB">8 GB</option>
+                  <option value="12 GB">12 GB</option>
+                  <option value="16 GB">16 GB</option>
+                  <option value="24 GB">24 GB</option>
+                  <option value="32 GB">32 GB</option>
+                  <option value="48 GB">48 GB</option>
+                  <option value="64 GB">64 GB</option>
+                  <option value="96 GB">96 GB</option>
+                  <option value="128 GB">128 GB</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </label>
+
+              <label>
+                <span>DDR da memoria</span>
+                <select id="serviceOrderMemoryDdr" name="memoryDdr">
+                  <option value="">Selecione</option>
+                  <option value="DDR2">DDR2</option>
+                  <option value="DDR3">DDR3</option>
+                  <option value="DDR3L">DDR3L</option>
+                  <option value="DDR4">DDR4</option>
+                  <option value="DDR5">DDR5</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Armazenamento</span>
+                <select id="serviceOrderStorageType" name="storageType">
+                  <option value="">Selecione</option>
+                  <option value="SSD 120 GB">SSD 120 GB</option>
+                  <option value="SSD 128 GB">SSD 128 GB</option>
+                  <option value="SSD 240 GB">SSD 240 GB</option>
+                  <option value="SSD 250 GB">SSD 250 GB</option>
+                  <option value="SSD 256 GB">SSD 256 GB</option>
+                  <option value="SSD 480 GB">SSD 480 GB</option>
+                  <option value="SSD 500 GB">SSD 500 GB</option>
+                  <option value="SSD 512 GB">SSD 512 GB</option>
+                  <option value="SSD 960 GB">SSD 960 GB</option>
+                  <option value="SSD 1 TB">SSD 1 TB</option>
+                  <option value="SSD 2 TB">SSD 2 TB</option>
+                  <option value="SSD 4 TB">SSD 4 TB</option>
+                  <option value="HD 160 GB">HD 160 GB</option>
+                  <option value="HD 250 GB">HD 250 GB</option>
+                  <option value="HD 320 GB">HD 320 GB</option>
+                  <option value="HD 500 GB">HD 500 GB</option>
+                  <option value="HD 750 GB">HD 750 GB</option>
+                  <option value="HD 1 TB">HD 1 TB</option>
+                  <option value="HD 2 TB">HD 2 TB</option>
+                  <option value="HD 3 TB">HD 3 TB</option>
+                  <option value="HD 4 TB">HD 4 TB</option>
+                  <option value="HD 6 TB">HD 6 TB</option>
+                  <option value="HD 8 TB">HD 8 TB</option>
+                  <option value="HD 10 TB">HD 10 TB</option>
+                  <option value="HD 12 TB">HD 12 TB</option>
+                  <option value="HD 14 TB">HD 14 TB</option>
+                  <option value="HD 16 TB">HD 16 TB</option>
+                  <option value="HD 18 TB">HD 18 TB</option>
+                  <option value="HD 20 TB">HD 20 TB</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Windows</span>
+                <select id="serviceOrderWindowsType" name="windowsType">
+                  <option value="">Selecione</option>
+                  <option value="Windows 7">Windows 7</option>
+                  <option value="Windows 8">Windows 8</option>
+                  <option value="Windows 8.1">Windows 8.1</option>
+                  <option value="Windows 10 Home">Windows 10 Home</option>
+                  <option value="Windows 10 Pro">Windows 10 Pro</option>
+                  <option value="Windows 10 Enterprise">Windows 10 Enterprise</option>
+                  <option value="Windows 11 Home">Windows 11 Home</option>
+                  <option value="Windows 11 Pro">Windows 11 Pro</option>
+                  <option value="Windows 11 Enterprise">Windows 11 Enterprise</option>
+                  <option value="Windows Server 2012">Windows Server 2012</option>
+                  <option value="Windows Server 2016">Windows Server 2016</option>
+                  <option value="Windows Server 2019">Windows Server 2019</option>
+                  <option value="Windows Server 2022">Windows Server 2022</option>
+                  <option value="Windows Server 2025">Windows Server 2025</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <label>
+            <span>Defeito</span>
+            <textarea id="serviceOrderDefect" name="defect" rows="4" required></textarea>
+          </label>
+
+          <label>
+            <span>Observacoes do equipamento</span>
+            <textarea id="serviceOrderEquipmentNotes" name="equipmentNotes" rows="3"></textarea>
+          </label>
+
+          <div class="form-grid">
+            <label>
+              <span>Orcamento enviado</span>
+              <select id="serviceOrderBudgetSent" name="budgetSent">
+                <option value="Nao">Nao</option>
+                <option value="Sim">Sim</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Conserto externo</span>
+              <select id="serviceOrderExternalRepair" name="externalRepair">
+                <option value="Nao">Nao</option>
+                <option value="Sim">Sim</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="externalRepairLocationWrap" class="form-grid hidden">
+            <label>
+              <span>Local do conserto</span>
+              <select id="externalRepairLocation" name="externalRepairLocation"></select>
+            </label>
+
+            <label id="newExternalRepairLocationLabel" class="hidden">
+              <span>Novo local</span>
+              <div class="inline-confirm-field">
+                <input id="newExternalRepairLocation" name="newExternalRepairLocation" placeholder="Ex.: Assistencia parceira" />
+                <div id="externalRepairLocationActions" class="permission-draft-actions">
+                  <button id="confirmExternalRepairLocationButton" class="draft-button save" type="button" title="Confirmar local" aria-label="Confirmar local">✓</button>
+                  <button id="cancelExternalRepairLocationButton" class="draft-button cancel" type="button" title="Cancelar local" aria-label="Cancelar local">x</button>
+                </div>
+              </div>
+            </label>
+
+            <button id="addExternalRepairLocationButton" class="ghost symbol-button" type="button" title="Adicionar local" aria-label="Adicionar local">+</button>
+          </div>
+
+          <p id="serviceOrderMessage" class="action-message" aria-live="polite"></p>
+
+          <div class="form-actions service-order-form-actions">
+            <span></span>
+            <button id="cancelServiceOrderButton" class="ghost" type="button">Cancelar</button>
+            <button id="serviceOrderSubmitButton" class="primary" type="submit">Adicionar</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="reportsDashboardPanel" class="dashboard-panel">
+        <div class="panel-hero">
+          <p class="eyebrow">Relatorios</p>
+          <h2>Area reservada</h2>
+          <p>Este espaco esta pronto para receber indicadores, filtros e exportacoes futuramente.</p>
+        </div>
+      </section>
+
+      <section id="logsDashboardPanel" class="dashboard-panel">
+        <div class="panel-hero">
+          <p class="eyebrow">Auditoria</p>
+          <h2>Logs do sistema</h2>
+          <p>Veja as atividades realizadas e qual usuario executou cada tarefa.</p>
+        </div>
+
+        <div id="logList" class="record-list"></div>
+      </section>
+
+      <section id="usersDashboardPanel" class="dashboard-panel">
+        <div class="panel-hero">
+          <p class="eyebrow">Acesso</p>
+          <h2>Usuarios</h2>
+          <p>Crie novos usuarios para acessos futuros. Esta funcao permanece restrita ao administrador.</p>
+        </div>
+
+        <form id="userForm" class="settings-form">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Novo usuario</p>
+              <h3>Dados de acesso</h3>
+            </div>
+            <button class="primary symbol-button" type="submit" title="Criar usuario" aria-label="Criar usuario">+</button>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              <span>Nome</span>
+              <input id="newUserName" name="name" placeholder="Nome do usuario" required />
+            </label>
+
+            <label>
+              <span>Login</span>
+              <input id="newUserLogin" name="login" autocomplete="off" required />
+            </label>
+
+            <label>
+              <span>Senha</span>
+              <input id="newUserPassword" name="password" type="password" autocomplete="new-password" required />
+            </label>
+
+            <label>
+              <span>Confirmar senha</span>
+              <input id="newUserPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" required />
+            </label>
+          </div>
+
+          <p id="userMessage" class="login-message" aria-live="polite"></p>
+        </form>
+
+        <div id="userList" class="record-list"></div>
+      </section>
+
+      <section id="permissionsDashboardPanel" class="dashboard-panel">
+        <div class="panel-hero">
+          <p class="eyebrow">Controle de acesso</p>
+          <h2>Permissoes</h2>
+          <p>Ative usuarios e escolha quais abas eles podem acessar e modificar.</p>
+        </div>
+
+        <div id="permissionList" class="permission-list"></div>
+      </section>
+
+      <section id="settingsDashboardPanel" class="dashboard-panel">
+        <div class="panel-hero">
+          <p class="eyebrow">Configuracoes</p>
+          <h2>Area reservada</h2>
+          <p>Aqui poderemos concentrar preferencias, categorias e permissoes do sistema.</p>
+        </div>
+      </section>
+      </section>
+    </main>
+
+    <template id="emptyStateTemplate">
+      <div class="empty-state">
+        <strong>Nenhum cliente encontrado</strong>
+        <span>Cadastre um novo cliente ou ajuste a busca.</span>
+      </div>
+    </template>
+
+    <template id="emptyRecordsTemplate">
+      <div class="empty-state">
+        <strong>Nada cadastrado ainda</strong>
+        <span>Adicione os itens conforme as informacoes forem chegando.</span>
+      </div>
+    </template>
+
+    <dialog id="equipmentDialog" class="modal">
+      <form id="editEquipmentForm" class="modal-content">
+        <div class="settings-header">
+          <div>
+            <p class="eyebrow">Editar</p>
+            <h3>Equipamento</h3>
+          </div>
+          <button id="closeEquipmentDialogButton" class="subtle symbol-button" type="button" title="Fechar" aria-label="Fechar">x</button>
+        </div>
+
+        <label>
+          <span>Categoria</span>
+          <select id="editEquipmentCategory" name="category" required></select>
+        </label>
+
+        <label>
+          <span>Marca</span>
+          <select id="editEquipmentBrand" name="brand" required></select>
+        </label>
+
+        <label>
+          <span>Modelo</span>
+          <select id="editEquipmentModel" name="model" required></select>
+        </label>
+
+        <div id="editNewEquipmentBrandModel" class="equipment-extra-fields hidden">
+          <label>
+            <span>Nova marca</span>
+            <input id="editNewEquipmentBrand" name="newBrand" placeholder="Ex.: Dell" />
+          </label>
+          <label>
+            <span>Novo modelo</span>
+            <input id="editNewEquipmentModel" name="newModel" placeholder="Ex.: Latitude 5420" />
+          </label>
+        </div>
+
+        <label>
+          <span>Rede</span>
+          <select id="editEquipmentNetworkType" name="networkType">
+            <option value="DHCP">DHCP</option>
+            <option value="Estatico">Estatico</option>
+          </select>
+        </label>
+
+        <label id="editEquipmentIpLabel" class="hidden">
+          <span>IP</span>
+          <input id="editEquipmentIp" name="ipAddress" placeholder="Ex.: 192.168.0.25" inputmode="decimal" />
+        </label>
+
+        <div id="printerFields" class="equipment-extra-fields hidden">
+          <label>
+            <span>S/N</span>
+            <input id="printerSerial" name="printerSerial" />
+          </label>
+
+          <label>
+            <span>Setor em que se encontra</span>
+            <input id="printerSector" name="printerSector" />
+          </label>
+
+          <label>
+            <span>MAC Address</span>
+            <input id="printerMac" name="printerMac" />
+          </label>
+        </div>
+
+        <div id="computerFields" class="equipment-extra-fields hidden">
+          <label>
+            <span>Tipo</span>
+            <select id="computerType" name="computerType">
+              <option value="">Selecione</option>
+              <option value="Notebook">Notebook</option>
+              <option value="Desktop">Desktop</option>
+              <option value="All-in-One">All-in-One</option>
+            </select>
+          </label>
+
+          <label>
+            <span>SN</span>
+            <input id="computerSerial" name="computerSerial" />
+          </label>
+        </div>
+
+        <div id="networkEquipmentFields" class="equipment-extra-fields hidden">
+          <label>
+            <span>Tipo</span>
+            <select id="networkEquipmentType" name="networkEquipmentType">
+              <option value="">Selecione</option>
+              <option value="Roteador">Roteador</option>
+              <option value="Switch">Switch</option>
+              <option value="Load balance">Load balance</option>
+              <option value="AccessPoint">AccessPoint</option>
+            </select>
+          </label>
+
+          <label>
+            <span>MAC Address</span>
+            <input id="networkEquipmentMac" name="networkEquipmentMac" />
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button id="deleteEquipmentButton" class="danger symbol-button" type="button" title="Excluir equipamento" aria-label="Excluir equipamento">x</button>
+          <button class="primary" type="submit">Salvar alteracoes</button>
+        </div>
+        <p id="equipmentActionMessage" class="action-message" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog id="agendaDialog" class="modal">
+      <form id="agendaForm" class="modal-content">
+        <div class="settings-header">
+          <div>
+            <p class="eyebrow">Agenda</p>
+            <h3 id="agendaDialogTitle">Novo agendamento</h3>
+          </div>
+          <button id="closeAgendaDialogButton" class="subtle symbol-button" type="button" title="Fechar" aria-label="Fechar">x</button>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            <span>Cliente</span>
+            <select id="agendaClient" name="clientId" required></select>
+          </label>
+
+          <label>
+            <span>Quem solicitou</span>
+            <input id="agendaRequester" name="requester" required />
+          </label>
+
+          <label>
+            <span>Data</span>
+            <input id="agendaDate" name="date" type="date" required />
+          </label>
+
+          <label>
+            <span>Status</span>
+            <select id="agendaStatus" name="status">
+              <option value="Aberto">Aberto</option>
+              <option value="Em andamento">Em andamento</option>
+              <option value="Concluido">Concluido</option>
+              <option value="Cancelado">Cancelado</option>
+            </select>
+          </label>
+        </div>
+
+        <label>
+          <span>Ocorrencia solicitada</span>
+          <textarea id="agendaOccurrence" name="occurrence" rows="5" required></textarea>
+        </label>
+
+        <p id="agendaDialogMessage" class="action-message" aria-live="polite"></p>
+
+        <div class="modal-actions">
+          <span></span>
+          <button id="agendaSubmitButton" class="primary symbol-button" type="submit" title="Adicionar agendamento" aria-label="Adicionar agendamento">+</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="passwordDialog" class="modal">
+      <form id="passwordForm" class="modal-content">
+        <div class="settings-header">
+          <div>
+            <p class="eyebrow">Usuario</p>
+            <h3 id="passwordDialogTitle">Alterar senha</h3>
+          </div>
+          <button id="closePasswordDialogButton" class="subtle symbol-button" type="button" title="Fechar" aria-label="Fechar">x</button>
+        </div>
+
+        <label>
+          <span>Nova senha</span>
+          <input id="changePassword" name="password" type="password" autocomplete="new-password" required />
+        </label>
+
+        <label>
+          <span>Confirmar nova senha</span>
+          <input id="changePasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" required />
+        </label>
+
+        <p id="passwordMessage" class="login-message" aria-live="polite"></p>
+
+        <div class="modal-actions">
+          <span></span>
+          <button class="primary" type="submit">Salvar senha</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script>
+      window.suporteTiAppReady = false;
+      window.showSuporteTiStartupError = function (detail) {
+        var loginMessage = document.querySelector("#loginMessage");
+        var message = "O sistema nao conseguiu carregar.";
+
+        if (detail) {
+          message += " Detalhe: " + detail;
+        }
+
+        if (loginMessage) {
+          loginMessage.textContent = message;
+        }
+      };
+
+      window.addEventListener("error", function (event) {
+        if (window.suporteTiAppReady) {
+          return;
+        }
+
+        window.showSuporteTiStartupError(event.message || "erro ao carregar arquivo JavaScript");
+      });
+
+      window.addEventListener("unhandledrejection", function (event) {
+        if (window.suporteTiAppReady) {
+          return;
+        }
+
+        window.showSuporteTiStartupError(event.reason?.message || "falha inesperada ao iniciar");
+      });
+
+      document.addEventListener("DOMContentLoaded", function () {
+        var loginForm = document.querySelector("#loginForm");
+
+        if (!loginForm) {
+          return;
+        }
+
+        loginForm.addEventListener(
+          "submit",
+          function (event) {
+            if (window.suporteTiAppReady) {
+              return;
+            }
+
+            event.preventDefault();
+            var loginMessage = document.querySelector("#loginMessage");
+
+            if (loginMessage) {
+              loginMessage.textContent = "Versao 2026.05.06.6: o sistema ainda nao iniciou. Atualize com Ctrl + F5 ou confira a configuracao do GitHub Pages.";
+            }
+          },
+          true
+        );
+      });
+    </script>
+    <script
+      type="module"
+      src="./js/ui.js?v=20260506-6"
+      onerror="window.showSuporteTiStartupError('js/ui.js nao foi encontrado no GitHub Pages')"
+    ></script>
+  </body>
+</html>

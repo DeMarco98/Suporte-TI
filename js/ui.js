@@ -150,6 +150,11 @@ const emptyNetworkSettings = {
   wins: ""
 };
 const emptyCompanyInfo = {
+  companyName: "",
+  companyDocument: "",
+  companyPhone: "",
+  companyEmail: "",
+  companyAddress: "",
   networkProvider: "",
   networkIp: "",
   networkGateway: "",
@@ -159,6 +164,7 @@ const emptyCompanyInfo = {
   notes: "",
   vehicles: [],
   stockTypes: defaultCompanyStockTypes,
+  stockItems: [],
   updatedAt: ""
 };
 
@@ -200,7 +206,7 @@ let activeTab = "profile";
 let activeDashboardTab = "overview";
 let activeServiceOrderView = "list";
 let activeAgendaView = "list";
-let activeCompanyView = "network";
+let activeCompanyView = "profile";
 let editingEmailSettings = false;
 let editingNetworkSettings = false;
 let editingAgendaId = "";
@@ -375,6 +381,9 @@ const passwordMessage = document.querySelector("#passwordMessage");
 const companyForm = document.querySelector("#companyForm");
 const companyMessage = document.querySelector("#companyMessage");
 const companyViewButtons = document.querySelectorAll(".company-tab");
+const companyNetworkPanel = document.querySelector("#companyNetworkPanel");
+const companyNetworkForm = document.querySelector("#companyNetworkForm");
+const companyNetworkMessage = document.querySelector("#companyNetworkMessage");
 const companyVehiclesPanel = document.querySelector("#companyVehiclesPanel");
 const companyStockPanel = document.querySelector("#companyStockPanel");
 const companyVehicleForm = document.querySelector("#companyVehicleForm");
@@ -382,9 +391,11 @@ const companyVehicleMessage = document.querySelector("#companyVehicleMessage");
 const companyVehicleList = document.querySelector("#companyVehicleList");
 const companyStockForm = document.querySelector("#companyStockForm");
 const companyStockType = document.querySelector("#companyStockType");
+const companyStockQuantity = document.querySelector("#companyStockQuantity");
 const newCompanyStockTypeLabel = document.querySelector("#newCompanyStockTypeLabel");
 const newCompanyStockType = document.querySelector("#newCompanyStockType");
 const companyStockMessage = document.querySelector("#companyStockMessage");
+const companyStockList = document.querySelector("#companyStockList");
 const dashboardTabs = document.querySelectorAll(".dashboard-tab");
 const tabs = document.querySelectorAll(".tab");
 const dashboardPanels = {
@@ -443,6 +454,7 @@ notificationButton.addEventListener("click", () => notificationPanel.classList.t
 userForm.addEventListener("submit", createUser);
 passwordForm.addEventListener("submit", saveChangedPassword);
 companyForm.addEventListener("submit", saveCompanyInfo);
+companyNetworkForm.addEventListener("submit", saveCompanyNetworkInfo);
 companyViewButtons.forEach((button) => button.addEventListener("click", () => switchCompanyView(button.dataset.companyView)));
 companyVehicleForm.addEventListener("submit", addCompanyVehicle);
 companyStockForm.addEventListener("submit", saveCompanyStockType);
@@ -2436,6 +2448,9 @@ function renderPermissions() {
   [...companyForm.elements].forEach((element) => {
     element.disabled = !canModifyCompany;
   });
+  [...companyNetworkForm.elements].forEach((element) => {
+    element.disabled = !canModifyCompany;
+  });
   [...companyVehicleForm.elements].forEach((element) => {
     element.disabled = !canModifyCompany;
   });
@@ -2533,13 +2548,20 @@ function renderCompanyInfo() {
     if (field) {
       field.value = value || "";
     }
+
+    const networkField = companyNetworkForm.elements[key];
+
+    if (networkField) {
+      networkField.value = value || "";
+    }
   });
   renderCompanyVehicles();
   renderCompanyStockTypes();
+  renderCompanyStockItems();
 }
 
 function switchCompanyView(viewName) {
-  activeCompanyView = ["network", "vehicles", "stock"].includes(viewName) ? viewName : "network";
+  activeCompanyView = ["profile", "network", "vehicles", "stock"].includes(viewName) ? viewName : "profile";
   renderCompanyView();
 }
 
@@ -2550,7 +2572,8 @@ function renderCompanyView() {
     button.setAttribute("aria-selected", String(isActive));
   });
 
-  companyForm.classList.toggle("active", activeCompanyView === "network");
+  companyForm.classList.toggle("active", activeCompanyView === "profile");
+  companyNetworkPanel.classList.toggle("active", activeCompanyView === "network");
   companyVehiclesPanel.classList.toggle("active", activeCompanyView === "vehicles");
   companyStockPanel.classList.toggle("active", activeCompanyView === "stock");
 }
@@ -2568,11 +2591,33 @@ function saveCompanyInfo(event) {
     ...Object.fromEntries(new FormData(companyForm).entries()),
     vehicles: Array.isArray(companyInfo.vehicles) ? companyInfo.vehicles : [],
     stockTypes: getCompanyStockTypes(),
+    stockItems: getCompanyStockItems(),
     updatedAt: new Date().toISOString()
   };
   persistCompanyInfo();
-  companyMessage.textContent = "Informacoes internas salvas.";
-  logActivity("Minha empresa atualizada", "Informacoes internas da empresa foram atualizadas.");
+  companyMessage.textContent = "Perfil da empresa salvo.";
+  logActivity("Perfil da empresa atualizado", "Dados do perfil interno da empresa foram atualizados.");
+}
+
+function saveCompanyNetworkInfo(event) {
+  event.preventDefault();
+
+  if (!requireModify("company")) {
+    return;
+  }
+
+  companyInfo = {
+    ...emptyCompanyInfo,
+    ...companyInfo,
+    ...Object.fromEntries(new FormData(companyNetworkForm).entries()),
+    vehicles: Array.isArray(companyInfo.vehicles) ? companyInfo.vehicles : [],
+    stockTypes: getCompanyStockTypes(),
+    stockItems: getCompanyStockItems(),
+    updatedAt: new Date().toISOString()
+  };
+  persistCompanyInfo();
+  companyNetworkMessage.textContent = "Rede interna salva.";
+  logActivity("Rede interna atualizada", "Informacoes de rede da empresa foram atualizadas.");
 }
 
 function addCompanyVehicle(event) {
@@ -2597,6 +2642,7 @@ function addCompanyVehicle(event) {
     ...emptyCompanyInfo,
     ...companyInfo,
     vehicles: [vehicle, ...(companyInfo.vehicles || [])],
+    stockItems: getCompanyStockItems(),
     updatedAt: new Date().toISOString()
   };
   persistCompanyInfo();
@@ -2670,33 +2716,99 @@ function saveCompanyStockType(event) {
     return;
   }
 
-  if (companyStockType.value !== NEW_COMPANY_STOCK_TYPE_VALUE) {
-    companyStockMessage.textContent = "Selecione 'Adicionar novo produto' para cadastrar um novo tipo.";
-    return;
-  }
-
-  const cleanType = newCompanyStockType.value.trim();
+  const isNewType = companyStockType.value === NEW_COMPANY_STOCK_TYPE_VALUE;
+  const cleanType = isNewType ? newCompanyStockType.value.trim() : companyStockType.value;
+  const quantity = Number(companyStockQuantity.value);
 
   if (!cleanType) {
     newCompanyStockType.focus();
     return;
   }
 
+  if (!Number.isFinite(quantity) || quantity < 0) {
+    companyStockQuantity.focus();
+    return;
+  }
+
+  const stockItems = getCompanyStockItems();
+  const existingItem = stockItems.find((item) => normalize(item.type) === normalize(cleanType));
+  const nextStockItems = existingItem
+    ? stockItems.map((item) =>
+        item.id === existingItem.id
+          ? {
+              ...item,
+              quantity,
+              updatedAt: new Date().toISOString()
+            }
+          : item
+      )
+    : [
+        {
+          id: createId("EST"),
+          type: cleanType,
+          quantity,
+          createdAt: new Date().toISOString(),
+          updatedAt: ""
+        },
+        ...stockItems
+      ];
+
   companyInfo = {
     ...emptyCompanyInfo,
     ...companyInfo,
     stockTypes: uniqueTextOptions([...getCompanyStockTypes(), cleanType]),
+    stockItems: nextStockItems,
     updatedAt: new Date().toISOString()
   };
   persistCompanyInfo();
   companyStockForm.reset();
   renderCompanyStockTypes(cleanType);
-  companyStockMessage.textContent = "Tipo de produto salvo.";
-  logActivity("Produto de estoque criado", `${cleanType} foi adicionado aos tipos de estoque.`);
+  renderCompanyStockItems();
+  companyStockMessage.textContent = existingItem ? "Quantidade atualizada." : "Produto adicionado ao estoque.";
+  logActivity("Estoque atualizado", `${cleanType}: ${quantity} unidade(s).`);
 }
 
 function getCompanyStockTypes() {
   return uniqueTextOptions([...(Array.isArray(companyInfo.stockTypes) ? companyInfo.stockTypes : []), ...defaultCompanyStockTypes]);
+}
+
+function getCompanyStockItems() {
+  return Array.isArray(companyInfo.stockItems) ? companyInfo.stockItems : [];
+}
+
+function renderCompanyStockItems() {
+  companyStockList.innerHTML = "";
+  const stockItems = getCompanyStockItems();
+
+  if (stockItems.length === 0) {
+    const emptyState = emptyRecordsTemplate.content.cloneNode(true);
+    emptyState.querySelector("strong").textContent = "Nenhum produto no estoque";
+    emptyState.querySelector("span").textContent = "Selecione um produto, informe a quantidade e adicione ao estoque.";
+    companyStockList.append(emptyState);
+    return;
+  }
+
+  stockItems.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "record-card";
+
+    const content = document.createElement("div");
+    content.className = "record-content";
+
+    const tag = document.createElement("span");
+    tag.className = "record-tag";
+    tag.textContent = "Estoque";
+
+    const title = document.createElement("strong");
+    title.textContent = item.type || "Produto sem nome";
+
+    const details = document.createElement("span");
+    details.textContent = `Quantidade: ${item.quantity ?? 0}`;
+
+    content.append(tag, title, details);
+    card.append(content);
+    companyStockList.append(card);
+  });
 }
 
 function toggleNewCompanyStockTypeField() {

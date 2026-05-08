@@ -793,7 +793,8 @@
         </div>
 
         <div class="service-order-tabs" aria-label="Areas internas da empresa">
-          <button class="company-tab active" type="button" data-company-view="network">Rede</button>
+          <button class="company-tab active" type="button" data-company-view="profile">Perfil</button>
+          <button class="company-tab" type="button" data-company-view="network">Rede</button>
           <button class="company-tab" type="button" data-company-view="vehicles">Veiculos</button>
           <button class="company-tab" type="button" data-company-view="stock">Estoque</button>
         </div>
@@ -801,51 +802,92 @@
         <form id="companyForm" class="settings-form service-order-view active">
           <div class="settings-header">
             <div>
-              <p class="eyebrow">Rede</p>
-              <h3>Rede interna</h3>
+              <p class="eyebrow">Perfil</p>
+              <h3>Dados da empresa</h3>
             </div>
             <button class="primary" type="submit">Salvar</button>
           </div>
 
           <div class="form-grid">
             <label>
-              <span>Provedor de internet</span>
-              <input id="companyNetworkProvider" name="networkProvider" />
+              <span>Nome da empresa</span>
+              <input id="companyName" name="companyName" />
             </label>
 
             <label>
-              <span>IP principal / link</span>
-              <input id="companyNetworkIp" name="networkIp" />
+              <span>CNPJ / Documento</span>
+              <input id="companyDocument" name="companyDocument" />
             </label>
 
             <label>
-              <span>Gateway</span>
-              <input id="companyNetworkGateway" name="networkGateway" />
+              <span>Telefone</span>
+              <input id="companyPhone" name="companyPhone" />
             </label>
 
             <label>
-              <span>DNS</span>
-              <input id="companyNetworkDns" name="networkDns" />
-            </label>
-
-            <label>
-              <span>Wi-Fi / SSID</span>
-              <input id="companyWifiName" name="wifiName" />
-            </label>
-
-            <label>
-              <span>Senha Wi-Fi</span>
-              <input id="companyWifiPassword" name="wifiPassword" />
+              <span>E-mail</span>
+              <input id="companyEmail" name="companyEmail" type="email" />
             </label>
           </div>
 
           <label>
-            <span>Observacoes da rede</span>
-            <textarea id="companyNotes" name="notes" rows="6" placeholder="Equipamentos, contratos de internet, acessos, rotinas e observacoes importantes"></textarea>
+            <span>Endereco</span>
+            <input id="companyAddress" name="companyAddress" />
           </label>
 
           <p id="companyMessage" class="action-message" aria-live="polite"></p>
         </form>
+
+        <section id="companyNetworkPanel" class="settings-form service-order-view">
+          <form id="companyNetworkForm" class="nested-settings-form">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Rede</p>
+                <h3>Rede interna</h3>
+              </div>
+              <button class="primary" type="submit">Salvar</button>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                <span>Provedor de internet</span>
+                <input id="companyNetworkProvider" name="networkProvider" />
+              </label>
+
+              <label>
+                <span>IP principal / link</span>
+                <input id="companyNetworkIp" name="networkIp" />
+              </label>
+
+              <label>
+                <span>Gateway</span>
+                <input id="companyNetworkGateway" name="networkGateway" />
+              </label>
+
+              <label>
+                <span>DNS</span>
+                <input id="companyNetworkDns" name="networkDns" />
+              </label>
+
+              <label>
+                <span>Wi-Fi / SSID</span>
+                <input id="companyWifiName" name="wifiName" />
+              </label>
+
+              <label>
+                <span>Senha Wi-Fi</span>
+                <input id="companyWifiPassword" name="wifiPassword" />
+              </label>
+            </div>
+
+            <label>
+              <span>Observacoes da rede</span>
+              <textarea id="companyNotes" name="notes" rows="6" placeholder="Equipamentos, contratos de internet, acessos, rotinas e observacoes importantes"></textarea>
+            </label>
+
+            <p id="companyNetworkMessage" class="action-message" aria-live="polite"></p>
+          </form>
+        </section>
 
         <section id="companyVehiclesPanel" class="settings-form service-order-view">
           <div class="settings-header">
@@ -905,6 +947,11 @@
               <select id="companyStockType" name="type" required></select>
             </label>
 
+            <label>
+              <span>Quantidade</span>
+              <input id="companyStockQuantity" name="quantity" type="number" min="0" step="1" required />
+            </label>
+
             <label id="newCompanyStockTypeLabel" class="hidden">
               <span>Novo produto</span>
               <input id="newCompanyStockType" name="newType" placeholder="Ex.: Toner" />
@@ -914,6 +961,7 @@
           </form>
 
           <p id="companyStockMessage" class="action-message" aria-live="polite"></p>
+          <div id="companyStockList" class="record-list"></div>
         </section>
       </section>
 

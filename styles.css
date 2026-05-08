@@ -888,6 +888,35 @@ textarea:focus {
 .service-order-card {
   align-items: stretch;
   padding: 8px;
+  border-left-width: 5px;
+}
+
+.service-order-card.status-open {
+  border-left-color: var(--green);
+}
+
+.service-order-card.status-inProgress,
+.service-order-card.status-analysis,
+.service-order-card.status-budget,
+.service-order-card.status-repair {
+  border-left-color: #9b7200;
+}
+
+.service-order-card.status-budget {
+  border-left-color: #b86b00;
+}
+
+.service-order-card.status-repair {
+  border-left-color: #8a7800;
+}
+
+.service-order-card.status-closed,
+.service-order-card.status-canceled {
+  border-left-color: var(--danger);
+}
+
+.service-order-card.status-done {
+  border-left-color: #1f7a4d;
 }
 
 .service-order-card .record-content {

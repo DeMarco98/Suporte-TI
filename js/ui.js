@@ -2796,7 +2796,7 @@ function renderAgendaItems() {
 
   visibleItems.forEach((item) => {
     const card = document.createElement("article");
-    card.className = "record-card service-order-card";
+    card.className = `record-card service-order-card ${getAgendaStatusClass(item.status)}`;
 
     const content = document.createElement("div");
     content.className = "record-content";
@@ -3104,7 +3104,7 @@ function renderServiceOrders() {
 
   visibleOrders.forEach((order) => {
     const card = document.createElement("article");
-    card.className = "record-card service-order-card";
+    card.className = `record-card service-order-card ${getServiceOrderStatusClass(order.status)}`;
 
     const content = document.createElement("div");
     content.className = "record-content";

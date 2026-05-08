@@ -54,6 +54,7 @@
           <button class="dashboard-tab" type="button" data-dashboard-tab="clients">Cadastro de clientes</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="agenda">Agenda</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="serviceOrders">Ordem de Servico</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="company">Minha empresa</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="users">Usuarios</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="logs">Logs</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="permissions">Permissoes</button>
@@ -781,6 +782,63 @@
             <button id="cancelServiceOrderButton" class="ghost" type="button">Cancelar</button>
             <button id="serviceOrderSubmitButton" class="primary" type="submit">Adicionar</button>
           </div>
+        </form>
+      </section>
+
+      <section id="companyDashboardPanel" class="dashboard-panel">
+        <div class="panel-hero">
+          <p class="eyebrow">Interno</p>
+          <h2>Minha empresa</h2>
+          <p>Guarde informacoes internas da sua propria empresa, sem vinculo com clientes.</p>
+        </div>
+
+        <form id="companyForm" class="settings-form">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Dados internos</p>
+              <h3>Informacoes da empresa</h3>
+            </div>
+            <button class="primary" type="submit">Salvar</button>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              <span>Nome da empresa</span>
+              <input id="companyName" name="name" />
+            </label>
+
+            <label>
+              <span>CNPJ</span>
+              <input id="companyDocument" name="document" />
+            </label>
+
+            <label>
+              <span>Telefone</span>
+              <input id="companyPhone" name="phone" />
+            </label>
+
+            <label>
+              <span>E-mail interno</span>
+              <input id="companyEmail" name="email" type="email" />
+            </label>
+
+            <label>
+              <span>Responsavel</span>
+              <input id="companyResponsible" name="responsible" />
+            </label>
+
+            <label>
+              <span>Site / portal</span>
+              <input id="companyPortal" name="portal" />
+            </label>
+          </div>
+
+          <label>
+            <span>Informacoes internas</span>
+            <textarea id="companyNotes" name="notes" rows="6" placeholder="Contratos, acessos, rotinas internas, observacoes importantes"></textarea>
+          </label>
+
+          <p id="companyMessage" class="action-message" aria-live="polite"></p>
         </form>
       </section>
 

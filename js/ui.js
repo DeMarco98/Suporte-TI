@@ -3,6 +3,7 @@ const CATEGORY_STORAGE_KEY = "cadastros-categorias-equipamentos";
 const BRAND_MODEL_STORAGE_KEY = "cadastros-marcas-modelos-equipamentos";
 const USER_STORAGE_KEY = "cadastros-usuarios";
 const LOG_STORAGE_KEY = "cadastros-logs";
+const COMPANY_STORAGE_KEY = "cadastros-minha-empresa";
 const AGENDA_STORAGE_KEY = "cadastros-agenda";
 const AGENDA_COUNTER_STORAGE_KEY = "cadastros-agenda-contador";
 const SERVICE_ORDER_STORAGE_KEY = "cadastros-ordens-servico";
@@ -105,6 +106,7 @@ const cloudStorageKeys = [
   BRAND_MODEL_STORAGE_KEY,
   USER_STORAGE_KEY,
   LOG_STORAGE_KEY,
+  COMPANY_STORAGE_KEY,
   AGENDA_STORAGE_KEY,
   AGENDA_COUNTER_STORAGE_KEY,
   SERVICE_ORDER_STORAGE_KEY,
@@ -119,6 +121,7 @@ const dashboardSections = [
   { id: "clients", label: "Cadastro de clientes" },
   { id: "agenda", label: "Agenda" },
   { id: "serviceOrders", label: "Ordem de Servico" },
+  { id: "company", label: "Minha empresa" },
   { id: "users", label: "Usuarios" },
   { id: "logs", label: "Logs" },
   { id: "permissions", label: "Permissoes" },
@@ -144,6 +147,16 @@ const emptyNetworkSettings = {
   dns: "",
   wins: ""
 };
+const emptyCompanyInfo = {
+  name: "",
+  document: "",
+  phone: "",
+  email: "",
+  responsible: "",
+  portal: "",
+  notes: "",
+  updatedAt: ""
+};
 
 const emptyClient = {
   id: "",
@@ -165,6 +178,7 @@ const emptyClient = {
 let clients = loadClients();
 let equipmentCategories = loadEquipmentCategories();
 let equipmentBrandModels = loadEquipmentBrandModels();
+let companyInfo = loadCompanyInfo();
 let users = loadUsers();
 let logs = loadLogs();
 let agendaItems = loadAgendaItems();
@@ -353,6 +367,8 @@ const passwordForm = document.querySelector("#passwordForm");
 const passwordDialogTitle = document.querySelector("#passwordDialogTitle");
 const closePasswordDialogButton = document.querySelector("#closePasswordDialogButton");
 const passwordMessage = document.querySelector("#passwordMessage");
+const companyForm = document.querySelector("#companyForm");
+const companyMessage = document.querySelector("#companyMessage");
 const dashboardTabs = document.querySelectorAll(".dashboard-tab");
 const tabs = document.querySelectorAll(".tab");
 const dashboardPanels = {
@@ -360,6 +376,7 @@ const dashboardPanels = {
   clients: document.querySelector("#clientsDashboardPanel"),
   agenda: document.querySelector("#agendaDashboardPanel"),
   serviceOrders: document.querySelector("#serviceOrdersDashboardPanel"),
+  company: document.querySelector("#companyDashboardPanel"),
   users: document.querySelector("#usersDashboardPanel"),
   logs: document.querySelector("#logsDashboardPanel"),
   permissions: document.querySelector("#permissionsDashboardPanel"),
@@ -409,6 +426,7 @@ logoutButton.addEventListener("click", logoutAdmin);
 notificationButton.addEventListener("click", () => notificationPanel.classList.toggle("hidden"));
 userForm.addEventListener("submit", createUser);
 passwordForm.addEventListener("submit", saveChangedPassword);
+companyForm.addEventListener("submit", saveCompanyInfo);
 agendaForm.addEventListener("submit", addAgendaItem);
 cancelAgendaButton.addEventListener("click", resetAgendaForm);
 agendaSearchInput.addEventListener("input", renderAgendaItems);
@@ -559,6 +577,23 @@ function loadUsers() {
     return Array.isArray(parsedUsers) ? parsedUsers.map(normalizeUser) : [];
   } catch {
     return [];
+  }
+}
+
+function loadCompanyInfo() {
+  const stored = localStorage.getItem(COMPANY_STORAGE_KEY);
+
+  if (!stored) {
+    return { ...emptyCompanyInfo };
+  }
+
+  try {
+    return {
+      ...emptyCompanyInfo,
+      ...JSON.parse(stored)
+    };
+  } catch {
+    return { ...emptyCompanyInfo };
   }
 }
 
@@ -809,6 +844,7 @@ function initializeFirebaseSync() {
 function getFirestoreCollectionName(key) {
   const collectionByKey = {
     [USER_STORAGE_KEY]: "users",
+    [COMPANY_STORAGE_KEY]: "companyInfo",
     [STORAGE_KEY]: "clients",
     [SERVICE_ORDER_STORAGE_KEY]: "serviceOrders",
     [AGENDA_STORAGE_KEY]: "agenda",
@@ -837,6 +873,10 @@ function getCollectionItemId(collectionName, item, index = 0) {
 
   if (collectionName === "counters") {
     return "serviceOrders";
+  }
+
+  if (collectionName === "companyInfo") {
+    return "main";
   }
 
   if (collectionName === "users") {
@@ -910,6 +950,14 @@ async function hydrateCollectionToLocalState(key) {
     const counterDoc = await firebaseDb.collection(collectionName).doc(getCounterDocumentId(key)).get();
     if (counterDoc.exists) {
       writeLocalState(key, counterDoc.data().value || 1);
+    }
+    return;
+  }
+
+  if (collectionName === "companyInfo") {
+    const companyDoc = await firebaseDb.collection(collectionName).doc("main").get();
+    if (companyDoc.exists) {
+      writeLocalState(key, { ...emptyCompanyInfo, ...companyDoc.data() });
     }
     return;
   }
@@ -1017,6 +1065,10 @@ function readLocalState(key) {
     return Number(value || 1);
   }
 
+  if (key === COMPANY_STORAGE_KEY) {
+    return loadCompanyInfo();
+  }
+
   if (value === null) {
     return null;
   }
@@ -1067,6 +1119,15 @@ function syncStateToFirebase(key, value, options = {}) {
     return;
   }
 
+  if (collectionName === "companyInfo") {
+    firebaseDb
+      .collection(collectionName)
+      .doc("main")
+      .set(value || { ...emptyCompanyInfo }, { merge: false })
+      .catch((error) => console.warn("Nao foi possivel salvar companyInfo no Firebase.", error));
+    return;
+  }
+
   const items = Array.isArray(value) ? value : [];
   syncCollection(collectionName, items).catch((error) => console.warn(`Nao foi possivel salvar ${collectionName} no Firebase.`, error));
 }
@@ -1103,6 +1164,7 @@ function reloadStateFromLocalStorage() {
   clients = loadClients();
   equipmentCategories = loadEquipmentCategories();
   equipmentBrandModels = loadEquipmentBrandModels();
+  companyInfo = loadCompanyInfo();
   users = loadUsers();
   logs = loadLogs();
   agendaItems = ensureAgendaNumbers(loadAgendaItems());
@@ -1126,6 +1188,10 @@ function persistEquipmentCategories() {
 
 function persistEquipmentBrandModels() {
   persistState(BRAND_MODEL_STORAGE_KEY, equipmentBrandModels);
+}
+
+function persistCompanyInfo() {
+  persistState(COMPANY_STORAGE_KEY, companyInfo);
 }
 
 function persistUsers() {
@@ -2171,6 +2237,7 @@ function render() {
   renderEmailTypeOptions();
   renderServiceOrders();
   renderServiceOrderView();
+  renderCompanyInfo();
   renderUsers();
   renderLogs();
   renderNotifications();
@@ -2304,6 +2371,7 @@ function renderPermissions() {
   const canAccessAgenda = canAccess("agenda");
   const canModifyAgenda = canModify("agenda");
   const canModifyServiceOrders = canModify("serviceOrders");
+  const canModifyCompany = canModify("company");
   const canModifyUsers = isAdminLoggedIn;
   const restrictedElements = [
     ...form.elements,
@@ -2340,6 +2408,9 @@ function renderPermissions() {
 
   [...serviceOrderForm.elements].forEach((element) => {
     element.disabled = !canModifyServiceOrders;
+  });
+  [...companyForm.elements].forEach((element) => {
+    element.disabled = !canModifyCompany;
   });
   toggleComputerServiceOrderFields();
   toggleExternalRepairLocationFields();
@@ -2423,6 +2494,33 @@ function renderLogs() {
     card.append(content);
     logList.append(card);
   });
+}
+
+function renderCompanyInfo() {
+  Object.entries(companyInfo).forEach(([key, value]) => {
+    const field = companyForm.elements[key];
+
+    if (field) {
+      field.value = value || "";
+    }
+  });
+}
+
+function saveCompanyInfo(event) {
+  event.preventDefault();
+
+  if (!requireModify("company")) {
+    return;
+  }
+
+  companyInfo = {
+    ...emptyCompanyInfo,
+    ...Object.fromEntries(new FormData(companyForm).entries()),
+    updatedAt: new Date().toISOString()
+  };
+  persistCompanyInfo();
+  companyMessage.textContent = "Informacoes internas salvas.";
+  logActivity("Minha empresa atualizada", "Informacoes internas da empresa foram atualizadas.");
 }
 
 function renderPermissionList() {

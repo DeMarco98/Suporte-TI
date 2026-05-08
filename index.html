@@ -397,8 +397,15 @@
 
           <form id="emailForm" class="inline-form email-form">
             <label>
-              <span>E-mail</span>
-              <input id="extraEmail" name="email" type="email" placeholder="contato@empresa.com" required />
+              <span>Usuario do e-mail</span>
+              <input id="extraEmail" name="emailUser" placeholder="contato" autocomplete="off" required />
+            </label>
+            <label>
+              <span>Senha</span>
+              <span class="password-field">
+                <input id="extraEmailPassword" name="password" type="password" autocomplete="new-password" />
+                <button class="password-toggle" type="button" data-toggle-password="extraEmailPassword" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
+              </span>
             </label>
             <label>
               <span>Tipo</span>

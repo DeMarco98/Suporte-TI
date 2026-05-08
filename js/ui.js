@@ -460,6 +460,7 @@ newClientButton.addEventListener("click", startNewClient);
 deleteClientButton.addEventListener("click", deleteSelectedClient);
 dashboardTabs.forEach((tab) => tab.addEventListener("click", () => switchDashboardTab(tab.dataset.dashboardTab)));
 tabs.forEach((tab) => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
+document.addEventListener("click", handlePasswordToggleClick);
 
 renderAuth();
 render();
@@ -3048,6 +3049,29 @@ function renderEmails(emails) {
     const details = document.createElement("span");
     details.textContent = item.type;
 
+    const passwordRow = document.createElement("span");
+    passwordRow.className = "email-password-row";
+
+    const passwordValue = document.createElement("code");
+    passwordValue.textContent = item.password ? "••••••••" : "Sem senha";
+
+    const togglePasswordButton = document.createElement("button");
+    togglePasswordButton.className = "password-toggle inline";
+    togglePasswordButton.type = "button";
+    togglePasswordButton.textContent = "👁";
+    togglePasswordButton.title = "Mostrar senha";
+    togglePasswordButton.setAttribute("aria-label", "Mostrar senha");
+    togglePasswordButton.disabled = !item.password;
+    togglePasswordButton.addEventListener("click", () => {
+      const isHidden = passwordValue.dataset.visible !== "true";
+      passwordValue.dataset.visible = isHidden ? "true" : "false";
+      passwordValue.textContent = isHidden ? item.password : "••••••••";
+      togglePasswordButton.title = isHidden ? "Ocultar senha" : "Mostrar senha";
+      togglePasswordButton.setAttribute("aria-label", togglePasswordButton.title);
+    });
+
+    passwordRow.append("Senha: ", passwordValue, togglePasswordButton);
+
     const removeButton = document.createElement("button");
     removeButton.className = "icon-danger symbol-button";
     removeButton.type = "button";
@@ -3056,7 +3080,7 @@ function renderEmails(emails) {
     removeButton.setAttribute("aria-label", "Excluir e-mail");
     removeButton.addEventListener("click", () => removeRelatedRecord("emails", item.id));
 
-    content.append(title, details);
+    content.append(title, details, passwordRow);
     card.append(content, removeButton);
     emailList.append(card);
   });
@@ -3249,11 +3273,20 @@ function addEmail(event) {
     return;
   }
 
+  const selectedClient = getSelectedClient();
+  const data = Object.fromEntries(new FormData(emailForm).entries());
+  const fullEmail = buildClientEmailAddress(data.emailUser, selectedClient.emailSettings?.domain);
+
+  if (!fullEmail) {
+    return;
+  }
+
   updateSelectedClient((client) => {
-    const data = Object.fromEntries(new FormData(emailForm).entries());
     const item = {
       id: createId("EML"),
-      email: data.email,
+      email: fullEmail,
+      emailUser: extractEmailUser(fullEmail),
+      password: data.password,
       type: data.type
     };
 
@@ -3265,7 +3298,60 @@ function addEmail(event) {
   });
 
   emailForm.reset();
-  logActivity("E-mail adicionado", `${data.email} em ${getSelectedClient().name || "cliente sem nome"}.`);
+  logActivity("E-mail adicionado", `${fullEmail} em ${getSelectedClient().name || "cliente sem nome"}.`);
+}
+
+function buildClientEmailAddress(emailUser, configuredDomain) {
+  const rawUser = String(emailUser || "").trim();
+
+  if (!rawUser) {
+    return "";
+  }
+
+  if (rawUser.includes("@")) {
+    return rawUser;
+  }
+
+  const domain = normalizeEmailDomain(configuredDomain);
+
+  if (!domain) {
+    return rawUser;
+  }
+
+  return `${rawUser}${domain}`;
+}
+
+function normalizeEmailDomain(domain) {
+  const value = String(domain || "").trim();
+
+  if (!value) {
+    return "";
+  }
+
+  return value.startsWith("@") ? value : `@${value}`;
+}
+
+function extractEmailUser(email) {
+  return String(email || "").split("@")[0] || "";
+}
+
+function handlePasswordToggleClick(event) {
+  const button = event.target.closest("[data-toggle-password]");
+
+  if (!button) {
+    return;
+  }
+
+  const input = document.querySelector(`#${button.dataset.togglePassword}`);
+
+  if (!input) {
+    return;
+  }
+
+  const shouldShow = input.type === "password";
+  input.type = shouldShow ? "text" : "password";
+  button.title = shouldShow ? "Ocultar senha" : "Mostrar senha";
+  button.setAttribute("aria-label", button.title);
 }
 
 function saveNetworkSettings(event) {

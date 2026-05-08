@@ -739,7 +739,54 @@ textarea:focus {
 }
 
 .email-form {
-  grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px) auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(160px, 1fr) minmax(150px, 220px) auto;
+}
+
+.password-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 6px;
+}
+
+.password-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.password-toggle:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.password-toggle.inline {
+  width: 26px;
+  min-height: 24px;
+  margin-left: 6px;
+  font-size: 0.8rem;
+}
+
+.password-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.email-password-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.email-password-row code {
+  font-family: inherit;
+  color: var(--ink);
 }
 
 .check-row {

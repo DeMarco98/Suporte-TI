@@ -10,6 +10,8 @@ export const collections = {
   authorizationRequests: "authorizationRequests",
   equipmentCategories: "equipmentCategories",
   equipmentBrandModels: "equipmentBrandModels",
+  companyInfo: "companyInfo",
+  emailTypes: "emailTypes",
   counters: "counters",
   serviceOrderEquipmentTypes: "serviceOrderEquipmentTypes",
   externalRepairLocations: "externalRepairLocations"
@@ -42,7 +44,7 @@ export function getFirebaseAuthErrorMessage(error) {
   const code = error?.code || "";
 
   if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
-    return "Login ou senha do Firebase incorretos.";
+    return "Usuario ou senha incorretos.";
   }
 
   if (code === "auth/unauthorized-domain") {
@@ -53,7 +55,7 @@ export function getFirebaseAuthErrorMessage(error) {
     return "Muitas tentativas. Aguarde alguns minutos.";
   }
 
-  return "Login nao autorizado no Firebase.";
+  return "Usuario ou senha incorretos.";
 }
 
 export function getFirebaseCollectionName(localStorageKey) {
@@ -63,19 +65,22 @@ export function getFirebaseCollectionName(localStorageKey) {
     "cadastros-ordens-servico": collections.serviceOrders,
     "cadastros-agenda": collections.agenda,
     "cadastros-logs": collections.logs,
+    "cadastros-minha-empresa": collections.companyInfo,
     "cadastros-autorizacoes": collections.authorizationRequests,
     "cadastros-categorias-equipamentos": collections.equipmentCategories,
     "cadastros-marcas-modelos-equipamentos": collections.equipmentBrandModels,
     "cadastros-tipos-equipamento-os": collections.serviceOrderEquipmentTypes,
     "cadastros-locais-conserto-externo": collections.externalRepairLocations,
-    "cadastros-ordens-servico-contador": collections.counters
+    "cadastros-tipos-email": collections.emailTypes,
+    "cadastros-ordens-servico-contador": collections.counters,
+    "cadastros-agenda-contador": collections.counters
   };
 
   return collectionByKey[localStorageKey] || "";
 }
 
 export function getCollectionItemId(collectionName, item, index = 0) {
-  if (collectionName === collections.equipmentCategories || collectionName === collections.serviceOrderEquipmentTypes) {
+  if (collectionName === collections.equipmentCategories || collectionName === collections.serviceOrderEquipmentTypes || collectionName === collections.emailTypes) {
     return slugifyId(String(item));
   }
 
@@ -87,6 +92,10 @@ export function getCollectionItemId(collectionName, item, index = 0) {
     return slugifyId(item.brand || `brand-${index}`);
   }
 
+  if (collectionName === collections.companyInfo) {
+    return "main";
+  }
+
   return item.id || `item-${index}`;
 }
 
@@ -94,7 +103,8 @@ export function serializeCollectionItem(collectionName, item) {
   if (
     collectionName === collections.equipmentCategories ||
     collectionName === collections.serviceOrderEquipmentTypes ||
-    collectionName === collections.externalRepairLocations
+    collectionName === collections.externalRepairLocations ||
+    collectionName === collections.emailTypes
   ) {
     return { value: item };
   }
@@ -106,7 +116,8 @@ export function deserializeCollectionItem(collectionName, docData) {
   if (
     collectionName === collections.equipmentCategories ||
     collectionName === collections.serviceOrderEquipmentTypes ||
-    collectionName === collections.externalRepairLocations
+    collectionName === collections.externalRepairLocations ||
+    collectionName === collections.emailTypes
   ) {
     return docData.value;
   }

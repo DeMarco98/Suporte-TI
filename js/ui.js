@@ -222,6 +222,11 @@ let firebaseAuth = null;
 let firebaseSyncEnabled = false;
 let firebaseAuthRequired = false;
 let firebaseHydrating = false;
+let firebaseRealtimeStarted = false;
+let firebaseSnapshotApplying = false;
+let firebaseSyncStatus = "offline";
+let firebaseUnsubscribers = [];
+const firebaseCollectionDocIds = {};
 
 const appState = {
   get clients() {
@@ -258,6 +263,7 @@ const loginPassword = document.querySelector("#loginPassword");
 const loginMessage = document.querySelector("#loginMessage");
 const logoutButton = document.querySelector("#logoutButton");
 const adminStatus = document.querySelector(".user-name");
+const syncStatus = document.querySelector("#syncStatus");
 const notificationButton = document.querySelector("#notificationButton");
 const notificationCount = document.querySelector("#notificationCount");
 const notificationPanel = document.querySelector("#notificationPanel");
@@ -546,9 +552,12 @@ dashboardTabs.forEach((tab) => tab.addEventListener("click", () => switchDashboa
 tabs.forEach((tab) => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
 document.addEventListener("click", handlePasswordToggleClick);
 
-renderAuth();
-render();
 initializeFirebaseSync();
+renderAuth();
+
+if (!currentUser || !firebaseSyncEnabled) {
+  render();
+}
 window.suporteTiAppReady = true;
 
 function loadClients() {
@@ -865,11 +874,40 @@ function initializeFirebaseSync() {
     firebaseAuth = window.firebase.auth ? window.firebase.auth() : null;
     firebaseAuthRequired = Boolean(config.requireAuth);
     firebaseSyncEnabled = true;
-    if (!firebaseAuthRequired || firebaseAuth?.currentUser) {
-      hydrateFromFirebase();
-    }
+    updateSyncStatus("syncing", "Sincronizando");
+    const persistenceReady = firebaseDb.enablePersistence
+      ? firebaseDb.enablePersistence({ synchronizeTabs: true }).catch((error) => {
+          console.warn("Persistencia offline do Firebase nao foi ativada.", error);
+        })
+      : Promise.resolve();
+
+    persistenceReady.finally(() => {
+      if (!firebaseAuthRequired) {
+        hydrateFromFirebase();
+        return;
+      }
+
+      if (!firebaseAuth) {
+        updateSyncStatus("offline", "Offline");
+        render();
+        return;
+      }
+
+      firebaseAuth.onAuthStateChanged((user) => {
+        if (user) {
+          hydrateFromFirebase();
+          return;
+        }
+
+        if (currentUser) {
+          updateSyncStatus("offline", "Aguardando login");
+          render();
+        }
+      });
+    });
   } catch (error) {
     console.warn("Nao foi possivel iniciar o Firebase. O sistema seguira usando dados locais.", error);
+    updateSyncStatus("offline", "Offline");
   }
 }
 
@@ -954,21 +992,24 @@ async function hydrateFromFirebase() {
   }
 
   try {
+    updateSyncStatus("syncing", "Sincronizando");
     firebaseHydrating = true;
     await migrateLegacyAppState();
     await Promise.all(cloudStorageKeys.map((key) => hydrateCollectionToLocalState(key)));
     reloadStateFromLocalStorage();
     renderAuth();
     render();
+    startFirebaseRealtimeListeners();
+    updateSyncStatus("synced", "Online");
   } catch (error) {
     console.warn("Nao foi possivel sincronizar com o Firebase.", error);
+    updateSyncStatus("offline", "Offline");
+    reloadStateFromLocalStorage();
+    renderAuth();
+    render();
   } finally {
     firebaseHydrating = false;
   }
-}
-
-async function uploadLocalStateToFirebase() {
-  await Promise.all(cloudStorageKeys.map((key) => syncStateToFirebase(key, readLocalState(key))));
 }
 
 async function hydrateCollectionToLocalState(key) {
@@ -980,28 +1021,144 @@ async function hydrateCollectionToLocalState(key) {
 
   if (collectionName === "counters") {
     const counterDoc = await firebaseDb.collection(collectionName).doc(getCounterDocumentId(key)).get();
-    if (counterDoc.exists) {
-      writeLocalState(key, counterDoc.data().value || 1);
-    }
+    writeLocalState(key, counterDoc.exists ? counterDoc.data().value || 1 : 1);
+    firebaseCollectionDocIds[getFirebaseListenerId(key)] = new Set(counterDoc.exists ? [counterDoc.id] : []);
     return;
   }
 
   if (collectionName === "companyInfo") {
     const companyDoc = await firebaseDb.collection(collectionName).doc("main").get();
-    if (companyDoc.exists) {
-      writeLocalState(key, { ...emptyCompanyInfo, ...companyDoc.data() });
-    }
+    writeLocalState(key, companyDoc.exists ? { ...emptyCompanyInfo, ...companyDoc.data() } : { ...emptyCompanyInfo });
+    firebaseCollectionDocIds[getFirebaseListenerId(key)] = new Set(companyDoc.exists ? [companyDoc.id] : []);
     return;
   }
 
   const snapshot = await firebaseDb.collection(collectionName).get();
 
-  if (snapshot.empty) {
+  const items = snapshot.docs.map((doc) => deserializeCollectionItem(collectionName, { id: doc.id, ...doc.data() })).filter((item) => item !== undefined);
+  firebaseCollectionDocIds[getFirebaseListenerId(key)] = new Set(snapshot.docs.map((doc) => doc.id));
+  writeLocalState(key, items);
+}
+
+function startFirebaseRealtimeListeners() {
+  if (!firebaseSyncEnabled || firebaseRealtimeStarted) {
     return;
   }
 
+  firebaseRealtimeStarted = true;
+  firebaseUnsubscribers = cloudStorageKeys.map((key) => listenToFirebaseState(key)).filter(Boolean);
+}
+
+function stopFirebaseRealtimeListeners() {
+  firebaseUnsubscribers.forEach((unsubscribe) => unsubscribe());
+  firebaseUnsubscribers = [];
+  firebaseRealtimeStarted = false;
+}
+
+function listenToFirebaseState(key) {
+  const collectionName = getFirestoreCollectionName(key);
+
+  if (!collectionName) {
+    return null;
+  }
+
+  if (collectionName === "counters") {
+    return firebaseDb
+      .collection(collectionName)
+      .doc(getCounterDocumentId(key))
+      .onSnapshot(
+        (doc) => applyFirebaseDocumentSnapshot(key, doc),
+        (error) => handleFirebaseSnapshotError(error)
+      );
+  }
+
+  if (collectionName === "companyInfo") {
+    return firebaseDb
+      .collection(collectionName)
+      .doc("main")
+      .onSnapshot(
+        (doc) => applyFirebaseDocumentSnapshot(key, doc),
+        (error) => handleFirebaseSnapshotError(error)
+      );
+  }
+
+  return firebaseDb.collection(collectionName).onSnapshot(
+    (snapshot) => applyFirebaseCollectionSnapshot(key, snapshot),
+    (error) => handleFirebaseSnapshotError(error)
+  );
+}
+
+function applyFirebaseDocumentSnapshot(key, doc) {
+  const listenerId = getFirebaseListenerId(key);
+  firebaseCollectionDocIds[listenerId] = new Set(doc.exists ? [doc.id] : []);
+
+  if (doc.metadata?.hasPendingWrites) {
+    updateSyncStatus("syncing", "Sincronizando");
+    return;
+  }
+
+  if (doc.metadata?.fromCache) {
+    updateSyncStatus("offline", "Offline");
+  } else {
+    updateSyncStatus("synced", "Online");
+  }
+
+  if (isCounterStorageKey(key)) {
+    applyFirebaseState(key, doc.exists ? doc.data().value || 1 : 1);
+    return;
+  }
+
+  applyFirebaseState(key, doc.exists ? { ...emptyCompanyInfo, ...doc.data() } : { ...emptyCompanyInfo });
+}
+
+function applyFirebaseCollectionSnapshot(key, snapshot) {
+  const collectionName = getFirestoreCollectionName(key);
+  const listenerId = getFirebaseListenerId(key);
+  firebaseCollectionDocIds[listenerId] = new Set(snapshot.docs.map((doc) => doc.id));
+
+  if (snapshot.metadata?.hasPendingWrites) {
+    updateSyncStatus("syncing", "Sincronizando");
+    return;
+  }
+
+  updateSyncStatus(snapshot.metadata?.fromCache ? "offline" : "synced", snapshot.metadata?.fromCache ? "Offline" : "Online");
+
   const items = snapshot.docs.map((doc) => deserializeCollectionItem(collectionName, { id: doc.id, ...doc.data() })).filter((item) => item !== undefined);
-  writeLocalState(key, items);
+  applyFirebaseState(key, items);
+}
+
+function applyFirebaseState(key, value) {
+  if (firebaseHydrating) {
+    return;
+  }
+
+  firebaseSnapshotApplying = true;
+  writeLocalState(key, value);
+  reloadStateFromLocalStorage();
+  firebaseSnapshotApplying = false;
+  renderAuth();
+  render();
+}
+
+function handleFirebaseSnapshotError(error) {
+  console.warn("Nao foi possivel receber atualizacoes em tempo real do Firebase.", error);
+  updateSyncStatus("offline", "Offline");
+}
+
+function getFirebaseListenerId(key) {
+  const collectionName = getFirestoreCollectionName(key);
+  return collectionName === "counters" ? `${collectionName}/${getCounterDocumentId(key)}` : collectionName;
+}
+
+function updateSyncStatus(status, label) {
+  firebaseSyncStatus = status;
+
+  if (!syncStatus) {
+    return;
+  }
+
+  syncStatus.className = `sync-status ${status}`;
+  syncStatus.textContent = label;
 }
 
 async function migrateLegacyAppState() {
@@ -1065,7 +1222,7 @@ async function signInFirebaseUser(login, password) {
     return credential.user;
   } catch (error) {
     console.warn("Falha no login do Firebase.", error);
-    loginMessage.textContent = `${getFirebaseAuthErrorMessage(error)} Firebase: ${firebaseEmail}. Codigo: ${error?.code || "desconhecido"}.`;
+    loginMessage.textContent = getFirebaseAuthErrorMessage(error);
     loginPassword.value = "";
     loginPassword.focus();
     return null;
@@ -1076,7 +1233,7 @@ function getFirebaseAuthErrorMessage(error) {
   const code = error?.code || "";
 
   if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
-    return "Login ou senha do Firebase incorretos.";
+    return "Usuario ou senha incorretos.";
   }
 
   if (code === "auth/unauthorized-domain") {
@@ -1087,7 +1244,7 @@ function getFirebaseAuthErrorMessage(error) {
     return "Muitas tentativas. Aguarde alguns minutos.";
   }
 
-  return "Login nao autorizado no Firebase.";
+  return "Usuario ou senha incorretos.";
 }
 
 function readLocalState(key) {
@@ -1128,6 +1285,12 @@ function writeLocalState(key, value) {
 
 function persistState(key, value) {
   writeLocalState(key, value);
+
+  if (firebaseSnapshotApplying) {
+    return;
+  }
+
+  updateSyncStatus(firebaseSyncEnabled ? "syncing" : "offline", firebaseSyncEnabled ? "Sincronizando" : "Offline");
   syncStateToFirebase(key, value);
 }
 
@@ -1147,7 +1310,11 @@ function syncStateToFirebase(key, value, options = {}) {
       .collection(collectionName)
       .doc(getCounterDocumentId(key))
       .set({ value: Number(value || 1), updatedAt: new Date().toISOString() }, { merge: true })
-      .catch((error) => console.warn("Nao foi possivel salvar contador no Firebase.", error));
+      .then(() => updateSyncStatus("synced", "Online"))
+      .catch((error) => {
+        console.warn("Nao foi possivel salvar contador no Firebase.", error);
+        updateSyncStatus("offline", "Offline");
+      });
     return;
   }
 
@@ -1156,12 +1323,19 @@ function syncStateToFirebase(key, value, options = {}) {
       .collection(collectionName)
       .doc("main")
       .set(value || { ...emptyCompanyInfo }, { merge: false })
-      .catch((error) => console.warn("Nao foi possivel salvar companyInfo no Firebase.", error));
+      .then(() => updateSyncStatus("synced", "Online"))
+      .catch((error) => {
+        console.warn("Nao foi possivel salvar companyInfo no Firebase.", error);
+        updateSyncStatus("offline", "Offline");
+      });
     return;
   }
 
   const items = Array.isArray(value) ? value : [];
-  syncCollection(collectionName, items).catch((error) => console.warn(`Nao foi possivel salvar ${collectionName} no Firebase.`, error));
+  syncCollection(collectionName, items).catch((error) => {
+    console.warn(`Nao foi possivel salvar ${collectionName} no Firebase.`, error);
+    updateSyncStatus("offline", "Offline");
+  });
 }
 
 function isCounterStorageKey(key) {
@@ -1174,13 +1348,13 @@ function getCounterDocumentId(key) {
 
 async function syncCollection(collectionName, items) {
   const collectionRef = firebaseDb.collection(collectionName);
-  const snapshot = await collectionRef.get();
   const nextIds = new Set(items.map((item, index) => getCollectionItemId(collectionName, item, index)));
+  const knownIds = firebaseCollectionDocIds[collectionName] || new Set();
   const batch = firebaseDb.batch();
 
-  snapshot.docs.forEach((doc) => {
-    if (!nextIds.has(doc.id)) {
-      batch.delete(doc.ref);
+  knownIds.forEach((id) => {
+    if (!nextIds.has(id)) {
+      batch.delete(collectionRef.doc(id));
     }
   });
 
@@ -1190,6 +1364,8 @@ async function syncCollection(collectionName, items) {
   });
 
   await batch.commit();
+  firebaseCollectionDocIds[collectionName] = nextIds;
+  updateSyncStatus("synced", "Online");
 }
 
 function reloadStateFromLocalStorage() {
@@ -1207,6 +1383,21 @@ function reloadStateFromLocalStorage() {
   externalRepairLocations = loadExternalRepairLocations();
   emailTypes = loadEmailTypes();
   authorizationRequests = loadAuthorizationRequests();
+  if (currentUser) {
+    const updatedCurrentUser = users.find((user) => user.uid === currentUser.uid || user.id === currentUser.id || normalize(user.login) === normalize(currentUser.login));
+
+    if (updatedCurrentUser) {
+      currentUser = {
+        id: updatedCurrentUser.id,
+        uid: updatedCurrentUser.uid,
+        login: updatedCurrentUser.login,
+        name: updatedCurrentUser.name,
+        role: updatedCurrentUser.role || "user"
+      };
+      isAdminLoggedIn = currentUser.role === "admin" || updatedCurrentUser.fullControl === true;
+      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(currentUser));
+    }
+  }
   selectedId = clients.some((client) => client.id === selectedId) ? selectedId : clients[0]?.id ?? "";
 }
 
@@ -1351,7 +1542,11 @@ async function getOrCreateFirebaseUserProfile(firebaseUser, typedLogin) {
     }
   }
 
-  persistUsers();
+  if (firebaseSyncEnabled && firebaseDb) {
+    writeLocalState(USER_STORAGE_KEY, users);
+  } else {
+    persistUsers();
+  }
   return userProfile;
 }
 
@@ -1367,6 +1562,8 @@ function logoutAdmin() {
   currentUser = null;
   isAdminLoggedIn = false;
   sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  stopFirebaseRealtimeListeners();
+  updateSyncStatus(firebaseSyncEnabled ? "syncing" : "offline", firebaseSyncEnabled ? "Aguardando login" : "Offline");
   closeEquipmentDialog();
   renderAuth();
   render();
@@ -1376,6 +1573,7 @@ function renderAuth() {
   const isLoggedIn = Boolean(currentUser);
   welcomeScreen.classList.toggle("hidden", isLoggedIn);
   appScreen.classList.toggle("hidden", !isLoggedIn);
+  syncStatus.classList.toggle("hidden", !isLoggedIn || !firebaseSyncEnabled);
 
   if (currentUser) {
     adminStatus.textContent = isAdminLoggedIn ? "Administrador conectado" : `${currentUser.name} conectado`;

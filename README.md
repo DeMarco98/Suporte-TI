@@ -99,10 +99,12 @@ equipmentCategories
 equipmentBrandModels
 serviceOrderEquipmentTypes
 externalRepairLocations
+emailTypes
+companyInfo/main
 counters
 ```
 
-Os dados continuam em cache local para manter a tela rapida. Existe uma migracao temporaria que copia dados antigos de `appState/main` para as novas colecoes na primeira sincronizacao.
+O Firestore e a fonte principal dos dados. O navegador escuta as colecoes com atualizacao em tempo real e usa o `localStorage` apenas como cache secundario para contingencia/offline. Existe uma migracao temporaria que copia dados antigos de `appState/main` para as novas colecoes na primeira sincronizacao.
 
 ## Login e permissoes
 

@@ -8,14 +8,17 @@ const SERVICE_ORDER_STORAGE_KEY = "cadastros-ordens-servico";
 const SERVICE_ORDER_COUNTER_STORAGE_KEY = "cadastros-ordens-servico-contador";
 const SERVICE_ORDER_EQUIPMENT_TYPE_STORAGE_KEY = "cadastros-tipos-equipamento-os";
 const EXTERNAL_REPAIR_LOCATION_STORAGE_KEY = "cadastros-locais-conserto-externo";
+const EMAIL_TYPE_STORAGE_KEY = "cadastros-tipos-email";
 const AUTHORIZATION_STORAGE_KEY = "cadastros-autorizacoes";
 const SESSION_STORAGE_KEY = "cadastros-admin-logado";
 const ADMIN_USER = "administrador";
 const NEW_CATEGORY_VALUE = "__new_category__";
 const NEW_BRAND_MODEL_VALUE = "__new_brand_model__";
 const NEW_SERVICE_ORDER_EQUIPMENT_TYPE_VALUE = "__new_service_order_equipment_type__";
+const NEW_EMAIL_TYPE_VALUE = "__new_email_type__";
 const serviceOrderStatuses = ["Aberta", "Em analise", "Aguardando orcamento", "Em conserto", "Fechada", "Concluida", "Cancelada"];
 const defaultServiceOrderEquipmentTypes = ["Notebook", "Computador", "All-In-One", "Impressora"];
+const defaultEmailTypes = ["Comercial", "Financeiro", "Suporte", "Pessoal"];
 
 async function createAgendaItem({ state, persistAgendaItems, createId, payload }) {
   const item = {
@@ -104,6 +107,7 @@ const cloudStorageKeys = [
   SERVICE_ORDER_COUNTER_STORAGE_KEY,
   SERVICE_ORDER_EQUIPMENT_TYPE_STORAGE_KEY,
   EXTERNAL_REPAIR_LOCATION_STORAGE_KEY,
+  EMAIL_TYPE_STORAGE_KEY,
   AUTHORIZATION_STORAGE_KEY
 ];
 const dashboardSections = [
@@ -164,6 +168,7 @@ let serviceOrders = loadServiceOrders();
 let serviceOrderCounter = loadServiceOrderCounter();
 let serviceOrderEquipmentTypes = loadServiceOrderEquipmentTypes();
 let externalRepairLocations = loadExternalRepairLocations();
+let emailTypes = loadEmailTypes();
 let authorizationRequests = loadAuthorizationRequests();
 let selectedId = clients[0]?.id ?? "";
 let activeTab = "profile";
@@ -172,6 +177,7 @@ let activeServiceOrderView = "list";
 let editingEmailSettings = false;
 let editingNetworkSettings = false;
 let editingEquipmentId = "";
+let editingEmailId = "";
 let editingServiceOrderId = "";
 let editingPasswordUserId = "";
 let permissionDrafts = {};
@@ -298,6 +304,9 @@ const emptyStateTemplate = document.querySelector("#emptyStateTemplate");
 const emptyRecordsTemplate = document.querySelector("#emptyRecordsTemplate");
 const equipmentList = document.querySelector("#equipmentList");
 const emailList = document.querySelector("#emailList");
+const extraEmailType = document.querySelector("#extraEmailType");
+const newEmailTypeLabel = document.querySelector("#newEmailTypeLabel");
+const newEmailType = document.querySelector("#newEmailType");
 const equipmentFilter = document.querySelector("#equipmentFilter");
 const equipmentCategory = document.querySelector("#equipmentCategory");
 const newCategoryLabel = document.querySelector("#newCategoryLabel");
@@ -417,6 +426,7 @@ editEquipmentForm.addEventListener("submit", saveEditedEquipment);
 networkSettingsForm.addEventListener("submit", saveNetworkSettings);
 emailSettingsForm.addEventListener("submit", saveEmailSettings);
 emailForm.addEventListener("submit", addEmail);
+extraEmailType.addEventListener("change", toggleNewEmailTypeField);
 editNetworkSettingsButton.addEventListener("click", () => {
   if (!requireModify("clients")) {
     return;
@@ -617,6 +627,21 @@ function loadServiceOrderEquipmentTypes() {
   }
 }
 
+function loadEmailTypes() {
+  const stored = localStorage.getItem(EMAIL_TYPE_STORAGE_KEY);
+
+  if (!stored) {
+    return defaultEmailTypes;
+  }
+
+  try {
+    const parsedTypes = JSON.parse(stored);
+    return Array.isArray(parsedTypes) ? uniqueTextOptions([...defaultEmailTypes, ...parsedTypes]) : defaultEmailTypes;
+  } catch {
+    return defaultEmailTypes;
+  }
+}
+
 function loadExternalRepairLocations() {
   const stored = localStorage.getItem(EXTERNAL_REPAIR_LOCATION_STORAGE_KEY);
 
@@ -735,6 +760,7 @@ function getFirestoreCollectionName(key) {
     [BRAND_MODEL_STORAGE_KEY]: "equipmentBrandModels",
     [SERVICE_ORDER_EQUIPMENT_TYPE_STORAGE_KEY]: "serviceOrderEquipmentTypes",
     [EXTERNAL_REPAIR_LOCATION_STORAGE_KEY]: "externalRepairLocations",
+    [EMAIL_TYPE_STORAGE_KEY]: "emailTypes",
     [SERVICE_ORDER_COUNTER_STORAGE_KEY]: "counters"
   };
 
@@ -742,7 +768,7 @@ function getFirestoreCollectionName(key) {
 }
 
 function getCollectionItemId(collectionName, item, index = 0) {
-  if (["equipmentCategories", "serviceOrderEquipmentTypes", "externalRepairLocations"].includes(collectionName)) {
+  if (["equipmentCategories", "serviceOrderEquipmentTypes", "externalRepairLocations", "emailTypes"].includes(collectionName)) {
     return slugifyId(String(item));
   }
 
@@ -762,7 +788,7 @@ function getCollectionItemId(collectionName, item, index = 0) {
 }
 
 function serializeCollectionItem(collectionName, item) {
-  if (["equipmentCategories", "serviceOrderEquipmentTypes", "externalRepairLocations"].includes(collectionName)) {
+  if (["equipmentCategories", "serviceOrderEquipmentTypes", "externalRepairLocations", "emailTypes"].includes(collectionName)) {
     return { value: item };
   }
 
@@ -774,7 +800,7 @@ function serializeCollectionItem(collectionName, item) {
 }
 
 function deserializeCollectionItem(collectionName, docData) {
-  if (["equipmentCategories", "serviceOrderEquipmentTypes", "externalRepairLocations"].includes(collectionName)) {
+  if (["equipmentCategories", "serviceOrderEquipmentTypes", "externalRepairLocations", "emailTypes"].includes(collectionName)) {
     return docData.value;
   }
 
@@ -1017,6 +1043,7 @@ function reloadStateFromLocalStorage() {
   serviceOrderCounter = loadServiceOrderCounter();
   serviceOrderEquipmentTypes = loadServiceOrderEquipmentTypes();
   externalRepairLocations = loadExternalRepairLocations();
+  emailTypes = loadEmailTypes();
   authorizationRequests = loadAuthorizationRequests();
   selectedId = clients.some((client) => client.id === selectedId) ? selectedId : clients[0]?.id ?? "";
 }
@@ -1059,6 +1086,10 @@ function persistServiceOrderEquipmentTypes() {
 
 function persistExternalRepairLocations() {
   persistState(EXTERNAL_REPAIR_LOCATION_STORAGE_KEY, externalRepairLocations);
+}
+
+function persistEmailTypes() {
+  persistState(EMAIL_TYPE_STORAGE_KEY, emailTypes);
 }
 
 function persistAuthorizationRequests() {
@@ -1731,9 +1762,7 @@ function ensureServiceOrderEquipmentType(type) {
 }
 
 function uniqueServiceOrderEquipmentTypes(types) {
-  return [...new Map(types.filter(Boolean).map((type) => [normalize(type), type.trim()])).values()].sort((first, second) =>
-    first.localeCompare(second, "pt-BR")
-  );
+  return uniqueTextOptions(types);
 }
 
 function getNextServiceOrderNumber() {
@@ -2026,6 +2055,7 @@ function render() {
   renderAgendaItems();
   renderServiceOrderClientOptions();
   renderExternalRepairLocationOptions();
+  renderEmailTypeOptions();
   renderServiceOrders();
   renderServiceOrderView();
   renderUsers();
@@ -2698,6 +2728,28 @@ function renderExternalRepairLocationOptions(selectedValue = externalRepairLocat
   }
 }
 
+function renderEmailTypeOptions(selectedValue = extraEmailType.value) {
+  extraEmailType.innerHTML = "";
+
+  emailTypes.forEach((type) => {
+    const option = document.createElement("option");
+    option.value = type;
+    option.textContent = type;
+    extraEmailType.append(option);
+  });
+
+  const newOption = document.createElement("option");
+  newOption.value = NEW_EMAIL_TYPE_VALUE;
+  newOption.textContent = "Outro";
+  extraEmailType.append(newOption);
+
+  if ([...extraEmailType.options].some((option) => option.value === selectedValue)) {
+    extraEmailType.value = selectedValue;
+  }
+
+  toggleNewEmailTypeField();
+}
+
 function renderServiceOrders() {
   serviceOrderList.innerHTML = "";
   const visibleOrders = serviceOrders.filter((order) => matchesServiceOrderFilter(order, serviceOrderStatusFilter.value));
@@ -3072,6 +3124,18 @@ function renderEmails(emails) {
 
     passwordRow.append("Senha: ", passwordValue, togglePasswordButton);
 
+    const actions = document.createElement("div");
+    actions.className = "record-actions";
+
+    const editButton = document.createElement("button");
+    editButton.className = "ghost symbol-button";
+    editButton.type = "button";
+    editButton.textContent = "✎";
+    editButton.title = "Editar e-mail";
+    editButton.setAttribute("aria-label", "Editar e-mail");
+    editButton.disabled = !canModify("clients");
+    editButton.addEventListener("click", () => editEmail(item.id));
+
     const removeButton = document.createElement("button");
     removeButton.className = "icon-danger symbol-button";
     removeButton.type = "button";
@@ -3080,8 +3144,9 @@ function renderEmails(emails) {
     removeButton.setAttribute("aria-label", "Excluir e-mail");
     removeButton.addEventListener("click", () => removeRelatedRecord("emails", item.id));
 
+    actions.append(editButton, removeButton);
     content.append(title, details, passwordRow);
-    card.append(content, removeButton);
+    card.append(content, actions);
     emailList.append(card);
   });
 }
@@ -3276,19 +3341,28 @@ function addEmail(event) {
   const selectedClient = getSelectedClient();
   const data = Object.fromEntries(new FormData(emailForm).entries());
   const fullEmail = buildClientEmailAddress(data.emailUser, selectedClient.emailSettings?.domain);
+  const emailType = resolveEmailType(data.type, data.newType);
 
-  if (!fullEmail) {
+  if (!fullEmail || !emailType) {
     return;
   }
 
   updateSelectedClient((client) => {
     const item = {
-      id: createId("EML"),
+      id: editingEmailId || createId("EML"),
       email: fullEmail,
       emailUser: extractEmailUser(fullEmail),
       password: data.password,
-      type: data.type
+      type: emailType
     };
+
+    if (editingEmailId) {
+      return {
+        ...client,
+        emails: client.emails.map((email) => (email.id === editingEmailId ? item : email)),
+        updatedAt: new Date().toISOString()
+      };
+    }
 
     return {
       ...client,
@@ -3297,8 +3371,80 @@ function addEmail(event) {
     };
   });
 
+  const action = editingEmailId ? "E-mail atualizado" : "E-mail adicionado";
+  editingEmailId = "";
   emailForm.reset();
-  logActivity("E-mail adicionado", `${fullEmail} em ${getSelectedClient().name || "cliente sem nome"}.`);
+  toggleNewEmailTypeField();
+  logActivity(action, `${fullEmail} em ${getSelectedClient().name || "cliente sem nome"}.`);
+}
+
+function editEmail(emailId) {
+  if (!requireModify("clients")) {
+    return;
+  }
+
+  const selectedClient = getSelectedClient();
+  const email = selectedClient.emails.find((item) => item.id === emailId);
+
+  if (!email) {
+    return;
+  }
+
+  editingEmailId = emailId;
+  emailForm.elements.emailUser.value = email.emailUser || extractEmailUser(email.email);
+  emailForm.elements.password.value = email.password || "";
+  renderEmailTypeOptions(emailTypes.some((type) => normalize(type) === normalize(email.type)) ? email.type : NEW_EMAIL_TYPE_VALUE);
+
+  if (extraEmailType.value === NEW_EMAIL_TYPE_VALUE) {
+    newEmailType.value = email.type || "";
+  }
+
+  toggleNewEmailTypeField();
+  emailForm.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function resolveEmailType(type, newType) {
+  if (type !== NEW_EMAIL_TYPE_VALUE) {
+    return type;
+  }
+
+  const cleanType = String(newType || "").trim();
+
+  if (!cleanType) {
+    newEmailType.focus();
+    return "";
+  }
+
+  ensureEmailType(cleanType);
+  renderEmailTypeOptions(cleanType);
+  return cleanType;
+}
+
+function ensureEmailType(type) {
+  const cleanType = String(type || "").trim();
+
+  if (!cleanType || emailTypes.some((item) => normalize(item) === normalize(cleanType))) {
+    return;
+  }
+
+  emailTypes = uniqueTextOptions([...emailTypes, cleanType]);
+  persistEmailTypes();
+}
+
+function uniqueTextOptions(values) {
+  return [...new Map(values.filter(Boolean).map((value) => [normalize(value), String(value).trim()])).values()].sort((first, second) =>
+    first.localeCompare(second, "pt-BR")
+  );
+}
+
+function toggleNewEmailTypeField() {
+  const isNewType = extraEmailType.value === NEW_EMAIL_TYPE_VALUE;
+  newEmailTypeLabel.classList.toggle("hidden", !isNewType);
+  newEmailType.required = isNewType;
+
+  if (!isNewType) {
+    newEmailType.value = "";
+  }
 }
 
 function buildClientEmailAddress(emailUser, configuredDomain) {
@@ -3456,6 +3602,7 @@ function selectClient(id) {
   selectedId = id;
   editingNetworkSettings = false;
   editingEmailSettings = false;
+  editingEmailId = "";
   render();
 }
 
@@ -3468,6 +3615,7 @@ function startNewClient() {
   activeTab = "profile";
   editingNetworkSettings = true;
   editingEmailSettings = true;
+  editingEmailId = "";
   form.reset();
   equipmentForm.reset();
   networkSettingsForm.reset();
@@ -3582,6 +3730,12 @@ function renderDashboardTabs() {
 }
 
 function switchTab(tabName) {
+  if (tabName !== "emails") {
+    editingEmailId = "";
+    emailForm.reset();
+    toggleNewEmailTypeField();
+  }
+
   activeTab = tabName;
   renderTabs();
 }

@@ -850,6 +850,12 @@ textarea:focus {
   background: #eef7f9;
 }
 
+.record-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .record-content {
   display: grid;
   gap: 3px;

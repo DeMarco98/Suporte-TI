@@ -3,8 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Cadastro de Clientes</title>
-    <link rel="stylesheet" href="styles.css" />
+    <script>
+      window.suporteTiBuildVersion = String(Date.now());
+      document.write('<link rel="stylesheet" href="styles.css?v=' + window.suporteTiBuildVersion + '" />');
+    </script>
   </head>
   <body>
     <main id="welcomeScreen" class="welcome-screen">
@@ -13,7 +19,7 @@
           <p class="eyebrow">Central de cadastros</p>
           <h1>Bem-vindo</h1>
           <p>Entre como administrador para cadastrar, editar e manter as informacoes dos clientes.</p>
-          <small id="appVersion">Versao 2026.05.08.1</small>
+          <small id="appVersion">Versao automatica</small>
         </div>
 
         <form id="loginForm" class="login-form" action="#" method="post">
@@ -986,7 +992,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js"></script>
+    <script>
+      document.write('<script src="firebase-config.js?v=' + window.suporteTiBuildVersion + '"><\/script>');
+    </script>
     <script>
       window.suporteTiAppReady = false;
       window.showSuporteTiStartupError = function (detail) {
@@ -1036,17 +1044,21 @@
             var loginMessage = document.querySelector("#loginMessage");
 
             if (loginMessage) {
-              loginMessage.textContent = "Versao 2026.05.08.1: o sistema ainda nao iniciou. Atualize com Ctrl + F5 ou confira a configuracao do GitHub Pages.";
+              loginMessage.textContent = "O sistema ainda nao iniciou. Aguarde alguns segundos ou confira a configuracao do GitHub Pages.";
             }
           },
           true
         );
       });
     </script>
-    <script
-      type="module"
-      src="./js/ui.js?v=20260508-1"
-      onerror="window.showSuporteTiStartupError('js/ui.js nao foi encontrado no GitHub Pages')"
-    ></script>
+    <script>
+      var appScript = document.createElement("script");
+      appScript.type = "module";
+      appScript.src = "./js/ui.js?v=" + window.suporteTiBuildVersion;
+      appScript.onerror = function () {
+        window.showSuporteTiStartupError("js/ui.js nao foi encontrado no GitHub Pages");
+      };
+      document.body.appendChild(appScript);
+    </script>
   </body>
 </html>

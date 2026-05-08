@@ -345,6 +345,10 @@ button:focus-visible {
   gap: 8px;
 }
 
+.notification-panel .settings-header {
+  align-items: flex-start;
+}
+
 .dashboard-panel {
   display: none;
 }
@@ -625,7 +629,8 @@ textarea:focus {
 
 .service-order-tab,
 .agenda-tab,
-.company-tab {
+.company-tab,
+.settings-tab {
   min-height: 34px;
   border: 1px solid transparent;
   border-bottom: 3px solid transparent;
@@ -640,7 +645,8 @@ textarea:focus {
 
 .service-order-tab:hover,
 .agenda-tab:hover,
-.company-tab:hover {
+.company-tab:hover,
+.settings-tab:hover {
   border-color: rgba(37, 109, 133, 0.16);
   border-bottom-color: var(--accent);
   background: rgba(255, 255, 255, 0.72);
@@ -649,7 +655,8 @@ textarea:focus {
 
 .service-order-tab.active,
 .agenda-tab.active,
-.company-tab.active {
+.company-tab.active,
+.settings-tab.active {
   border-color: rgba(37, 109, 133, 0.2);
   border-bottom-color: var(--accent);
   background: #fff;
@@ -731,6 +738,19 @@ textarea:focus {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.settings-placeholder-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.muted-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
 }
 
 .summary-item {
@@ -1577,7 +1597,8 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
-  .settings-summary {
+  .settings-summary,
+  .settings-placeholder-grid {
     grid-template-columns: 1fr;
   }
 

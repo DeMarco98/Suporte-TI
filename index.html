@@ -81,6 +81,7 @@
                     <p class="eyebrow">Central</p>
                     <h3>Notificacoes</h3>
                   </div>
+                  <button id="clearNotificationsButton" class="subtle" type="button">Limpar notificações</button>
                 </div>
                 <div id="notificationList" class="notification-list"></div>
               </div>
@@ -1041,9 +1042,95 @@
       <section id="settingsDashboardPanel" class="dashboard-panel">
         <div class="panel-hero">
           <p class="eyebrow">Configuracoes</p>
-          <h2>Area reservada</h2>
-          <p>Aqui poderemos concentrar preferencias, categorias e permissoes do sistema.</p>
+          <h2>Ajustes do sistema</h2>
+          <p>Configure preferencias visuais, alertas, senha, integracoes e rotinas de backup.</p>
         </div>
+
+        <div class="service-order-tabs" aria-label="Opcoes de configuracoes">
+          <button class="settings-tab active" type="button" data-settings-view="theme">Tema</button>
+          <button class="settings-tab" type="button" data-settings-view="alerts">Alertas</button>
+          <button class="settings-tab" type="button" data-settings-view="password">Senha</button>
+          <button class="settings-tab" type="button" data-settings-view="integrations">Integrações</button>
+          <button class="settings-tab" type="button" data-settings-view="backup">Backup</button>
+        </div>
+
+        <section id="settingsThemePanel" class="settings-form service-order-view active">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Tema</p>
+              <h3>Aparencia</h3>
+            </div>
+          </div>
+          <div class="settings-placeholder-grid">
+            <article class="summary-item">
+              <span>Cor principal</span>
+              <strong>Azul atual do sistema</strong>
+            </article>
+            <article class="summary-item">
+              <span>Layout</span>
+              <strong>Compacto operacional</strong>
+            </article>
+            <article class="summary-item">
+              <span>Proximo passo</span>
+              <strong>Escolher cores e densidade da interface</strong>
+            </article>
+          </div>
+        </section>
+
+        <section id="settingsAlertsPanel" class="settings-form service-order-view">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Alertas</p>
+              <h3>Notificacoes</h3>
+            </div>
+          </div>
+          <p class="muted-text">Aqui vamos concentrar preferencias de avisos, lembretes e notificacoes do sistema.</p>
+        </section>
+
+        <section id="settingsPasswordPanel" class="settings-form service-order-view">
+          <form id="currentPasswordForm" class="nested-settings-form">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Senha</p>
+                <h3>Alterar minha senha</h3>
+              </div>
+              <button class="primary" type="submit">Salvar</button>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                <span>Nova senha</span>
+                <input id="currentUserNewPassword" name="password" type="password" autocomplete="new-password" required />
+              </label>
+              <label>
+                <span>Confirmar senha</span>
+                <input id="currentUserNewPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" required />
+              </label>
+            </div>
+
+            <p id="currentPasswordMessage" class="action-message" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section id="settingsIntegrationsPanel" class="settings-form service-order-view">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Integracoes</p>
+              <h3>Conexoes externas</h3>
+            </div>
+          </div>
+          <p class="muted-text">Espaco reservado para Firebase, e-mail, APIs e outras integracoes futuras.</p>
+        </section>
+
+        <section id="settingsBackupPanel" class="settings-form service-order-view">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Backup</p>
+              <h3>Exportacao e seguranca</h3>
+            </div>
+          </div>
+          <p class="muted-text">Aqui vamos adicionar opcoes para exportar dados e criar rotinas de backup.</p>
+        </section>
       </section>
       </section>
     </main>

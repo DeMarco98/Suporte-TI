@@ -13,6 +13,7 @@ const EXTERNAL_REPAIR_LOCATION_STORAGE_KEY = "cadastros-locais-conserto-externo"
 const EMAIL_TYPE_STORAGE_KEY = "cadastros-tipos-email";
 const AUTHORIZATION_STORAGE_KEY = "cadastros-autorizacoes";
 const SESSION_STORAGE_KEY = "cadastros-admin-logado";
+const DISMISSED_NOTIFICATION_STORAGE_KEY = "cadastros-notificacoes-limpas";
 const ADMIN_USER = "administrador";
 const NEW_CATEGORY_VALUE = "__new_category__";
 const NEW_BRAND_MODEL_VALUE = "__new_brand_model__";
@@ -201,12 +202,14 @@ let serviceOrderEquipmentTypes = loadServiceOrderEquipmentTypes();
 let externalRepairLocations = loadExternalRepairLocations();
 let emailTypes = loadEmailTypes();
 let authorizationRequests = loadAuthorizationRequests();
+let dismissedNotifications = loadDismissedNotifications();
 let selectedId = clients[0]?.id ?? "";
 let activeTab = "profile";
 let activeDashboardTab = "overview";
 let activeServiceOrderView = "list";
 let activeAgendaView = "list";
 let activeCompanyView = "profile";
+let activeSettingsView = "theme";
 let editingEmailSettings = false;
 let editingNetworkSettings = false;
 let editingAgendaId = "";
@@ -269,6 +272,7 @@ const notificationButton = document.querySelector("#notificationButton");
 const notificationCount = document.querySelector("#notificationCount");
 const notificationPanel = document.querySelector("#notificationPanel");
 const notificationList = document.querySelector("#notificationList");
+const clearNotificationsButton = document.querySelector("#clearNotificationsButton");
 const dashboardClientTotal = document.querySelector("#dashboardClientTotal");
 const dashboardUserTotal = document.querySelector("#dashboardUserTotal");
 const dashboardLogTotal = document.querySelector("#dashboardLogTotal");
@@ -418,6 +422,16 @@ const dashboardPanels = {
   reports: document.querySelector("#reportsDashboardPanel"),
   settings: document.querySelector("#settingsDashboardPanel")
 };
+const settingsViewButtons = document.querySelectorAll(".settings-tab");
+const settingsPanels = {
+  theme: document.querySelector("#settingsThemePanel"),
+  alerts: document.querySelector("#settingsAlertsPanel"),
+  password: document.querySelector("#settingsPasswordPanel"),
+  integrations: document.querySelector("#settingsIntegrationsPanel"),
+  backup: document.querySelector("#settingsBackupPanel")
+};
+const currentPasswordForm = document.querySelector("#currentPasswordForm");
+const currentPasswordMessage = document.querySelector("#currentPasswordMessage");
 const panels = {
   profile: document.querySelector("#profilePanel"),
   equipment: document.querySelector("#equipmentPanel"),
@@ -459,8 +473,12 @@ const networkSettingsFields = {
 loginForm.addEventListener("submit", loginAdmin);
 logoutButton.addEventListener("click", logoutAdmin);
 notificationButton.addEventListener("click", () => notificationPanel.classList.toggle("hidden"));
+clearNotificationsButton.addEventListener("click", clearVisibleNotifications);
+document.addEventListener("click", closeNotificationPanelOnOutsideClick);
 userForm.addEventListener("submit", createUser);
 passwordForm.addEventListener("submit", saveChangedPassword);
+currentPasswordForm.addEventListener("submit", saveCurrentUserPassword);
+settingsViewButtons.forEach((button) => button.addEventListener("click", () => switchSettingsView(button.dataset.settingsView)));
 companyForm.addEventListener("submit", saveCompanyInfo);
 companyNetworkForm.addEventListener("submit", saveCompanyNetworkInfo);
 companyViewButtons.forEach((button) => button.addEventListener("click", () => switchCompanyView(button.dataset.companyView)));
@@ -820,6 +838,21 @@ function loadAuthorizationRequests() {
     return Array.isArray(parsedItems) ? parsedItems : [];
   } catch {
     return [];
+  }
+}
+
+function loadDismissedNotifications() {
+  const stored = localStorage.getItem(DISMISSED_NOTIFICATION_STORAGE_KEY);
+
+  if (!stored) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(stored);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
   }
 }
 
@@ -2495,6 +2528,7 @@ function render() {
   renderLogs();
   renderNotifications();
   renderPermissionList();
+  renderSettingsView();
   renderForm();
   renderEquipmentCategories();
   renderBrandOptions(equipmentBrand, equipmentModel);
@@ -2516,6 +2550,23 @@ function switchAgendaView(viewName) {
   activeAgendaView = viewName === "create" ? "create" : "list";
   agendaActionMessage.textContent = "";
   renderAgendaView();
+}
+
+function switchSettingsView(viewName) {
+  activeSettingsView = Object.prototype.hasOwnProperty.call(settingsPanels, viewName) ? viewName : "theme";
+  renderSettingsView();
+}
+
+function renderSettingsView() {
+  settingsViewButtons.forEach((button) => {
+    const isActive = button.dataset.settingsView === activeSettingsView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  Object.entries(settingsPanels).forEach(([name, panel]) => {
+    panel.classList.toggle("active", name === activeSettingsView);
+  });
 }
 
 function renderAgendaView() {
@@ -2544,6 +2595,7 @@ function renderNotifications() {
   notificationList.innerHTML = "";
 
   const visibleRequests = getVisibleAuthorizationRequests();
+  clearNotificationsButton.disabled = visibleRequests.length === 0;
   notificationCount.textContent = String(visibleRequests.filter((item) => item.status === "Pendente").length);
 
   if (visibleRequests.length === 0) {
@@ -2605,11 +2657,55 @@ function getVisibleAuthorizationRequests() {
     return [];
   }
 
+  const dismissed = getDismissedNotificationIds();
+  const notDismissed = (request) => !dismissed.has(request.id);
+
   if (canApproveAuthorizationRequests()) {
-    return authorizationRequests;
+    return authorizationRequests.filter(notDismissed);
   }
 
-  return authorizationRequests.filter((request) => request.requesterLogin === currentUser.login);
+  return authorizationRequests.filter((request) => request.requesterLogin === currentUser.login && notDismissed(request));
+}
+
+function getDismissedNotificationIds() {
+  const key = getNotificationDismissKey();
+  return new Set(Array.isArray(dismissedNotifications[key]) ? dismissedNotifications[key] : []);
+}
+
+function getNotificationDismissKey() {
+  return currentUser?.uid || currentUser?.id || normalize(currentUser?.login || "anonimo");
+}
+
+function persistDismissedNotifications() {
+  localStorage.setItem(DISMISSED_NOTIFICATION_STORAGE_KEY, JSON.stringify(dismissedNotifications));
+}
+
+function clearVisibleNotifications() {
+  if (!currentUser) {
+    return;
+  }
+
+  const visibleRequests = getVisibleAuthorizationRequests();
+  const key = getNotificationDismissKey();
+  const dismissed = new Set([...(dismissedNotifications[key] || []), ...visibleRequests.map((request) => request.id)]);
+  dismissedNotifications = {
+    ...dismissedNotifications,
+    [key]: [...dismissed]
+  };
+  persistDismissedNotifications();
+  renderNotifications();
+}
+
+function closeNotificationPanelOnOutsideClick(event) {
+  if (notificationPanel.classList.contains("hidden")) {
+    return;
+  }
+
+  if (notificationPanel.contains(event.target) || notificationButton.contains(event.target)) {
+    return;
+  }
+
+  notificationPanel.classList.add("hidden");
 }
 
 function updateDashboardTotals() {
@@ -3544,6 +3640,51 @@ async function updateFirebaseUserPassword(user, password) {
   }
 }
 
+async function saveCurrentUserPassword(event) {
+  event.preventDefault();
+
+  if (!currentUser) {
+    currentPasswordMessage.textContent = "Faça login para alterar a senha.";
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(currentPasswordForm).entries());
+
+  if (data.password !== data.passwordConfirm) {
+    currentPasswordMessage.textContent = "As senhas nao conferem.";
+    return;
+  }
+
+  if (!firebaseAuth?.currentUser) {
+    currentPasswordMessage.textContent = "Faça login novamente para alterar a senha.";
+    return;
+  }
+
+  currentPasswordMessage.textContent = "Alterando senha...";
+
+  try {
+    await firebaseAuth.currentUser.updatePassword(data.password);
+    currentPasswordForm.reset();
+    currentPasswordMessage.textContent = "Senha alterada.";
+    logActivity("Senha alterada", `Usuario ${currentUser.login} alterou a propria senha.`);
+  } catch (error) {
+    console.warn("Nao foi possivel alterar a senha do usuario logado.", error);
+    const code = error?.code || "";
+
+    if (code.includes("requires-recent-login")) {
+      currentPasswordMessage.textContent = "Faça login novamente e tente alterar a senha.";
+      return;
+    }
+
+    if (code.includes("weak-password")) {
+      currentPasswordMessage.textContent = "A senha precisa ter pelo menos 6 caracteres.";
+      return;
+    }
+
+    currentPasswordMessage.textContent = "Nao foi possivel alterar a senha.";
+  }
+}
+
 async function deleteFirebaseUserAccount(user) {
   if (!user || !window.firebase?.functions || !firebaseAuth?.currentUser) {
     return false;
@@ -3677,6 +3818,17 @@ function renderAgendaItems() {
       actions.append(editButton);
     }
 
+    if (canApproveAuthorizationRequests()) {
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "icon-danger";
+      deleteButton.type = "button";
+      deleteButton.textContent = "Excluir";
+      deleteButton.title = "Excluir agenda";
+      deleteButton.setAttribute("aria-label", "Excluir agenda");
+      deleteButton.addEventListener("click", () => deleteAgendaItem(item.id));
+      actions.append(deleteButton);
+    }
+
     titleWrap.append(title, clientName);
     titleRow.append(titleWrap, actions);
 
@@ -3742,6 +3894,28 @@ function editAgendaItem(itemId) {
   agendaForm.elements.status.value = normalizeAgendaStatus(item.status);
   agendaForm.elements.occurrence.value = item.occurrence || "";
   switchAgendaView("create");
+}
+
+function deleteAgendaItem(itemId) {
+  if (!canApproveAuthorizationRequests()) {
+    return;
+  }
+
+  const item = agendaItems.find((agendaItem) => agendaItem.id === itemId);
+
+  if (!item) {
+    return;
+  }
+
+  if (!window.confirm(`Excluir ${formatAgendaNumber(item)}?`)) {
+    return;
+  }
+
+  agendaItems = agendaItems.filter((agendaItem) => agendaItem.id !== itemId);
+  persistAgendaItems();
+  logActivity("Agenda excluida", `${formatAgendaNumber(item)} - ${item.clientName || "Cliente sem nome"}.`);
+  renderAgendaItems();
+  updateDashboardTotals();
 }
 
 function matchesAgendaFilter(item, filter) {
@@ -3986,6 +4160,17 @@ function renderServiceOrders() {
       orderActions.append(editButton);
     }
 
+    if (canApproveAuthorizationRequests()) {
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "icon-danger";
+      deleteButton.type = "button";
+      deleteButton.textContent = "Excluir";
+      deleteButton.title = "Excluir ordem de servico";
+      deleteButton.setAttribute("aria-label", "Excluir ordem de servico");
+      deleteButton.addEventListener("click", () => deleteServiceOrder(order.id));
+      orderActions.append(deleteButton);
+    }
+
     titleWrap.append(title, clientName);
     titleRow.append(titleWrap, orderActions);
 
@@ -4044,6 +4229,27 @@ function createServiceOrderSummaryItem(label, value) {
   labelElement.textContent = `${label}: `;
   item.append(labelElement, document.createTextNode(value || "Nao informado"));
   return item;
+}
+
+function deleteServiceOrder(orderId) {
+  if (!canApproveAuthorizationRequests()) {
+    return;
+  }
+
+  const order = serviceOrders.find((item) => item.id === orderId);
+
+  if (!order) {
+    return;
+  }
+
+  if (!window.confirm(`Excluir ${formatServiceOrderNumber(order)}?`)) {
+    return;
+  }
+
+  serviceOrders = serviceOrders.filter((item) => item.id !== orderId);
+  persistServiceOrders();
+  logActivity("Ordem de servico excluida", `${formatServiceOrderNumber(order)} - ${order.clientName || "Cliente sem nome"}.`);
+  renderServiceOrders();
 }
 
 function matchesServiceOrderFilter(order, filter) {

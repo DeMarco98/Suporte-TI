@@ -2557,9 +2557,9 @@ function renderNotifications() {
       actions.className = "notification-actions";
 
       const denyButton = document.createElement("button");
-      denyButton.className = "danger symbol-button";
+      denyButton.className = "danger";
       denyButton.type = "button";
-      denyButton.textContent = "x";
+      denyButton.textContent = "Negar";
       denyButton.title = "Negar";
       denyButton.setAttribute("aria-label", "Negar");
       denyButton.addEventListener("click", () => denyAuthorizationRequest(request.id));
@@ -4124,9 +4124,9 @@ function renderEmails(emails) {
     editButton.addEventListener("click", () => editEmail(item.id));
 
     const removeButton = document.createElement("button");
-    removeButton.className = "icon-danger symbol-button";
+    removeButton.className = "icon-danger";
     removeButton.type = "button";
-    removeButton.textContent = "x";
+    removeButton.textContent = "Excluir";
     removeButton.title = "Excluir e-mail";
     removeButton.setAttribute("aria-label", "Excluir e-mail");
     removeButton.addEventListener("click", () => removeRelatedRecord("emails", item.id));

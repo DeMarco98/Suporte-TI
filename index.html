@@ -142,8 +142,8 @@
             <h2 id="selectedTitle">Novo cliente</h2>
           </div>
           <div class="actions">
-            <button id="newClientButton" class="ghost symbol-button" type="button" title="Novo cliente" aria-label="Novo cliente">+</button>
-            <button id="deleteClientButton" class="danger symbol-button" type="button" title="Excluir cliente" aria-label="Excluir cliente">x</button>
+            <button id="newClientButton" class="ghost" type="button" title="Novo cliente" aria-label="Novo cliente">Adicionar</button>
+            <button id="deleteClientButton" class="danger" type="button" title="Excluir cliente" aria-label="Excluir cliente">Excluir</button>
           </div>
         </div>
         <p id="clientActionMessage" class="action-message" aria-live="polite"></p>
@@ -259,7 +259,7 @@
               <span>IP</span>
               <input id="equipmentIp" name="ipAddress" placeholder="Ex.: 192.168.0.25" inputmode="decimal" />
             </label>
-            <button class="primary symbol-button" type="submit" title="Adicionar equipamento" aria-label="Adicionar equipamento">+</button>
+            <button class="primary" type="submit" title="Adicionar equipamento" aria-label="Adicionar equipamento">Adicionar</button>
           </form>
 
           <label class="equipment-filter">
@@ -418,7 +418,7 @@
               <span>Novo tipo</span>
               <input id="newEmailType" name="newType" placeholder="Ex.: Diretoria" />
             </label>
-            <button class="primary symbol-button" type="submit" title="Adicionar e-mail" aria-label="Adicionar e-mail">+</button>
+            <button class="primary" type="submit" title="Adicionar e-mail" aria-label="Adicionar e-mail">Adicionar</button>
           </form>
 
           <div id="emailList" class="record-list"></div>
@@ -504,7 +504,7 @@
           <p id="agendaDialogMessage" class="action-message" aria-live="polite"></p>
 
           <div class="form-actions service-order-form-actions">
-            <button id="cancelAgendaButton" class="danger symbol-button" type="button" title="Cancelar" aria-label="Cancelar">x</button>
+            <button id="cancelAgendaButton" class="danger" type="button" title="Cancelar" aria-label="Cancelar">Cancelar</button>
             <button id="agendaSubmitButton" class="primary" type="submit">Adicionar</button>
           </div>
         </form>
@@ -768,12 +768,12 @@
                 <input id="newExternalRepairLocation" name="newExternalRepairLocation" placeholder="Ex.: Assistencia parceira" />
                 <div id="externalRepairLocationActions" class="permission-draft-actions">
                   <button id="confirmExternalRepairLocationButton" class="draft-button save" type="button" title="Confirmar local" aria-label="Confirmar local">✓</button>
-                  <button id="cancelExternalRepairLocationButton" class="draft-button cancel" type="button" title="Cancelar local" aria-label="Cancelar local">x</button>
+                  <button id="cancelExternalRepairLocationButton" class="draft-button cancel" type="button" title="Cancelar local" aria-label="Cancelar local">Cancelar</button>
                 </div>
               </div>
             </label>
 
-            <button id="addExternalRepairLocationButton" class="ghost symbol-button" type="button" title="Adicionar local" aria-label="Adicionar local">+</button>
+            <button id="addExternalRepairLocationButton" class="ghost" type="button" title="Adicionar local" aria-label="Adicionar local">Adicionar</button>
           </div>
 
           <p id="serviceOrderMessage" class="action-message" aria-live="polite"></p>
@@ -927,7 +927,7 @@
               <textarea id="companyVehicleMaintenance" name="maintenance" rows="3" placeholder="Descreva o que foi feito"></textarea>
             </label>
 
-            <button id="companyVehicleSubmitButton" class="primary symbol-button" type="submit" title="Adicionar veiculo" aria-label="Adicionar veiculo">+</button>
+            <button id="companyVehicleSubmitButton" class="primary" type="submit" title="Adicionar veiculo" aria-label="Adicionar veiculo">Adicionar</button>
           </form>
 
           <p id="companyVehicleMessage" class="action-message" aria-live="polite"></p>
@@ -958,7 +958,7 @@
               <input id="newCompanyStockType" name="newType" placeholder="Ex.: Toner" />
             </label>
 
-            <button id="companyStockSubmitButton" class="primary symbol-button" type="submit" title="Adicionar produto" aria-label="Adicionar produto">+</button>
+            <button id="companyStockSubmitButton" class="primary" type="submit" title="Adicionar produto" aria-label="Adicionar produto">Adicionar</button>
           </form>
 
           <p id="companyStockMessage" class="action-message" aria-live="polite"></p>
@@ -997,7 +997,7 @@
               <p class="eyebrow">Novo usuario</p>
               <h3>Dados de acesso</h3>
             </div>
-            <button class="primary symbol-button" type="submit" title="Criar usuario" aria-label="Criar usuario">+</button>
+            <button class="primary" type="submit" title="Criar usuario" aria-label="Criar usuario">Adicionar</button>
           </div>
 
           <div class="form-grid">
@@ -1069,7 +1069,7 @@
             <p class="eyebrow">Editar</p>
             <h3>Equipamento</h3>
           </div>
-          <button id="closeEquipmentDialogButton" class="subtle symbol-button" type="button" title="Fechar" aria-label="Fechar">x</button>
+          <button id="closeEquipmentDialogButton" class="subtle" type="button" title="Fechar" aria-label="Fechar">Fechar</button>
         </div>
 
         <label>
@@ -1164,7 +1164,7 @@
         </div>
 
         <div class="modal-actions">
-          <button id="deleteEquipmentButton" class="danger symbol-button" type="button" title="Excluir equipamento" aria-label="Excluir equipamento">x</button>
+          <button id="deleteEquipmentButton" class="danger" type="button" title="Excluir equipamento" aria-label="Excluir equipamento">Excluir</button>
           <button class="primary" type="submit">Salvar alteracoes</button>
         </div>
         <p id="equipmentActionMessage" class="action-message" aria-live="polite"></p>
@@ -1179,7 +1179,7 @@
             <p class="eyebrow">Usuario</p>
             <h3 id="passwordDialogTitle">Alterar senha</h3>
           </div>
-          <button id="closePasswordDialogButton" class="subtle symbol-button" type="button" title="Fechar" aria-label="Fechar">x</button>
+          <button id="closePasswordDialogButton" class="subtle" type="button" title="Fechar" aria-label="Fechar">Fechar</button>
         </div>
 
         <label>

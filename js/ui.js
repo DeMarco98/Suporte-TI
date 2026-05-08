@@ -213,6 +213,7 @@ let editingAgendaId = "";
 let editingEquipmentId = "";
 let editingEmailId = "";
 let editingServiceOrderId = "";
+let editingCompanyStockItemId = "";
 let editingPasswordUserId = "";
 let permissionDrafts = {};
 let currentUser = loadSessionUser();
@@ -398,6 +399,7 @@ const companyVehicleList = document.querySelector("#companyVehicleList");
 const companyStockForm = document.querySelector("#companyStockForm");
 const companyStockType = document.querySelector("#companyStockType");
 const companyStockQuantity = document.querySelector("#companyStockQuantity");
+const companyStockSubmitButton = document.querySelector("#companyStockSubmitButton");
 const newCompanyStockTypeLabel = document.querySelector("#newCompanyStockTypeLabel");
 const newCompanyStockType = document.querySelector("#newCompanyStockType");
 const companyStockMessage = document.querySelector("#companyStockMessage");
@@ -1497,9 +1499,12 @@ async function loginAdmin(event) {
 }
 
 async function getOrCreateFirebaseUserProfile(firebaseUser, typedLogin) {
+  let firestoreProfileChecked = false;
+
   if (firebaseSyncEnabled && firebaseDb) {
     try {
       const userSnapshot = await firebaseDb.collection("users").doc(firebaseUser.uid).get();
+      firestoreProfileChecked = true;
 
       if (userSnapshot.exists) {
         const firestoreUser = normalizeUser({ id: userSnapshot.id, ...userSnapshot.data() });
@@ -1512,13 +1517,22 @@ async function getOrCreateFirebaseUserProfile(firebaseUser, typedLogin) {
     }
   }
 
+  const isBootstrapAdmin = isBootstrapAdminUser(firebaseUser);
+
+  if (firestoreProfileChecked && !isBootstrapAdmin) {
+    return null;
+  }
+
   const existingUser = users.find((item) => item.uid === firebaseUser.uid || normalize(item.email || "") === normalize(firebaseUser.email || ""));
 
   if (existingUser) {
     return existingUser;
   }
 
-  const isBootstrapAdmin = isBootstrapAdminUser(firebaseUser);
+  if (!isBootstrapAdmin) {
+    return null;
+  }
+
   const userProfile = normalizeUser({
     id: firebaseUser.uid,
     uid: firebaseUser.uid,
@@ -1653,6 +1667,10 @@ function canApproveAuthorizationRequests() {
   return Boolean(isAdminLoggedIn || getCurrentStoredUser()?.fullControl);
 }
 
+function canManageUsers() {
+  return Boolean(isAdminLoggedIn || getCurrentStoredUser()?.fullControl);
+}
+
 function needsDeleteAuthorization() {
   return Boolean(currentUser && !isAdminLoggedIn && !getCurrentStoredUser()?.fullControl);
 }
@@ -1725,6 +1743,10 @@ function hasPendingDeleteAuthorization(type, payload) {
 
     if (type === "delete-client") {
       return request.payload.clientId === payload.clientId;
+    }
+
+    if (type === "delete-company-stock") {
+      return request.payload.itemId === payload.itemId;
     }
 
     return (
@@ -2655,6 +2677,9 @@ function renderPermissions() {
   [...companyStockForm.elements].forEach((element) => {
     element.disabled = !canModifyCompany;
   });
+  companyStockSubmitButton.textContent = editingCompanyStockItemId ? "Salvar" : "Adicionar";
+  companyStockSubmitButton.title = editingCompanyStockItemId ? "Salvar produto" : "Adicionar produto";
+  companyStockSubmitButton.setAttribute("aria-label", companyStockSubmitButton.title);
   toggleComputerServiceOrderFields();
   toggleExternalRepairLocationFields();
 
@@ -2699,10 +2724,63 @@ function renderUsers() {
     changePasswordButton.disabled = !isAdminLoggedIn;
     changePasswordButton.addEventListener("click", () => openPasswordDialog(user.id));
 
+    const actions = document.createElement("div");
+    actions.className = "record-actions";
+    actions.append(changePasswordButton);
+
+    if (canManageUsers() && user.id !== currentUser?.id && user.uid !== currentUser?.uid) {
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "icon-danger";
+      deleteButton.type = "button";
+      deleteButton.textContent = "Excluir";
+      deleteButton.title = "Excluir usuario";
+      deleteButton.setAttribute("aria-label", "Excluir usuario");
+      deleteButton.addEventListener("click", () => deleteUser(user.id));
+      actions.append(deleteButton);
+    }
+
     content.append(tag, title, details);
-    card.append(content, changePasswordButton);
+    card.append(content, actions);
     userList.append(card);
   });
+}
+
+async function deleteUser(userId) {
+  if (!canManageUsers()) {
+    return;
+  }
+
+  const user = users.find((item) => item.id === userId);
+
+  if (!user) {
+    return;
+  }
+
+  if (user.id === currentUser?.id || user.uid === currentUser?.uid) {
+    userMessage.textContent = "Nao e possivel excluir o usuario conectado.";
+    return;
+  }
+
+  const confirmed = window.confirm(`Excluir o usuario ${user.name}?`);
+
+  if (!confirmed) {
+    return;
+  }
+
+  users = users.filter((item) => item.id !== user.id);
+  persistUsers();
+
+  try {
+    await deleteFirebaseUserAccount(user);
+  } catch (error) {
+    console.warn("Nao foi possivel excluir a conta do Firebase Authentication.", error);
+  }
+
+  userMessage.textContent = "Usuario excluido.";
+  logActivity("Usuario excluido", `${user.login} foi excluido do sistema.`);
+  renderUsers();
+  renderPermissionList();
+  updateDashboardTotals();
 }
 
 function renderLogs() {
@@ -2929,27 +3007,55 @@ function saveCompanyStockType(event) {
   }
 
   const stockItems = getCompanyStockItems();
-  const existingItem = stockItems.find((item) => normalize(item.type) === normalize(cleanType));
-  const nextStockItems = existingItem
-    ? stockItems.map((item) =>
-        item.id === existingItem.id
-          ? {
-              ...item,
-              quantity,
-              updatedAt: new Date().toISOString()
-            }
-          : item
-      )
-    : [
-        {
-          id: createId("EST"),
-          type: cleanType,
-          quantity,
-          createdAt: new Date().toISOString(),
-          updatedAt: ""
-        },
-        ...stockItems
-      ];
+  const editingItem = stockItems.find((item) => item.id === editingCompanyStockItemId);
+  const existingItem = stockItems.find((item) => normalize(item.type) === normalize(cleanType) && item.id !== editingCompanyStockItemId);
+  let nextStockItems;
+
+  if (editingItem) {
+    nextStockItems = existingItem
+      ? stockItems
+          .filter((item) => item.id !== editingItem.id)
+          .map((item) =>
+            item.id === existingItem.id
+              ? {
+                  ...item,
+                  quantity,
+                  updatedAt: new Date().toISOString()
+                }
+              : item
+          )
+      : stockItems.map((item) =>
+          item.id === editingItem.id
+            ? {
+                ...item,
+                type: cleanType,
+                quantity,
+                updatedAt: new Date().toISOString()
+              }
+            : item
+        );
+  } else {
+    nextStockItems = existingItem
+      ? stockItems.map((item) =>
+          item.id === existingItem.id
+            ? {
+                ...item,
+                quantity,
+                updatedAt: new Date().toISOString()
+              }
+            : item
+        )
+      : [
+          {
+            id: createId("EST"),
+            type: cleanType,
+            quantity,
+            createdAt: new Date().toISOString(),
+            updatedAt: ""
+          },
+          ...stockItems
+        ];
+  }
 
   companyInfo = {
     ...emptyCompanyInfo,
@@ -2960,10 +3066,12 @@ function saveCompanyStockType(event) {
   };
   persistCompanyInfo();
   companyStockForm.reset();
+  editingCompanyStockItemId = "";
   renderCompanyStockTypes(cleanType);
   renderCompanyStockItems();
-  companyStockMessage.textContent = existingItem ? "Quantidade atualizada." : "Produto adicionado ao estoque.";
+  companyStockMessage.textContent = editingItem || existingItem ? "Produto atualizado." : "Produto adicionado ao estoque.";
   logActivity("Estoque atualizado", `${cleanType}: ${quantity} unidade(s).`);
+  renderPermissions();
 }
 
 function getCompanyStockTypes() {
@@ -3003,10 +3111,104 @@ function renderCompanyStockItems() {
     const details = document.createElement("span");
     details.textContent = `Quantidade: ${item.quantity ?? 0}`;
 
+    const actions = document.createElement("div");
+    actions.className = "record-actions";
+
+    if (canModify("company")) {
+      const editButton = document.createElement("button");
+      editButton.className = "ghost symbol-button";
+      editButton.type = "button";
+      editButton.textContent = "✎";
+      editButton.title = "Editar produto";
+      editButton.setAttribute("aria-label", "Editar produto");
+      editButton.addEventListener("click", () => editCompanyStockItem(item.id));
+
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "icon-danger";
+      deleteButton.type = "button";
+      deleteButton.textContent = "Excluir";
+      deleteButton.title = "Excluir produto";
+      deleteButton.setAttribute("aria-label", "Excluir produto");
+      deleteButton.addEventListener("click", () => requestCompanyStockDelete(item.id));
+
+      actions.append(editButton, deleteButton);
+    }
+
     content.append(tag, title, details);
-    card.append(content);
+    card.append(content, actions);
     companyStockList.append(card);
   });
+}
+
+function editCompanyStockItem(itemId) {
+  if (!requireModify("company")) {
+    return;
+  }
+
+  const item = getCompanyStockItems().find((stockItem) => stockItem.id === itemId);
+
+  if (!item) {
+    return;
+  }
+
+  editingCompanyStockItemId = item.id;
+  renderCompanyStockTypes(item.type);
+  companyStockType.value = item.type;
+  companyStockQuantity.value = item.quantity ?? 0;
+  companyStockMessage.textContent = "Editando produto do estoque.";
+  renderPermissions();
+  companyStockQuantity.focus();
+}
+
+function requestCompanyStockDelete(itemId) {
+  if (!requireModify("company")) {
+    return;
+  }
+
+  const item = getCompanyStockItems().find((stockItem) => stockItem.id === itemId);
+
+  if (!item) {
+    return;
+  }
+
+  if (needsDeleteAuthorization()) {
+    const sent = requestDeleteAuthorization("delete-company-stock", "Excluir item do estoque", `${item.type}: ${item.quantity ?? 0} unidade(s)`, { itemId });
+    companyStockMessage.textContent = sent ? "solicitação de exclusão enviada" : "solicitação de exclusão já enviada";
+    return;
+  }
+
+  deleteCompanyStockItem(itemId);
+}
+
+function deleteCompanyStockItem(itemId, askConfirmation = true) {
+  const item = getCompanyStockItems().find((stockItem) => stockItem.id === itemId);
+
+  if (!item) {
+    return;
+  }
+
+  if (askConfirmation && !window.confirm(`Excluir ${item.type || "este produto"} do estoque?`)) {
+    return;
+  }
+
+  companyInfo = {
+    ...emptyCompanyInfo,
+    ...companyInfo,
+    stockItems: getCompanyStockItems().filter((stockItem) => stockItem.id !== itemId),
+    updatedAt: new Date().toISOString()
+  };
+  persistCompanyInfo();
+
+  if (editingCompanyStockItemId === itemId) {
+    editingCompanyStockItemId = "";
+    companyStockForm.reset();
+    renderCompanyStockTypes();
+  }
+
+  companyStockMessage.textContent = "Produto excluido.";
+  logActivity("Estoque atualizado", `${item.type || "Produto"} foi excluido do estoque.`);
+  renderCompanyStockItems();
+  renderPermissions();
 }
 
 function toggleNewCompanyStockTypeField() {
@@ -3338,6 +3540,24 @@ async function updateFirebaseUserPassword(user, password) {
     }
 
     passwordMessage.textContent = `Nao foi possivel alterar a senha no Firebase. Codigo: ${code || "desconhecido"}.`;
+    return false;
+  }
+}
+
+async function deleteFirebaseUserAccount(user) {
+  if (!user || !window.firebase?.functions || !firebaseAuth?.currentUser) {
+    return false;
+  }
+
+  try {
+    const deleteAccount = window.firebase.functions().httpsCallable("deleteUserAccount");
+    await deleteAccount({
+      uid: user.uid || user.id,
+      email: user.email || getFirebaseLoginEmail(user.login)
+    });
+    return true;
+  } catch (error) {
+    console.warn("A conta foi removida do sistema, mas a exclusao no Firebase Auth nao foi concluida.", error);
     return false;
   }
 }
@@ -4666,6 +4886,11 @@ function executeAuthorizedRequest(request) {
 
   if (request.type === "delete-equipment" || request.type === "delete-email") {
     deleteRelatedRecord(request.payload.clientId, request.payload.collection, request.payload.itemId);
+    return;
+  }
+
+  if (request.type === "delete-company-stock") {
+    deleteCompanyStockItem(request.payload.itemId, false);
   }
 }
 

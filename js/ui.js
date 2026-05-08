@@ -196,6 +196,7 @@ let activeTab = "profile";
 let activeDashboardTab = "overview";
 let activeServiceOrderView = "list";
 let activeAgendaView = "list";
+let activeCompanyView = "network";
 let editingEmailSettings = false;
 let editingNetworkSettings = false;
 let editingAgendaId = "";
@@ -369,6 +370,9 @@ const closePasswordDialogButton = document.querySelector("#closePasswordDialogBu
 const passwordMessage = document.querySelector("#passwordMessage");
 const companyForm = document.querySelector("#companyForm");
 const companyMessage = document.querySelector("#companyMessage");
+const companyViewButtons = document.querySelectorAll(".company-tab");
+const companyVehiclesPanel = document.querySelector("#companyVehiclesPanel");
+const companyStockPanel = document.querySelector("#companyStockPanel");
 const dashboardTabs = document.querySelectorAll(".dashboard-tab");
 const tabs = document.querySelectorAll(".tab");
 const dashboardPanels = {
@@ -427,6 +431,7 @@ notificationButton.addEventListener("click", () => notificationPanel.classList.t
 userForm.addEventListener("submit", createUser);
 passwordForm.addEventListener("submit", saveChangedPassword);
 companyForm.addEventListener("submit", saveCompanyInfo);
+companyViewButtons.forEach((button) => button.addEventListener("click", () => switchCompanyView(button.dataset.companyView)));
 agendaForm.addEventListener("submit", addAgendaItem);
 cancelAgendaButton.addEventListener("click", resetAgendaForm);
 agendaSearchInput.addEventListener("input", renderAgendaItems);
@@ -2238,6 +2243,7 @@ function render() {
   renderServiceOrders();
   renderServiceOrderView();
   renderCompanyInfo();
+  renderCompanyView();
   renderUsers();
   renderLogs();
   renderNotifications();
@@ -2401,6 +2407,9 @@ function renderPermissions() {
   agendaViewButtons.forEach((button) => {
     button.disabled = !canAccessAgenda;
   });
+  companyViewButtons.forEach((button) => {
+    button.disabled = !canAccess("company");
+  });
   agendaSubmitButton.textContent = editingAgendaId ? "Salvar" : "Adicionar";
   agendaSubmitButton.title = editingAgendaId ? "Salvar agendamento" : "Adicionar agendamento";
   agendaSubmitButton.setAttribute("aria-label", agendaSubmitButton.title);
@@ -2504,6 +2513,23 @@ function renderCompanyInfo() {
       field.value = value || "";
     }
   });
+}
+
+function switchCompanyView(viewName) {
+  activeCompanyView = ["network", "vehicles", "stock"].includes(viewName) ? viewName : "network";
+  renderCompanyView();
+}
+
+function renderCompanyView() {
+  companyViewButtons.forEach((button) => {
+    const isActive = button.dataset.companyView === activeCompanyView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  companyForm.classList.toggle("active", activeCompanyView === "network");
+  companyVehiclesPanel.classList.toggle("active", activeCompanyView === "vehicles");
+  companyStockPanel.classList.toggle("active", activeCompanyView === "stock");
 }
 
 function saveCompanyInfo(event) {

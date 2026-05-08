@@ -792,11 +792,17 @@
           <p>Guarde informacoes internas da sua propria empresa, sem vinculo com clientes.</p>
         </div>
 
-        <form id="companyForm" class="settings-form">
+        <div class="service-order-tabs" aria-label="Areas internas da empresa">
+          <button class="company-tab active" type="button" data-company-view="network">Rede</button>
+          <button class="company-tab" type="button" data-company-view="vehicles">Veiculos</button>
+          <button class="company-tab" type="button" data-company-view="stock">Estoque</button>
+        </div>
+
+        <form id="companyForm" class="settings-form service-order-view active">
           <div class="settings-header">
             <div>
-              <p class="eyebrow">Dados internos</p>
-              <h3>Informacoes da empresa</h3>
+              <p class="eyebrow">Rede</p>
+              <h3>Informacoes internas</h3>
             </div>
             <button class="primary" type="submit">Salvar</button>
           </div>
@@ -840,6 +846,32 @@
 
           <p id="companyMessage" class="action-message" aria-live="polite"></p>
         </form>
+
+        <section id="companyVehiclesPanel" class="settings-form service-order-view">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Veiculos</p>
+              <h3>Area reservada</h3>
+            </div>
+          </div>
+          <div class="empty-state compact">
+            <strong>Nenhum cadastro ainda</strong>
+            <span>Depois adicionaremos os campos de veiculos da empresa aqui.</span>
+          </div>
+        </section>
+
+        <section id="companyStockPanel" class="settings-form service-order-view">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Estoque</p>
+              <h3>Area reservada</h3>
+            </div>
+          </div>
+          <div class="empty-state compact">
+            <strong>Nenhum item ainda</strong>
+            <span>Depois adicionaremos controle de estoque interno aqui.</span>
+          </div>
+        </section>
       </section>
 
       <section id="reportsDashboardPanel" class="dashboard-panel">

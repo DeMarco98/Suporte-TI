@@ -592,7 +592,8 @@ textarea:focus {
 }
 
 .service-order-tab,
-.agenda-tab {
+.agenda-tab,
+.company-tab {
   min-height: 34px;
   border: 1px solid transparent;
   border-bottom: 3px solid transparent;
@@ -606,7 +607,8 @@ textarea:focus {
 }
 
 .service-order-tab:hover,
-.agenda-tab:hover {
+.agenda-tab:hover,
+.company-tab:hover {
   border-color: rgba(37, 109, 133, 0.16);
   border-bottom-color: var(--accent);
   background: rgba(255, 255, 255, 0.72);
@@ -614,7 +616,8 @@ textarea:focus {
 }
 
 .service-order-tab.active,
-.agenda-tab.active {
+.agenda-tab.active,
+.company-tab.active {
   border-color: rgba(37, 109, 133, 0.2);
   border-bottom-color: var(--accent);
   background: #fff;

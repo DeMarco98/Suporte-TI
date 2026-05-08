@@ -1407,7 +1407,7 @@ function getCurrentStoredUser() {
   return users.find((user) => user.id === currentUser.id || normalize(user.login) === normalize(currentUser.login));
 }
 
-function createUser(event) {
+async function createUser(event) {
   event.preventDefault();
 
   if (!requireAdmin()) {
@@ -1432,12 +1432,20 @@ function createUser(event) {
     return;
   }
 
+  userMessage.textContent = "Criando usuario no Firebase...";
+  const firebaseAccount = await createFirebaseAuthAccount(login, password);
+
+  if (!firebaseAccount) {
+    return;
+  }
+
   users = [
     normalizeUser({
-      id: createId("USR"),
+      id: firebaseAccount.uid || createId("USR"),
+      uid: firebaseAccount.uid || "",
+      email: firebaseAccount.email,
       name,
       login,
-      password,
       active: true,
       fullControl: false,
       permissions: createDefaultPermissions(),
@@ -1451,6 +1459,79 @@ function createUser(event) {
   userForm.reset();
   userMessage.textContent = "Usuario criado com sucesso.";
   renderUsers();
+}
+
+async function createFirebaseAuthAccount(login, password) {
+  if (!firebaseSyncEnabled || !firebaseAuthRequired || !firebaseAuth) {
+    userMessage.textContent = "Firebase Authentication precisa estar ativo para criar usuarios.";
+    return null;
+  }
+
+  const email = getFirebaseLoginEmail(login);
+  const apiKey = window.firebaseConfig?.apiKey;
+
+  if (!apiKey) {
+    userMessage.textContent = "Chave do Firebase nao encontrada.";
+    return null;
+  }
+
+  try {
+    const createdAccount = await requestFirebaseAuthAccount("signUp", apiKey, {
+      email,
+      password,
+      returnSecureToken: true
+    });
+
+    await requestFirebaseAuthAccount("signInWithPassword", apiKey, {
+      email,
+      password,
+      returnSecureToken: true
+    });
+
+    return {
+      uid: createdAccount.localId,
+      email
+    };
+  } catch (error) {
+    console.warn("Nao foi possivel criar usuario no Firebase Authentication.", error);
+
+    if (error?.code === "EMAIL_EXISTS") {
+      userMessage.textContent = `Esse login ja existe no Firebase (${email}).`;
+      return null;
+    }
+
+    if (error?.code === "WEAK_PASSWORD") {
+      userMessage.textContent = "A senha precisa ter pelo menos 6 caracteres.";
+      return null;
+    }
+
+    if (error?.code === "INVALID_EMAIL") {
+      userMessage.textContent = `Login invalido para o Firebase: ${email}.`;
+      return null;
+    }
+
+    userMessage.textContent = `Nao foi possivel criar o usuario no Firebase. Codigo: ${error?.code || "desconhecido"}.`;
+    return null;
+  }
+}
+
+async function requestFirebaseAuthAccount(action, apiKey, body) {
+  const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${action}?key=${apiKey}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(data?.error?.message || "FIREBASE_AUTH_ERROR");
+    error.code = data?.error?.message || "FIREBASE_AUTH_ERROR";
+    throw error;
+  }
+
+  return data;
 }
 
 function addAgendaItem(event) {

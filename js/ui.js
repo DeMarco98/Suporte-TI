@@ -4,6 +4,7 @@ const BRAND_MODEL_STORAGE_KEY = "cadastros-marcas-modelos-equipamentos";
 const USER_STORAGE_KEY = "cadastros-usuarios";
 const LOG_STORAGE_KEY = "cadastros-logs";
 const AGENDA_STORAGE_KEY = "cadastros-agenda";
+const AGENDA_COUNTER_STORAGE_KEY = "cadastros-agenda-contador";
 const SERVICE_ORDER_STORAGE_KEY = "cadastros-ordens-servico";
 const SERVICE_ORDER_COUNTER_STORAGE_KEY = "cadastros-ordens-servico-contador";
 const SERVICE_ORDER_EQUIPMENT_TYPE_STORAGE_KEY = "cadastros-tipos-equipamento-os";
@@ -17,12 +18,14 @@ const NEW_BRAND_MODEL_VALUE = "__new_brand_model__";
 const NEW_SERVICE_ORDER_EQUIPMENT_TYPE_VALUE = "__new_service_order_equipment_type__";
 const NEW_EMAIL_TYPE_VALUE = "__new_email_type__";
 const serviceOrderStatuses = ["Aberta", "Em analise", "Aguardando orcamento", "Em conserto", "Fechada", "Concluida", "Cancelada"];
+const agendaStatuses = ["Aberto", "Em analise", "Concluido", "Cancelado"];
 const defaultServiceOrderEquipmentTypes = ["Notebook", "Computador", "All-In-One", "Impressora"];
 const defaultEmailTypes = ["Comercial", "Financeiro", "Suporte", "Pessoal"];
 
 async function createAgendaItem({ state, persistAgendaItems, createId, payload }) {
   const item = {
     id: createId("AGE"),
+    number: payload.number,
     clientId: payload.clientId,
     clientName: payload.clientName || "Cliente sem nome",
     occurrence: payload.occurrence,
@@ -103,6 +106,7 @@ const cloudStorageKeys = [
   USER_STORAGE_KEY,
   LOG_STORAGE_KEY,
   AGENDA_STORAGE_KEY,
+  AGENDA_COUNTER_STORAGE_KEY,
   SERVICE_ORDER_STORAGE_KEY,
   SERVICE_ORDER_COUNTER_STORAGE_KEY,
   SERVICE_ORDER_EQUIPMENT_TYPE_STORAGE_KEY,
@@ -164,6 +168,9 @@ let equipmentBrandModels = loadEquipmentBrandModels();
 let users = loadUsers();
 let logs = loadLogs();
 let agendaItems = loadAgendaItems();
+let agendaCounter = loadAgendaCounter();
+agendaItems = ensureAgendaNumbers(agendaItems);
+agendaCounter = loadAgendaCounter();
 let serviceOrders = loadServiceOrders();
 let serviceOrderCounter = loadServiceOrderCounter();
 let serviceOrderEquipmentTypes = loadServiceOrderEquipmentTypes();
@@ -247,12 +254,14 @@ const closeAgendaDialogButton = document.querySelector("#closeAgendaDialogButton
 const agendaDialogMessage = document.querySelector("#agendaDialogMessage");
 const agendaSubmitButton = document.querySelector("#agendaSubmitButton");
 const agendaList = document.querySelector("#agendaList");
+const agendaSearchInput = document.querySelector("#agendaSearchInput");
 const serviceOrderForm = document.querySelector("#serviceOrderForm");
 const serviceOrderFormTitle = document.querySelector("#serviceOrderFormTitle");
 const serviceOrderSubmitButton = document.querySelector("#serviceOrderSubmitButton");
 const serviceOrderViewButtons = document.querySelectorAll(".service-order-tab");
 const serviceOrderListPanel = document.querySelector("#serviceOrderListPanel");
 const serviceOrderStatusFilter = document.querySelector("#serviceOrderStatusFilter");
+const serviceOrderSearchInput = document.querySelector("#serviceOrderSearchInput");
 const serviceOrderClient = document.querySelector("#serviceOrderClient");
 const serviceOrderEquipment = document.querySelector("#serviceOrderEquipment");
 const newServiceOrderEquipmentTypeLabel = document.querySelector("#newServiceOrderEquipmentTypeLabel");
@@ -400,9 +409,11 @@ passwordForm.addEventListener("submit", saveChangedPassword);
 agendaForm.addEventListener("submit", addAgendaItem);
 openAgendaDialogButton.addEventListener("click", openAgendaDialog);
 closeAgendaDialogButton.addEventListener("click", () => agendaDialog.close());
+agendaSearchInput.addEventListener("input", renderAgendaItems);
 serviceOrderForm.addEventListener("submit", addServiceOrder);
 document.querySelector("#cancelServiceOrderButton").addEventListener("click", resetServiceOrderForm);
 serviceOrderStatusFilter.addEventListener("change", renderServiceOrders);
+serviceOrderSearchInput.addEventListener("input", renderServiceOrders);
 serviceOrderViewButtons.forEach((button) => {
   button.addEventListener("click", () => {
     if (button.dataset.serviceOrderView === "create") {
@@ -612,6 +623,40 @@ function loadServiceOrderCounter() {
   return highestExistingNumber + 1;
 }
 
+function loadAgendaCounter() {
+  const storedCounter = Number(localStorage.getItem(AGENDA_COUNTER_STORAGE_KEY));
+
+  if (Number.isInteger(storedCounter) && storedCounter > 0) {
+    return storedCounter;
+  }
+
+  const highestExistingNumber = agendaItems.reduce((highest, item) => {
+    const agendaNumber = Number(item.number);
+    return Number.isInteger(agendaNumber) && agendaNumber > highest ? agendaNumber : highest;
+  }, 0);
+
+  return highestExistingNumber + 1;
+}
+
+function ensureAgendaNumbers(items) {
+  let nextNumber = items.reduce((highest, item) => {
+    const agendaNumber = Number(item.number);
+    return Number.isInteger(agendaNumber) && agendaNumber > highest ? agendaNumber : highest;
+  }, 0);
+
+  return items.map((item) => {
+    if (Number.isInteger(Number(item.number)) && Number(item.number) > 0) {
+      return item;
+    }
+
+    nextNumber += 1;
+    return {
+      ...item,
+      number: nextNumber
+    };
+  });
+}
+
 function loadServiceOrderEquipmentTypes() {
   const stored = localStorage.getItem(SERVICE_ORDER_EQUIPMENT_TYPE_STORAGE_KEY);
 
@@ -761,7 +806,8 @@ function getFirestoreCollectionName(key) {
     [SERVICE_ORDER_EQUIPMENT_TYPE_STORAGE_KEY]: "serviceOrderEquipmentTypes",
     [EXTERNAL_REPAIR_LOCATION_STORAGE_KEY]: "externalRepairLocations",
     [EMAIL_TYPE_STORAGE_KEY]: "emailTypes",
-    [SERVICE_ORDER_COUNTER_STORAGE_KEY]: "counters"
+    [SERVICE_ORDER_COUNTER_STORAGE_KEY]: "counters",
+    [AGENDA_COUNTER_STORAGE_KEY]: "counters"
   };
 
   return collectionByKey[key] || "";
@@ -848,7 +894,7 @@ async function hydrateCollectionToLocalState(key) {
   }
 
   if (collectionName === "counters") {
-    const counterDoc = await firebaseDb.collection(collectionName).doc("serviceOrders").get();
+    const counterDoc = await firebaseDb.collection(collectionName).doc(getCounterDocumentId(key)).get();
     if (counterDoc.exists) {
       writeLocalState(key, counterDoc.data().value || 1);
     }
@@ -954,7 +1000,7 @@ function getFirebaseAuthErrorMessage(error) {
 function readLocalState(key) {
   const value = localStorage.getItem(key);
 
-  if (key === SERVICE_ORDER_COUNTER_STORAGE_KEY) {
+  if (isCounterStorageKey(key)) {
     return Number(value || 1);
   }
 
@@ -970,7 +1016,7 @@ function readLocalState(key) {
 }
 
 function writeLocalState(key, value) {
-  if (key === SERVICE_ORDER_COUNTER_STORAGE_KEY) {
+  if (isCounterStorageKey(key)) {
     localStorage.setItem(key, String(value || 1));
     return;
   }
@@ -1002,7 +1048,7 @@ function syncStateToFirebase(key, value, options = {}) {
   if (collectionName === "counters") {
     firebaseDb
       .collection(collectionName)
-      .doc("serviceOrders")
+      .doc(getCounterDocumentId(key))
       .set({ value: Number(value || 1), updatedAt: new Date().toISOString() }, { merge: true })
       .catch((error) => console.warn("Nao foi possivel salvar contador no Firebase.", error));
     return;
@@ -1010,6 +1056,14 @@ function syncStateToFirebase(key, value, options = {}) {
 
   const items = Array.isArray(value) ? value : [];
   syncCollection(collectionName, items).catch((error) => console.warn(`Nao foi possivel salvar ${collectionName} no Firebase.`, error));
+}
+
+function isCounterStorageKey(key) {
+  return key === SERVICE_ORDER_COUNTER_STORAGE_KEY || key === AGENDA_COUNTER_STORAGE_KEY;
+}
+
+function getCounterDocumentId(key) {
+  return key === AGENDA_COUNTER_STORAGE_KEY ? "agenda" : "serviceOrders";
 }
 
 async function syncCollection(collectionName, items) {
@@ -1038,7 +1092,8 @@ function reloadStateFromLocalStorage() {
   equipmentBrandModels = loadEquipmentBrandModels();
   users = loadUsers();
   logs = loadLogs();
-  agendaItems = loadAgendaItems();
+  agendaItems = ensureAgendaNumbers(loadAgendaItems());
+  agendaCounter = loadAgendaCounter();
   serviceOrders = loadServiceOrders();
   serviceOrderCounter = loadServiceOrderCounter();
   serviceOrderEquipmentTypes = loadServiceOrderEquipmentTypes();
@@ -1070,6 +1125,10 @@ function persistLogs() {
 
 function persistAgendaItems() {
   persistState(AGENDA_STORAGE_KEY, agendaItems);
+}
+
+function persistAgendaCounter() {
+  persistState(AGENDA_COUNTER_STORAGE_KEY, agendaCounter);
 }
 
 function persistServiceOrders() {
@@ -1613,10 +1672,17 @@ function addAgendaItem(event) {
 }
 
 function createAgendaFromPayload(payload) {
-  createAgendaItem({ state: appState, persistAgendaItems, createId, payload });
+  createAgendaItem({ state: appState, persistAgendaItems, createId, payload: { ...payload, number: getNextAgendaNumber() } });
   logActivity("Agenda criada", `${payload.clientName || "Cliente sem nome"}: ${payload.occurrence}`);
   renderAgendaItems();
   updateDashboardTotals();
+}
+
+function getNextAgendaNumber() {
+  const nextNumber = agendaCounter;
+  agendaCounter += 1;
+  persistAgendaCounter();
+  return nextNumber;
 }
 
 function openAgendaDialog() {
@@ -2541,7 +2607,7 @@ function closePasswordDialog() {
   }
 }
 
-function saveChangedPassword(event) {
+async function saveChangedPassword(event) {
   event.preventDefault();
 
   if (!requireAdmin()) {
@@ -2556,11 +2622,67 @@ function saveChangedPassword(event) {
   }
 
   const changedUser = users.find((user) => user.id === editingPasswordUserId);
-  users = users.map((user) => (user.id === editingPasswordUserId ? { ...user, password: data.password } : user));
+  passwordMessage.textContent = "Alterando senha no Firebase...";
+
+  const passwordUpdated = await updateFirebaseUserPassword(changedUser, data.password);
+
+  if (!passwordUpdated) {
+    return;
+  }
+
+  users = users.map((user) => (user.id === editingPasswordUserId ? { ...user, password: "" } : user));
   persistUsers();
   logActivity("Senha alterada", `Senha do usuario ${changedUser?.login || "desconhecido"} foi alterada.`);
   closePasswordDialog();
   renderUsers();
+}
+
+async function updateFirebaseUserPassword(user, password) {
+  if (!user) {
+    passwordMessage.textContent = "Usuario nao encontrado.";
+    return false;
+  }
+
+  if (!window.firebase?.functions) {
+    passwordMessage.textContent = "Firebase Functions nao foi carregado. Suba o index.html atualizado.";
+    return false;
+  }
+
+  if (!firebaseAuth?.currentUser) {
+    passwordMessage.textContent = "Faça login novamente como administrador.";
+    return false;
+  }
+
+  try {
+    const changePassword = window.firebase.functions().httpsCallable("updateUserPassword");
+    await changePassword({
+      uid: user.uid || user.id,
+      email: user.email || getFirebaseLoginEmail(user.login),
+      password
+    });
+    return true;
+  } catch (error) {
+    console.warn("Nao foi possivel alterar a senha no Firebase Authentication.", error);
+    const code = error?.code || error?.details?.code || "";
+
+    if (code.includes("not-found")) {
+      passwordMessage.textContent = "A funcao updateUserPassword ainda nao foi publicada no Firebase.";
+      return false;
+    }
+
+    if (code.includes("permission-denied")) {
+      passwordMessage.textContent = "Somente o administrador pode alterar senhas.";
+      return false;
+    }
+
+    if (code.includes("invalid-argument")) {
+      passwordMessage.textContent = error?.message || "Senha invalida ou usuario sem conta no Firebase.";
+      return false;
+    }
+
+    passwordMessage.textContent = `Nao foi possivel alterar a senha no Firebase. Codigo: ${code || "desconhecido"}.`;
+    return false;
+  }
 }
 
 function renderList() {
@@ -2625,28 +2747,34 @@ function renderAgendaClientOptions() {
 
 function renderAgendaItems() {
   agendaList.innerHTML = "";
+  const visibleItems = agendaItems.filter(matchesAgendaSearch);
 
-  if (agendaItems.length === 0) {
+  if (visibleItems.length === 0) {
     const emptyState = emptyRecordsTemplate.content.cloneNode(true);
-    emptyState.querySelector("strong").textContent = "Nenhuma ocorrencia na agenda";
-    emptyState.querySelector("span").textContent = "Registre uma solicitacao para acompanhar por aqui.";
+    emptyState.querySelector("strong").textContent = agendaItems.length === 0 ? "Nenhuma ocorrencia na agenda" : "Nenhuma agenda encontrada";
+    emptyState.querySelector("span").textContent =
+      agendaItems.length === 0 ? "Registre uma solicitacao para acompanhar por aqui." : "Altere a busca para encontrar outros chamados.";
     agendaList.append(emptyState);
     return;
   }
 
-  agendaItems.forEach((item) => {
+  visibleItems.forEach((item) => {
     const card = document.createElement("article");
     card.className = "record-card";
 
     const content = document.createElement("div");
     content.className = "record-content";
 
-    const tag = document.createElement("span");
-    tag.className = "record-tag";
-    tag.textContent = item.status;
+    const statusButton = document.createElement("button");
+    statusButton.className = `service-order-status ${getAgendaStatusClass(item.status)}`;
+    statusButton.type = "button";
+    statusButton.textContent = getAgendaStatusLabel(item.status);
+    statusButton.title = canModify("agenda") ? "Clique para alterar o status" : "Status da agenda";
+    statusButton.disabled = !canModify("agenda");
+    statusButton.addEventListener("click", () => updateAgendaStatus(item.id));
 
     const title = document.createElement("strong");
-    title.textContent = item.clientName || "Cliente nao encontrado";
+    title.textContent = `${formatAgendaNumber(item)} - ${item.clientName || "Cliente nao encontrado"}`;
 
     const details = document.createElement("span");
     details.textContent = `${formatSimpleDate(item.date)} | Solicitante: ${item.requester} | Aberto por: ${
@@ -2656,10 +2784,103 @@ function renderAgendaItems() {
     const occurrence = document.createElement("span");
     occurrence.textContent = item.occurrence;
 
-    content.append(tag, title, details, occurrence);
+    content.append(statusButton, title, details, occurrence);
     card.append(content);
     agendaList.append(card);
   });
+}
+
+function updateAgendaStatus(itemId) {
+  if (!requireModify("agenda")) {
+    return;
+  }
+
+  const item = agendaItems.find((agendaItem) => agendaItem.id === itemId);
+
+  if (!item) {
+    return;
+  }
+
+  const nextStatus = getNextAgendaStatus(item.status);
+  agendaItems = agendaItems.map((agendaItem) => (agendaItem.id === itemId ? { ...agendaItem, status: nextStatus } : agendaItem));
+  persistAgendaItems();
+  logActivity("Status da agenda alterado", `${item.clientName || "Cliente"} alterado para ${nextStatus}.`);
+  renderAgendaItems();
+}
+
+function matchesAgendaSearch(item) {
+  const search = normalize(agendaSearchInput.value);
+
+  if (!search) {
+    return true;
+  }
+
+  const haystack = normalize(
+    [
+      formatAgendaNumber(item),
+      item.number,
+      item.clientName,
+      item.requester,
+      item.openedByName,
+      item.date,
+      formatSimpleDate(item.date),
+      item.occurrence,
+      item.status
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  return haystack.includes(search);
+}
+
+function getNextAgendaStatus(status) {
+  const normalizedStatus = normalizeAgendaStatus(status);
+  const currentIndex = agendaStatuses.indexOf(normalizedStatus);
+
+  if (currentIndex === -1 || currentIndex === agendaStatuses.length - 1) {
+    return agendaStatuses[0];
+  }
+
+  return agendaStatuses[currentIndex + 1];
+}
+
+function getAgendaStatusLabel(status) {
+  return normalizeAgendaStatus(status);
+}
+
+function getAgendaStatusClass(status) {
+  const normalizedStatus = normalizeAgendaStatus(status);
+
+  if (normalizedStatus === "Aberto") {
+    return "status-open";
+  }
+
+  if (normalizedStatus === "Em analise") {
+    return "status-analysis";
+  }
+
+  if (normalizedStatus === "Concluido") {
+    return "status-done";
+  }
+
+  if (normalizedStatus === "Cancelado") {
+    return "status-canceled";
+  }
+
+  return "status-open";
+}
+
+function normalizeAgendaStatus(status) {
+  if (status === "Em andamento") {
+    return "Em analise";
+  }
+
+  return agendaStatuses.includes(status) ? status : "Aberto";
+}
+
+function formatAgendaNumber(item) {
+  return item.number ? `AG #${String(item.number).padStart(4, "0")}` : "AG sem numero";
 }
 
 function renderServiceOrderClientOptions() {
@@ -2752,7 +2973,7 @@ function renderEmailTypeOptions(selectedValue = extraEmailType.value) {
 
 function renderServiceOrders() {
   serviceOrderList.innerHTML = "";
-  const visibleOrders = serviceOrders.filter((order) => matchesServiceOrderFilter(order, serviceOrderStatusFilter.value));
+  const visibleOrders = serviceOrders.filter((order) => matchesServiceOrderFilter(order, serviceOrderStatusFilter.value) && matchesServiceOrderSearch(order));
 
   if (visibleOrders.length === 0) {
     const emptyState = emptyRecordsTemplate.content.cloneNode(true);
@@ -2879,6 +3100,32 @@ function matchesServiceOrderFilter(order, filter) {
   }
 
   return true;
+}
+
+function matchesServiceOrderSearch(order) {
+  const search = normalize(serviceOrderSearchInput.value);
+
+  if (!search) {
+    return true;
+  }
+
+  const haystack = normalize(
+    [
+      formatServiceOrderNumber(order),
+      order.number,
+      order.clientName,
+      order.openedAt,
+      formatSimpleDate(order.openedAt),
+      order.openedByName,
+      order.equipmentType,
+      order.defect,
+      order.status
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  return haystack.includes(search);
 }
 
 function formatServiceOrderNumber(order) {

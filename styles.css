@@ -631,7 +631,10 @@ textarea:focus {
 }
 
 .service-order-filter {
-  max-width: 320px;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(160px, 240px);
+  max-width: 620px;
+  gap: 10px;
 }
 
 .service-order-form-actions {

@@ -436,6 +436,11 @@
           <p id="agendaActionMessage" class="action-message" aria-live="polite"></p>
         </div>
 
+        <label class="equipment-filter">
+          <span>Pesquisar agenda</span>
+          <input id="agendaSearchInput" type="search" placeholder="Nome, numero ou data" />
+        </label>
+
         <div id="agendaList" class="record-list"></div>
       </section>
 
@@ -453,6 +458,10 @@
 
         <section id="serviceOrderListPanel" class="service-order-view active">
           <div class="settings-form service-order-filter">
+            <label>
+              <span>Pesquisar OS</span>
+              <input id="serviceOrderSearchInput" type="search" placeholder="Nome, numero ou data" />
+            </label>
             <label>
               <span>Filtrar ordens</span>
               <select id="serviceOrderStatusFilter">
@@ -946,7 +955,7 @@
             <span>Status</span>
             <select id="agendaStatus" name="status">
               <option value="Aberto">Aberto</option>
-              <option value="Em andamento">Em andamento</option>
+              <option value="Em analise">Em análise</option>
               <option value="Concluido">Concluido</option>
               <option value="Cancelado">Cancelado</option>
             </select>
@@ -999,6 +1008,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-functions-compat.js"></script>
     <script>
       document.write('<script src="firebase-config.js?v=' + window.suporteTiBuildVersion + '"><\/script>');
     </script>

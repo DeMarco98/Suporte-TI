@@ -183,6 +183,7 @@ let activeDashboardTab = "overview";
 let activeServiceOrderView = "list";
 let editingEmailSettings = false;
 let editingNetworkSettings = false;
+let editingAgendaId = "";
 let editingEquipmentId = "";
 let editingEmailId = "";
 let editingServiceOrderId = "";
@@ -1641,6 +1642,7 @@ function addAgendaItem(event) {
     return;
   }
 
+  const editingAgenda = agendaItems.find((item) => item.id === editingAgendaId);
   const payload = {
     clientId: data.clientId,
     clientName: client.name || "Cliente sem nome",
@@ -1648,11 +1650,12 @@ function addAgendaItem(event) {
     requester: data.requester.trim(),
     date: data.date,
     status: data.status,
-    openedByName: currentUser?.name || "Usuario nao identificado",
-    openedByLogin: currentUser?.login || ""
+    openedByName: editingAgenda?.openedByName || currentUser?.name || "Usuario nao identificado",
+    openedByLogin: editingAgenda?.openedByLogin || currentUser?.login || "",
+    updatedAt: new Date().toISOString()
   };
 
-  if (!canModify("agenda")) {
+  if (!canModify("agenda") && !editingAgenda) {
     const sent = requestAgendaAuthorization(payload);
     agendaDialogMessage.textContent = sent ? "solicitação de agendamento enviada" : "solicitação de agendamento já enviada";
 
@@ -1666,10 +1669,21 @@ function addAgendaItem(event) {
     return;
   }
 
-  createAgendaFromPayload(payload);
+  if (!canModify("agenda")) {
+    return;
+  }
+
+  if (editingAgenda) {
+    updateAgendaFromPayload(editingAgenda.id, payload);
+  } else {
+    createAgendaFromPayload(payload);
+  }
+
+  const wasEditing = Boolean(editingAgenda);
+  editingAgendaId = "";
   agendaForm.reset();
   agendaDialog.close();
-  agendaActionMessage.textContent = "Agendamento adicionado.";
+  agendaActionMessage.textContent = wasEditing ? "Agendamento atualizado." : "Agendamento adicionado.";
   renderAgendaClientOptions();
 }
 
@@ -1678,6 +1692,25 @@ function createAgendaFromPayload(payload) {
   logActivity("Agenda criada", `${payload.clientName || "Cliente sem nome"}: ${payload.occurrence}`);
   renderAgendaItems();
   updateDashboardTotals();
+}
+
+function updateAgendaFromPayload(itemId, payload) {
+  const previousItem = agendaItems.find((item) => item.id === itemId);
+  agendaItems = agendaItems.map((item) =>
+    item.id === itemId
+      ? {
+          ...item,
+          ...payload,
+          number: item.number,
+          openedByName: item.openedByName,
+          openedByLogin: item.openedByLogin,
+          createdAt: item.createdAt
+        }
+      : item
+  );
+  persistAgendaItems();
+  logActivity("Agenda editada", `${formatAgendaNumber(previousItem || {})} - ${payload.clientName || "Cliente sem nome"}.`);
+  renderAgendaItems();
 }
 
 function getNextAgendaNumber() {
@@ -1694,6 +1727,7 @@ function openAgendaDialog() {
 
   agendaDialogMessage.textContent = "";
   agendaActionMessage.textContent = "";
+  editingAgendaId = "";
   agendaDialogTitle.textContent = "Novo agendamento";
   agendaSubmitButton.textContent = "+";
   agendaSubmitButton.title = "Adicionar agendamento";
@@ -2791,6 +2825,17 @@ function renderAgendaItems() {
     actions.className = "service-order-card-actions";
     actions.append(statusButton);
 
+    if (canModify("agenda")) {
+      const editButton = document.createElement("button");
+      editButton.className = "ghost symbol-button";
+      editButton.type = "button";
+      editButton.textContent = "✎";
+      editButton.title = "Editar agenda";
+      editButton.setAttribute("aria-label", "Editar agenda");
+      editButton.addEventListener("click", () => editAgendaItem(item.id));
+      actions.append(editButton);
+    }
+
     titleWrap.append(title, clientName);
     titleRow.append(titleWrap, actions);
 
@@ -2828,6 +2873,34 @@ function updateAgendaStatus(itemId) {
   persistAgendaItems();
   logActivity("Status da agenda alterado", `${item.clientName || "Cliente"} alterado para ${nextStatus}.`);
   renderAgendaItems();
+}
+
+function editAgendaItem(itemId) {
+  if (!requireModify("agenda")) {
+    return;
+  }
+
+  const item = agendaItems.find((agendaItem) => agendaItem.id === itemId);
+
+  if (!item) {
+    return;
+  }
+
+  editingAgendaId = itemId;
+  agendaDialogMessage.textContent = "";
+  agendaActionMessage.textContent = "";
+  agendaDialogTitle.textContent = `Editar ${formatAgendaNumber(item)}`;
+  agendaSubmitButton.textContent = "✓";
+  agendaSubmitButton.title = "Salvar agendamento";
+  agendaSubmitButton.setAttribute("aria-label", "Salvar agendamento");
+  agendaSubmitButton.disabled = false;
+  renderAgendaClientOptions();
+  agendaForm.elements.clientId.value = item.clientId || "";
+  agendaForm.elements.requester.value = item.requester || "";
+  agendaForm.elements.date.value = item.date || "";
+  agendaForm.elements.status.value = normalizeAgendaStatus(item.status);
+  agendaForm.elements.occurrence.value = item.occurrence || "";
+  agendaDialog.showModal();
 }
 
 function matchesAgendaFilter(item, filter) {
@@ -3063,9 +3136,11 @@ function renderServiceOrders() {
 
     if (canModify("serviceOrders")) {
       const editButton = document.createElement("button");
-      editButton.className = "subtle compact-action";
+      editButton.className = "ghost symbol-button";
       editButton.type = "button";
-      editButton.textContent = "Editar";
+      editButton.textContent = "✎";
+      editButton.title = "Editar ordem de servico";
+      editButton.setAttribute("aria-label", "Editar ordem de servico");
       editButton.addEventListener("click", () => editServiceOrder(order.id));
       orderActions.append(editButton);
     }
@@ -3893,6 +3968,7 @@ function selectClient(id) {
   selectedId = id;
   editingNetworkSettings = false;
   editingEmailSettings = false;
+  editingAgendaId = "";
   editingEmailId = "";
   render();
 }
@@ -3906,6 +3982,7 @@ function startNewClient() {
   activeTab = "profile";
   editingNetworkSettings = true;
   editingEmailSettings = true;
+  editingAgendaId = "";
   editingEmailId = "";
   form.reset();
   equipmentForm.reset();
@@ -3997,6 +4074,7 @@ function switchDashboardTab(tabName) {
     return;
   }
 
+  editingAgendaId = "";
   activeDashboardTab = tabName;
   renderDashboardTabs();
 }

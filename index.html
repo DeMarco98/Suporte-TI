@@ -436,10 +436,22 @@
           <p id="agendaActionMessage" class="action-message" aria-live="polite"></p>
         </div>
 
-        <label class="equipment-filter">
-          <span>Pesquisar agenda</span>
-          <input id="agendaSearchInput" type="search" placeholder="Nome, numero ou data" />
-        </label>
+        <div class="settings-form list-filter">
+          <label>
+            <span>Pesquisar agenda</span>
+            <input id="agendaSearchInput" type="search" placeholder="Nome, numero ou data" />
+          </label>
+          <label>
+            <span>Filtrar agenda</span>
+            <select id="agendaStatusFilter">
+              <option value="all">Todas</option>
+              <option value="open">Em aberto</option>
+              <option value="analysis">Em análise</option>
+              <option value="done">Concluidas</option>
+              <option value="canceled">Canceladas</option>
+            </select>
+          </label>
+        </div>
 
         <div id="agendaList" class="record-list"></div>
       </section>
@@ -457,7 +469,7 @@
         </div>
 
         <section id="serviceOrderListPanel" class="service-order-view active">
-          <div class="settings-form service-order-filter">
+          <div class="settings-form list-filter">
             <label>
               <span>Pesquisar OS</span>
               <input id="serviceOrderSearchInput" type="search" placeholder="Nome, numero ou data" />

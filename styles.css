@@ -630,7 +630,7 @@ textarea:focus {
   display: grid;
 }
 
-.service-order-filter {
+.list-filter {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) minmax(160px, 240px);
   max-width: 620px;

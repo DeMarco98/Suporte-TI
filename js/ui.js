@@ -255,6 +255,7 @@ const agendaDialogMessage = document.querySelector("#agendaDialogMessage");
 const agendaSubmitButton = document.querySelector("#agendaSubmitButton");
 const agendaList = document.querySelector("#agendaList");
 const agendaSearchInput = document.querySelector("#agendaSearchInput");
+const agendaStatusFilter = document.querySelector("#agendaStatusFilter");
 const serviceOrderForm = document.querySelector("#serviceOrderForm");
 const serviceOrderFormTitle = document.querySelector("#serviceOrderFormTitle");
 const serviceOrderSubmitButton = document.querySelector("#serviceOrderSubmitButton");
@@ -410,6 +411,7 @@ agendaForm.addEventListener("submit", addAgendaItem);
 openAgendaDialogButton.addEventListener("click", openAgendaDialog);
 closeAgendaDialogButton.addEventListener("click", () => agendaDialog.close());
 agendaSearchInput.addEventListener("input", renderAgendaItems);
+agendaStatusFilter.addEventListener("change", renderAgendaItems);
 serviceOrderForm.addEventListener("submit", addServiceOrder);
 document.querySelector("#cancelServiceOrderButton").addEventListener("click", resetServiceOrderForm);
 serviceOrderStatusFilter.addEventListener("change", renderServiceOrders);
@@ -2747,7 +2749,7 @@ function renderAgendaClientOptions() {
 
 function renderAgendaItems() {
   agendaList.innerHTML = "";
-  const visibleItems = agendaItems.filter(matchesAgendaSearch);
+  const visibleItems = agendaItems.filter((item) => matchesAgendaFilter(item, agendaStatusFilter.value) && matchesAgendaSearch(item));
 
   if (visibleItems.length === 0) {
     const emptyState = emptyRecordsTemplate.content.cloneNode(true);
@@ -2760,10 +2762,16 @@ function renderAgendaItems() {
 
   visibleItems.forEach((item) => {
     const card = document.createElement("article");
-    card.className = "record-card";
+    card.className = "record-card service-order-card";
 
     const content = document.createElement("div");
     content.className = "record-content";
+
+    const titleRow = document.createElement("div");
+    titleRow.className = "service-order-title-row";
+
+    const titleWrap = document.createElement("div");
+    titleWrap.className = "record-content";
 
     const statusButton = document.createElement("button");
     statusButton.className = `service-order-status ${getAgendaStatusClass(item.status)}`;
@@ -2774,17 +2782,31 @@ function renderAgendaItems() {
     statusButton.addEventListener("click", () => updateAgendaStatus(item.id));
 
     const title = document.createElement("strong");
-    title.textContent = `${formatAgendaNumber(item)} - ${item.clientName || "Cliente nao encontrado"}`;
+    title.textContent = formatAgendaNumber(item);
 
-    const details = document.createElement("span");
-    details.textContent = `${formatSimpleDate(item.date)} | Solicitante: ${item.requester} | Aberto por: ${
-      item.openedByName || "Nao informado"
-    }`;
+    const clientName = document.createElement("span");
+    clientName.textContent = item.clientName || "Cliente nao encontrado";
+
+    const actions = document.createElement("div");
+    actions.className = "service-order-card-actions";
+    actions.append(statusButton);
+
+    titleWrap.append(title, clientName);
+    titleRow.append(titleWrap, actions);
+
+    const summary = document.createElement("div");
+    summary.className = "service-order-summary";
+    summary.append(
+      createServiceOrderSummaryItem("Data", formatSimpleDate(item.date)),
+      createServiceOrderSummaryItem("Solicitante", item.requester || "Nao informado"),
+      createServiceOrderSummaryItem("Aberto por", item.openedByName || "Nao informado")
+    );
 
     const occurrence = document.createElement("span");
+    occurrence.className = "service-order-defect";
     occurrence.textContent = item.occurrence;
 
-    content.append(statusButton, title, details, occurrence);
+    content.append(titleRow, summary, occurrence);
     card.append(content);
     agendaList.append(card);
   });
@@ -2806,6 +2828,28 @@ function updateAgendaStatus(itemId) {
   persistAgendaItems();
   logActivity("Status da agenda alterado", `${item.clientName || "Cliente"} alterado para ${nextStatus}.`);
   renderAgendaItems();
+}
+
+function matchesAgendaFilter(item, filter) {
+  const status = normalizeAgendaStatus(item.status);
+
+  if (filter === "open") {
+    return status === "Aberto";
+  }
+
+  if (filter === "analysis") {
+    return status === "Em analise";
+  }
+
+  if (filter === "done") {
+    return status === "Concluido";
+  }
+
+  if (filter === "canceled") {
+    return status === "Cancelado";
+  }
+
+  return true;
 }
 
 function matchesAgendaSearch(item) {

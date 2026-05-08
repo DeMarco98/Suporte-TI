@@ -181,6 +181,7 @@ let selectedId = clients[0]?.id ?? "";
 let activeTab = "profile";
 let activeDashboardTab = "overview";
 let activeServiceOrderView = "list";
+let activeAgendaView = "list";
 let editingEmailSettings = false;
 let editingNetworkSettings = false;
 let editingAgendaId = "";
@@ -245,18 +246,18 @@ const userMessage = document.querySelector("#userMessage");
 const userList = document.querySelector("#userList");
 const logList = document.querySelector("#logList");
 const permissionList = document.querySelector("#permissionList");
-const openAgendaDialogButton = document.querySelector("#openAgendaDialogButton");
 const agendaActionMessage = document.querySelector("#agendaActionMessage");
-const agendaDialog = document.querySelector("#agendaDialog");
 const agendaForm = document.querySelector("#agendaForm");
 const agendaDialogTitle = document.querySelector("#agendaDialogTitle");
 const agendaClient = document.querySelector("#agendaClient");
-const closeAgendaDialogButton = document.querySelector("#closeAgendaDialogButton");
 const agendaDialogMessage = document.querySelector("#agendaDialogMessage");
 const agendaSubmitButton = document.querySelector("#agendaSubmitButton");
 const agendaList = document.querySelector("#agendaList");
 const agendaSearchInput = document.querySelector("#agendaSearchInput");
 const agendaStatusFilter = document.querySelector("#agendaStatusFilter");
+const agendaViewButtons = document.querySelectorAll(".agenda-tab");
+const agendaListPanel = document.querySelector("#agendaListPanel");
+const cancelAgendaButton = document.querySelector("#cancelAgendaButton");
 const serviceOrderForm = document.querySelector("#serviceOrderForm");
 const serviceOrderFormTitle = document.querySelector("#serviceOrderFormTitle");
 const serviceOrderSubmitButton = document.querySelector("#serviceOrderSubmitButton");
@@ -409,10 +410,19 @@ notificationButton.addEventListener("click", () => notificationPanel.classList.t
 userForm.addEventListener("submit", createUser);
 passwordForm.addEventListener("submit", saveChangedPassword);
 agendaForm.addEventListener("submit", addAgendaItem);
-openAgendaDialogButton.addEventListener("click", openAgendaDialog);
-closeAgendaDialogButton.addEventListener("click", () => agendaDialog.close());
+cancelAgendaButton.addEventListener("click", resetAgendaForm);
 agendaSearchInput.addEventListener("input", renderAgendaItems);
 agendaStatusFilter.addEventListener("change", renderAgendaItems);
+agendaViewButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    if (button.dataset.agendaView === "create") {
+      startNewAgendaItem();
+      return;
+    }
+
+    switchAgendaView("list");
+  });
+});
 serviceOrderForm.addEventListener("submit", addServiceOrder);
 document.querySelector("#cancelServiceOrderButton").addEventListener("click", resetServiceOrderForm);
 serviceOrderStatusFilter.addEventListener("change", renderServiceOrders);
@@ -1660,9 +1670,7 @@ function addAgendaItem(event) {
     agendaDialogMessage.textContent = sent ? "solicitação de agendamento enviada" : "solicitação de agendamento já enviada";
 
     if (sent) {
-      agendaForm.reset();
-      renderAgendaClientOptions();
-      agendaDialog.close();
+      resetAgendaForm();
       agendaActionMessage.textContent = "solicitação de agendamento enviada";
     }
 
@@ -1681,10 +1689,9 @@ function addAgendaItem(event) {
 
   const wasEditing = Boolean(editingAgenda);
   editingAgendaId = "";
-  agendaForm.reset();
-  agendaDialog.close();
+  resetAgendaForm();
   agendaActionMessage.textContent = wasEditing ? "Agendamento atualizado." : "Agendamento adicionado.";
-  renderAgendaClientOptions();
+  switchAgendaView("list");
 }
 
 function createAgendaFromPayload(payload) {
@@ -1720,17 +1727,22 @@ function getNextAgendaNumber() {
   return nextNumber;
 }
 
-function openAgendaDialog() {
+function startNewAgendaItem() {
   if (!canAccess("agenda")) {
     return;
   }
 
+  resetAgendaForm();
+  switchAgendaView("create");
+}
+
+function resetAgendaForm() {
+  editingAgendaId = "";
   agendaDialogMessage.textContent = "";
   agendaActionMessage.textContent = "";
-  editingAgendaId = "";
   agendaDialogTitle.textContent = "Novo agendamento";
-  agendaSubmitButton.textContent = "+";
-  agendaSubmitButton.title = "Adicionar agendamento";
+  agendaSubmitButton.textContent = "Adicionar";
+  agendaSubmitButton.title = editingAgendaId ? "Salvar agendamento" : "Adicionar agendamento";
   agendaSubmitButton.setAttribute("aria-label", "Adicionar agendamento");
   agendaSubmitButton.disabled = clients.length === 0;
   agendaForm.reset();
@@ -1739,8 +1751,6 @@ function openAgendaDialog() {
   if (agendaForm.elements.status) {
     agendaForm.elements.status.value = "Aberto";
   }
-
-  agendaDialog.showModal();
 }
 
 async function addServiceOrder(event) {
@@ -2155,6 +2165,7 @@ function render() {
   renderList();
   renderAgendaClientOptions();
   renderAgendaItems();
+  renderAgendaView();
   renderServiceOrderClientOptions();
   renderExternalRepairLocationOptions();
   renderEmailTypeOptions();
@@ -2179,6 +2190,23 @@ function switchServiceOrderView(viewName) {
   activeServiceOrderView = viewName === "create" ? "create" : "list";
   serviceOrderMessage.textContent = "";
   renderServiceOrderView();
+}
+
+function switchAgendaView(viewName) {
+  activeAgendaView = viewName === "create" ? "create" : "list";
+  agendaActionMessage.textContent = "";
+  renderAgendaView();
+}
+
+function renderAgendaView() {
+  agendaViewButtons.forEach((button) => {
+    const isActive = button.dataset.agendaView === activeAgendaView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  agendaListPanel.classList.toggle("active", activeAgendaView === "list");
+  agendaForm.classList.toggle("active", activeAgendaView === "create");
 }
 
 function renderServiceOrderView() {
@@ -2302,13 +2330,12 @@ function renderPermissions() {
   [...agendaForm.elements].forEach((element) => {
     element.disabled = !canAccessAgenda;
   });
-  openAgendaDialogButton.disabled = !canAccessAgenda;
-  openAgendaDialogButton.textContent = "+";
-  openAgendaDialogButton.title = "Adicionar agendamento";
-  openAgendaDialogButton.setAttribute("aria-label", "Adicionar agendamento");
-  agendaSubmitButton.textContent = "+";
-  agendaSubmitButton.title = "Adicionar agendamento";
-  agendaSubmitButton.setAttribute("aria-label", "Adicionar agendamento");
+  agendaViewButtons.forEach((button) => {
+    button.disabled = !canAccessAgenda;
+  });
+  agendaSubmitButton.textContent = editingAgendaId ? "Salvar" : "Adicionar";
+  agendaSubmitButton.title = editingAgendaId ? "Salvar agendamento" : "Adicionar agendamento";
+  agendaSubmitButton.setAttribute("aria-label", agendaSubmitButton.title);
   agendaSubmitButton.disabled = !canAccessAgenda || clients.length === 0;
 
   [...serviceOrderForm.elements].forEach((element) => {
@@ -2900,7 +2927,7 @@ function editAgendaItem(itemId) {
   agendaForm.elements.date.value = item.date || "";
   agendaForm.elements.status.value = normalizeAgendaStatus(item.status);
   agendaForm.elements.occurrence.value = item.occurrence || "";
-  agendaDialog.showModal();
+  switchAgendaView("create");
 }
 
 function matchesAgendaFilter(item, filter) {

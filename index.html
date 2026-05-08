@@ -421,6 +421,7 @@
 
           <div id="emailList" class="record-list"></div>
         </section>
+
       </section>
       </section>
 
@@ -431,11 +432,12 @@
           <p>Registre ocorrencias solicitadas pelos clientes e acompanhe o status de cada uma.</p>
         </div>
 
-        <div class="section-actions">
-          <button id="openAgendaDialogButton" class="primary symbol-button" type="button" title="Adicionar agendamento" aria-label="Adicionar agendamento">+</button>
-          <p id="agendaActionMessage" class="action-message" aria-live="polite"></p>
+        <div class="service-order-tabs" aria-label="Opcoes de agenda">
+          <button class="agenda-tab active" type="button" data-agenda-view="list">Agenda</button>
+          <button class="agenda-tab" type="button" data-agenda-view="create">Adicionar Agenda</button>
         </div>
 
+        <section id="agendaListPanel" class="service-order-view active">
         <div class="settings-form list-filter">
           <label>
             <span>Pesquisar agenda</span>
@@ -446,14 +448,64 @@
             <select id="agendaStatusFilter">
               <option value="all">Todas</option>
               <option value="open">Em aberto</option>
-              <option value="analysis">Em análise</option>
+              <option value="analysis">Em analise</option>
               <option value="done">Concluidas</option>
               <option value="canceled">Canceladas</option>
             </select>
           </label>
         </div>
 
+        <p id="agendaActionMessage" class="action-message" aria-live="polite"></p>
         <div id="agendaList" class="record-list"></div>
+        </section>
+
+        <form id="agendaForm" class="settings-form service-order-view">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Agenda</p>
+              <h3 id="agendaDialogTitle">Novo agendamento</h3>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              <span>Cliente</span>
+              <select id="agendaClient" name="clientId" required></select>
+            </label>
+
+            <label>
+              <span>Quem solicitou</span>
+              <input id="agendaRequester" name="requester" required />
+            </label>
+
+            <label>
+              <span>Data</span>
+              <input id="agendaDate" name="date" type="date" required />
+            </label>
+
+            <label>
+              <span>Status</span>
+              <select id="agendaStatus" name="status">
+                <option value="Aberto">Aberto</option>
+                <option value="Em analise">Em analise</option>
+                <option value="Concluido">Concluido</option>
+                <option value="Cancelado">Cancelado</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            <span>Ocorrencia solicitada</span>
+            <textarea id="agendaOccurrence" name="occurrence" rows="5" required></textarea>
+          </label>
+
+          <p id="agendaDialogMessage" class="action-message" aria-live="polite"></p>
+
+          <div class="form-actions service-order-form-actions">
+            <button id="cancelAgendaButton" class="danger symbol-button" type="button" title="Cancelar" aria-label="Cancelar">x</button>
+            <button id="agendaSubmitButton" class="primary" type="submit">Adicionar</button>
+          </div>
+        </form>
       </section>
 
       <section id="serviceOrdersDashboardPanel" class="dashboard-panel">
@@ -937,56 +989,6 @@
       </form>
     </dialog>
 
-    <dialog id="agendaDialog" class="modal">
-      <form id="agendaForm" class="modal-content">
-        <div class="settings-header">
-          <div>
-            <p class="eyebrow">Agenda</p>
-            <h3 id="agendaDialogTitle">Novo agendamento</h3>
-          </div>
-          <button id="closeAgendaDialogButton" class="subtle symbol-button" type="button" title="Fechar" aria-label="Fechar">x</button>
-        </div>
-
-        <div class="form-grid">
-          <label>
-            <span>Cliente</span>
-            <select id="agendaClient" name="clientId" required></select>
-          </label>
-
-          <label>
-            <span>Quem solicitou</span>
-            <input id="agendaRequester" name="requester" required />
-          </label>
-
-          <label>
-            <span>Data</span>
-            <input id="agendaDate" name="date" type="date" required />
-          </label>
-
-          <label>
-            <span>Status</span>
-            <select id="agendaStatus" name="status">
-              <option value="Aberto">Aberto</option>
-              <option value="Em analise">Em análise</option>
-              <option value="Concluido">Concluido</option>
-              <option value="Cancelado">Cancelado</option>
-            </select>
-          </label>
-        </div>
-
-        <label>
-          <span>Ocorrencia solicitada</span>
-          <textarea id="agendaOccurrence" name="occurrence" rows="5" required></textarea>
-        </label>
-
-        <p id="agendaDialogMessage" class="action-message" aria-live="polite"></p>
-
-        <div class="modal-actions">
-          <span></span>
-          <button id="agendaSubmitButton" class="primary symbol-button" type="submit" title="Adicionar agendamento" aria-label="Adicionar agendamento">+</button>
-        </div>
-      </form>
-    </dialog>
 
     <dialog id="passwordDialog" class="modal">
       <form id="passwordForm" class="modal-content">
@@ -1091,3 +1093,4 @@
     </script>
   </body>
 </html>
+

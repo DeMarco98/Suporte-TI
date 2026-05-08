@@ -591,7 +591,8 @@ textarea:focus {
   overflow-x: auto;
 }
 
-.service-order-tab {
+.service-order-tab,
+.agenda-tab {
   min-height: 34px;
   border: 1px solid transparent;
   border-bottom: 3px solid transparent;
@@ -604,14 +605,16 @@ textarea:focus {
   white-space: nowrap;
 }
 
-.service-order-tab:hover {
+.service-order-tab:hover,
+.agenda-tab:hover {
   border-color: rgba(37, 109, 133, 0.16);
   border-bottom-color: var(--accent);
   background: rgba(255, 255, 255, 0.72);
   color: var(--accent);
 }
 
-.service-order-tab.active {
+.service-order-tab.active,
+.agenda-tab.active {
   border-color: rgba(37, 109, 133, 0.2);
   border-bottom-color: var(--accent);
   background: #fff;

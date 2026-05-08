@@ -18,10 +18,12 @@ const NEW_CATEGORY_VALUE = "__new_category__";
 const NEW_BRAND_MODEL_VALUE = "__new_brand_model__";
 const NEW_SERVICE_ORDER_EQUIPMENT_TYPE_VALUE = "__new_service_order_equipment_type__";
 const NEW_EMAIL_TYPE_VALUE = "__new_email_type__";
+const NEW_COMPANY_STOCK_TYPE_VALUE = "__new_company_stock_type__";
 const serviceOrderStatuses = ["Aberta", "Em analise", "Aguardando orcamento", "Em conserto", "Fechada", "Concluida", "Cancelada"];
 const agendaStatuses = ["Aberto", "Em analise", "Concluido", "Cancelado"];
 const defaultServiceOrderEquipmentTypes = ["Notebook", "Computador", "All-In-One", "Impressora"];
 const defaultEmailTypes = ["Comercial", "Financeiro", "Suporte", "Pessoal"];
+const defaultCompanyStockTypes = ["Toner", "Cabo", "Mouse", "Teclado", "Fonte", "HD", "SSD"];
 
 async function createAgendaItem({ state, persistAgendaItems, createId, payload }) {
   const item = {
@@ -148,13 +150,15 @@ const emptyNetworkSettings = {
   wins: ""
 };
 const emptyCompanyInfo = {
-  name: "",
-  document: "",
-  phone: "",
-  email: "",
-  responsible: "",
-  portal: "",
+  networkProvider: "",
+  networkIp: "",
+  networkGateway: "",
+  networkDns: "",
+  wifiName: "",
+  wifiPassword: "",
   notes: "",
+  vehicles: [],
+  stockTypes: defaultCompanyStockTypes,
   updatedAt: ""
 };
 
@@ -373,6 +377,14 @@ const companyMessage = document.querySelector("#companyMessage");
 const companyViewButtons = document.querySelectorAll(".company-tab");
 const companyVehiclesPanel = document.querySelector("#companyVehiclesPanel");
 const companyStockPanel = document.querySelector("#companyStockPanel");
+const companyVehicleForm = document.querySelector("#companyVehicleForm");
+const companyVehicleMessage = document.querySelector("#companyVehicleMessage");
+const companyVehicleList = document.querySelector("#companyVehicleList");
+const companyStockForm = document.querySelector("#companyStockForm");
+const companyStockType = document.querySelector("#companyStockType");
+const newCompanyStockTypeLabel = document.querySelector("#newCompanyStockTypeLabel");
+const newCompanyStockType = document.querySelector("#newCompanyStockType");
+const companyStockMessage = document.querySelector("#companyStockMessage");
 const dashboardTabs = document.querySelectorAll(".dashboard-tab");
 const tabs = document.querySelectorAll(".tab");
 const dashboardPanels = {
@@ -432,6 +444,9 @@ userForm.addEventListener("submit", createUser);
 passwordForm.addEventListener("submit", saveChangedPassword);
 companyForm.addEventListener("submit", saveCompanyInfo);
 companyViewButtons.forEach((button) => button.addEventListener("click", () => switchCompanyView(button.dataset.companyView)));
+companyVehicleForm.addEventListener("submit", addCompanyVehicle);
+companyStockForm.addEventListener("submit", saveCompanyStockType);
+companyStockType.addEventListener("change", toggleNewCompanyStockTypeField);
 agendaForm.addEventListener("submit", addAgendaItem);
 cancelAgendaButton.addEventListener("click", resetAgendaForm);
 agendaSearchInput.addEventListener("input", renderAgendaItems);
@@ -2421,6 +2436,12 @@ function renderPermissions() {
   [...companyForm.elements].forEach((element) => {
     element.disabled = !canModifyCompany;
   });
+  [...companyVehicleForm.elements].forEach((element) => {
+    element.disabled = !canModifyCompany;
+  });
+  [...companyStockForm.elements].forEach((element) => {
+    element.disabled = !canModifyCompany;
+  });
   toggleComputerServiceOrderFields();
   toggleExternalRepairLocationFields();
 
@@ -2513,6 +2534,8 @@ function renderCompanyInfo() {
       field.value = value || "";
     }
   });
+  renderCompanyVehicles();
+  renderCompanyStockTypes();
 }
 
 function switchCompanyView(viewName) {
@@ -2541,12 +2564,149 @@ function saveCompanyInfo(event) {
 
   companyInfo = {
     ...emptyCompanyInfo,
+    ...companyInfo,
     ...Object.fromEntries(new FormData(companyForm).entries()),
+    vehicles: Array.isArray(companyInfo.vehicles) ? companyInfo.vehicles : [],
+    stockTypes: getCompanyStockTypes(),
     updatedAt: new Date().toISOString()
   };
   persistCompanyInfo();
   companyMessage.textContent = "Informacoes internas salvas.";
   logActivity("Minha empresa atualizada", "Informacoes internas da empresa foram atualizadas.");
+}
+
+function addCompanyVehicle(event) {
+  event.preventDefault();
+
+  if (!requireModify("company")) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(companyVehicleForm).entries());
+  const vehicle = {
+    id: createId("VEI"),
+    type: data.type,
+    model: data.model.trim(),
+    plate: data.plate.trim().toUpperCase(),
+    maintenanceDate: data.maintenanceDate,
+    maintenance: data.maintenance.trim(),
+    createdAt: new Date().toISOString()
+  };
+
+  companyInfo = {
+    ...emptyCompanyInfo,
+    ...companyInfo,
+    vehicles: [vehicle, ...(companyInfo.vehicles || [])],
+    updatedAt: new Date().toISOString()
+  };
+  persistCompanyInfo();
+  companyVehicleForm.reset();
+  companyVehicleMessage.textContent = "Veiculo adicionado.";
+  logActivity("Veiculo interno criado", `${vehicle.type} ${vehicle.model} - ${vehicle.plate}.`);
+  renderCompanyVehicles();
+}
+
+function renderCompanyVehicles() {
+  companyVehicleList.innerHTML = "";
+  const vehicles = Array.isArray(companyInfo.vehicles) ? companyInfo.vehicles : [];
+
+  if (vehicles.length === 0) {
+    const emptyState = emptyRecordsTemplate.content.cloneNode(true);
+    emptyState.querySelector("strong").textContent = "Nenhum veiculo cadastrado";
+    emptyState.querySelector("span").textContent = "Cadastre carros ou motos da empresa para consulta interna.";
+    companyVehicleList.append(emptyState);
+    return;
+  }
+
+  vehicles.forEach((vehicle) => {
+    const card = document.createElement("article");
+    card.className = "record-card";
+
+    const content = document.createElement("div");
+    content.className = "record-content";
+
+    const tag = document.createElement("span");
+    tag.className = "record-tag";
+    tag.textContent = vehicle.type || "Veiculo";
+
+    const title = document.createElement("strong");
+    title.textContent = [vehicle.model, vehicle.plate].filter(Boolean).join(" - ") || "Veiculo sem identificacao";
+
+    const details = document.createElement("span");
+    details.textContent = `Ultima manutencao: ${formatSimpleDate(vehicle.maintenanceDate)}${vehicle.maintenance ? ` | ${vehicle.maintenance}` : ""}`;
+
+    content.append(tag, title, details);
+    card.append(content);
+    companyVehicleList.append(card);
+  });
+}
+
+function renderCompanyStockTypes(selectedValue = companyStockType.value) {
+  companyStockType.innerHTML = "";
+
+  getCompanyStockTypes().forEach((type) => {
+    const option = document.createElement("option");
+    option.value = type;
+    option.textContent = type;
+    companyStockType.append(option);
+  });
+
+  const newOption = document.createElement("option");
+  newOption.value = NEW_COMPANY_STOCK_TYPE_VALUE;
+  newOption.textContent = "Adicionar novo produto";
+  companyStockType.append(newOption);
+
+  if ([...companyStockType.options].some((option) => option.value === selectedValue)) {
+    companyStockType.value = selectedValue;
+  }
+
+  toggleNewCompanyStockTypeField();
+}
+
+function saveCompanyStockType(event) {
+  event.preventDefault();
+
+  if (!requireModify("company")) {
+    return;
+  }
+
+  if (companyStockType.value !== NEW_COMPANY_STOCK_TYPE_VALUE) {
+    companyStockMessage.textContent = "Selecione 'Adicionar novo produto' para cadastrar um novo tipo.";
+    return;
+  }
+
+  const cleanType = newCompanyStockType.value.trim();
+
+  if (!cleanType) {
+    newCompanyStockType.focus();
+    return;
+  }
+
+  companyInfo = {
+    ...emptyCompanyInfo,
+    ...companyInfo,
+    stockTypes: uniqueTextOptions([...getCompanyStockTypes(), cleanType]),
+    updatedAt: new Date().toISOString()
+  };
+  persistCompanyInfo();
+  companyStockForm.reset();
+  renderCompanyStockTypes(cleanType);
+  companyStockMessage.textContent = "Tipo de produto salvo.";
+  logActivity("Produto de estoque criado", `${cleanType} foi adicionado aos tipos de estoque.`);
+}
+
+function getCompanyStockTypes() {
+  return uniqueTextOptions([...(Array.isArray(companyInfo.stockTypes) ? companyInfo.stockTypes : []), ...defaultCompanyStockTypes]);
+}
+
+function toggleNewCompanyStockTypeField() {
+  const isAdding = companyStockType.value === NEW_COMPANY_STOCK_TYPE_VALUE;
+  newCompanyStockTypeLabel.classList.toggle("hidden", !isAdding);
+  newCompanyStockType.required = isAdding;
+
+  if (!isAdding) {
+    newCompanyStockType.value = "";
+  }
 }
 
 function renderPermissionList() {

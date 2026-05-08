@@ -802,46 +802,46 @@
           <div class="settings-header">
             <div>
               <p class="eyebrow">Rede</p>
-              <h3>Informacoes internas</h3>
+              <h3>Rede interna</h3>
             </div>
             <button class="primary" type="submit">Salvar</button>
           </div>
 
           <div class="form-grid">
             <label>
-              <span>Nome da empresa</span>
-              <input id="companyName" name="name" />
+              <span>Provedor de internet</span>
+              <input id="companyNetworkProvider" name="networkProvider" />
             </label>
 
             <label>
-              <span>CNPJ</span>
-              <input id="companyDocument" name="document" />
+              <span>IP principal / link</span>
+              <input id="companyNetworkIp" name="networkIp" />
             </label>
 
             <label>
-              <span>Telefone</span>
-              <input id="companyPhone" name="phone" />
+              <span>Gateway</span>
+              <input id="companyNetworkGateway" name="networkGateway" />
             </label>
 
             <label>
-              <span>E-mail interno</span>
-              <input id="companyEmail" name="email" type="email" />
+              <span>DNS</span>
+              <input id="companyNetworkDns" name="networkDns" />
             </label>
 
             <label>
-              <span>Responsavel</span>
-              <input id="companyResponsible" name="responsible" />
+              <span>Wi-Fi / SSID</span>
+              <input id="companyWifiName" name="wifiName" />
             </label>
 
             <label>
-              <span>Site / portal</span>
-              <input id="companyPortal" name="portal" />
+              <span>Senha Wi-Fi</span>
+              <input id="companyWifiPassword" name="wifiPassword" />
             </label>
           </div>
 
           <label>
-            <span>Informacoes internas</span>
-            <textarea id="companyNotes" name="notes" rows="6" placeholder="Contratos, acessos, rotinas internas, observacoes importantes"></textarea>
+            <span>Observacoes da rede</span>
+            <textarea id="companyNotes" name="notes" rows="6" placeholder="Equipamentos, contratos de internet, acessos, rotinas e observacoes importantes"></textarea>
           </label>
 
           <p id="companyMessage" class="action-message" aria-live="polite"></p>
@@ -851,26 +851,69 @@
           <div class="settings-header">
             <div>
               <p class="eyebrow">Veiculos</p>
-              <h3>Area reservada</h3>
+              <h3>Cadastro de veiculos</h3>
             </div>
           </div>
-          <div class="empty-state compact">
-            <strong>Nenhum cadastro ainda</strong>
-            <span>Depois adicionaremos os campos de veiculos da empresa aqui.</span>
-          </div>
+
+          <form id="companyVehicleForm" class="inline-form company-vehicle-form">
+            <label>
+              <span>Tipo</span>
+              <select id="companyVehicleType" name="type" required>
+                <option value="Carro">Carro</option>
+                <option value="Moto">Moto</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Modelo</span>
+              <input id="companyVehicleModel" name="model" required />
+            </label>
+
+            <label>
+              <span>Placa</span>
+              <input id="companyVehiclePlate" name="plate" required />
+            </label>
+
+            <label>
+              <span>Data da manutencao</span>
+              <input id="companyVehicleMaintenanceDate" name="maintenanceDate" type="date" />
+            </label>
+
+            <label class="company-vehicle-maintenance">
+              <span>Manutencao</span>
+              <textarea id="companyVehicleMaintenance" name="maintenance" rows="3" placeholder="Descreva o que foi feito"></textarea>
+            </label>
+
+            <button id="companyVehicleSubmitButton" class="primary symbol-button" type="submit" title="Adicionar veiculo" aria-label="Adicionar veiculo">+</button>
+          </form>
+
+          <p id="companyVehicleMessage" class="action-message" aria-live="polite"></p>
+          <div id="companyVehicleList" class="record-list"></div>
         </section>
 
         <section id="companyStockPanel" class="settings-form service-order-view">
           <div class="settings-header">
             <div>
               <p class="eyebrow">Estoque</p>
-              <h3>Area reservada</h3>
+              <h3>Produtos internos</h3>
             </div>
           </div>
-          <div class="empty-state compact">
-            <strong>Nenhum item ainda</strong>
-            <span>Depois adicionaremos controle de estoque interno aqui.</span>
-          </div>
+
+          <form id="companyStockForm" class="inline-form company-stock-form">
+            <label>
+              <span>Tipo de produto</span>
+              <select id="companyStockType" name="type" required></select>
+            </label>
+
+            <label id="newCompanyStockTypeLabel" class="hidden">
+              <span>Novo produto</span>
+              <input id="newCompanyStockType" name="newType" placeholder="Ex.: Toner" />
+            </label>
+
+            <button id="companyStockSubmitButton" class="primary symbol-button" type="submit" title="Adicionar produto" aria-label="Adicionar produto">+</button>
+          </form>
+
+          <p id="companyStockMessage" class="action-message" aria-live="polite"></p>
         </section>
       </section>
 

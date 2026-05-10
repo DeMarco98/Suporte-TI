@@ -453,6 +453,7 @@ const currentPasswordForm = document.querySelector("#currentPasswordForm");
 const currentPasswordMessage = document.querySelector("#currentPasswordMessage");
 const themeSettingsForm = document.querySelector("#themeSettingsForm");
 const themeSettingsMessage = document.querySelector("#themeSettingsMessage");
+const restoreDefaultThemeButton = document.querySelector("#restoreDefaultThemeButton");
 const alertSettingsForm = document.querySelector("#alertSettingsForm");
 const alertSettingsMessage = document.querySelector("#alertSettingsMessage");
 const panels = {
@@ -504,6 +505,7 @@ passwordForm.addEventListener("submit", saveChangedPassword);
 currentPasswordForm.addEventListener("submit", saveCurrentUserPassword);
 themeSettingsForm.addEventListener("submit", saveThemeSettings);
 themeSettingsForm.addEventListener("input", previewThemeSettings);
+restoreDefaultThemeButton.addEventListener("click", restoreDefaultTheme);
 alertSettingsForm.addEventListener("submit", saveAlertSettings);
 settingsViewButtons.forEach((button) => button.addEventListener("click", () => switchSettingsView(button.dataset.settingsView)));
 companyForm.addEventListener("submit", saveCompanyInfo);
@@ -2652,6 +2654,18 @@ function readThemeSettings() {
 
 function previewThemeSettings() {
   applyThemeSettings(readThemeSettings());
+}
+
+function restoreDefaultTheme() {
+  Object.entries(emptyThemeSettings).forEach(([key, value]) => {
+    const field = themeSettingsForm.elements[key];
+
+    if (field) {
+      field.value = value;
+    }
+  });
+  applyThemeSettings(emptyThemeSettings);
+  themeSettingsMessage.textContent = "Tema padrao restaurado. Clique em Salvar para manter.";
 }
 
 function applyThemeSettings(settings = getThemeSettings()) {

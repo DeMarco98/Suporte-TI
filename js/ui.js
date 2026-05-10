@@ -471,6 +471,7 @@ const settingsPanels = {
   alerts: document.querySelector("#settingsAlertsPanel"),
   password: document.querySelector("#settingsPasswordPanel"),
   logs: document.querySelector("#settingsLogsPanel"),
+  system: document.querySelector("#settingsSystemPanel"),
   integrations: document.querySelector("#settingsIntegrationsPanel"),
   backup: document.querySelector("#settingsBackupPanel")
 };
@@ -485,6 +486,9 @@ const clearAllLogsButton = document.querySelector("#clearAllLogsButton");
 const clearLogsBeforeDate = document.querySelector("#clearLogsBeforeDate");
 const clearLogsBeforeButton = document.querySelector("#clearLogsBeforeButton");
 const settingsLogsMessage = document.querySelector("#settingsLogsMessage");
+const resetAgendaCounterButton = document.querySelector("#resetAgendaCounterButton");
+const resetServiceOrderCounterButton = document.querySelector("#resetServiceOrderCounterButton");
+const settingsSystemMessage = document.querySelector("#settingsSystemMessage");
 const panels = {
   profile: document.querySelector("#profilePanel"),
   equipment: document.querySelector("#equipmentPanel"),
@@ -541,6 +545,8 @@ restoreDefaultThemeButton.addEventListener("click", restoreDefaultTheme);
 alertSettingsForm.addEventListener("submit", saveAlertSettings);
 clearAllLogsButton.addEventListener("click", clearAllLogsFromSettings);
 clearLogsBeforeButton.addEventListener("click", clearLogsBeforeSelectedDate);
+resetAgendaCounterButton.addEventListener("click", resetAgendaCounterFromSettings);
+resetServiceOrderCounterButton.addEventListener("click", resetServiceOrderCounterFromSettings);
 settingsViewButtons.forEach((button) => button.addEventListener("click", () => switchSettingsView(button.dataset.settingsView)));
 companyForm.addEventListener("submit", saveCompanyInfo);
 companyNetworkForm.addEventListener("submit", saveCompanyNetworkInfo);
@@ -725,7 +731,7 @@ function restoreWorkspaceState({ applyFields = true } = {}) {
     activeCompanyView = state.activeCompanyView;
   }
 
-  if (["theme", "alerts", "password", "logs", "integrations", "backup"].includes(state.activeSettingsView)) {
+  if (["theme", "alerts", "password", "logs", "system", "integrations", "backup"].includes(state.activeSettingsView)) {
     activeSettingsView = state.activeSettingsView;
   }
 
@@ -2076,6 +2082,10 @@ function canApproveAuthorizationRequests() {
   return Boolean(isAdminLoggedIn || getCurrentStoredUser()?.fullControl);
 }
 
+function canModifyGlobalTheme() {
+  return canApproveAuthorizationRequests();
+}
+
 function canManageUsers() {
   return Boolean(isAdminLoggedIn || getCurrentStoredUser()?.fullControl);
 }
@@ -3050,10 +3060,19 @@ function readThemeSettings() {
 }
 
 function previewThemeSettings() {
+  if (!canModifyGlobalTheme()) {
+    return;
+  }
+
   applyThemeSettings(readThemeSettings());
 }
 
 function restoreDefaultTheme() {
+  if (!canModifyGlobalTheme()) {
+    themeSettingsMessage.textContent = "Apenas administrador ou Controle Total pode alterar o tema global.";
+    return;
+  }
+
   Object.entries(emptyThemeSettings).forEach(([key, value]) => {
     const field = themeSettingsForm.elements[key];
 
@@ -3518,6 +3537,7 @@ function renderPermissions() {
   const canModifyServiceOrders = canModify("serviceOrders");
   const canModifyCompany = canModify("company");
   const canModifySettings = canModify("settings");
+  const canModifyTheme = canModifyGlobalTheme();
   const canModifyUsers = isAdminLoggedIn;
   const restrictedElements = [
     ...form.elements,
@@ -3575,11 +3595,14 @@ function renderPermissions() {
     element.disabled = !canModifySettings;
   });
   [...themeSettingsForm.elements].forEach((element) => {
-    element.disabled = !canModifySettings;
+    element.disabled = !canModifyTheme;
   });
+  restoreDefaultThemeButton.disabled = !canModifyTheme;
   clearAllLogsButton.disabled = !canModifySettings;
   clearLogsBeforeDate.disabled = !canModifySettings;
   clearLogsBeforeButton.disabled = !canModifySettings;
+  resetAgendaCounterButton.disabled = !canModifySettings;
+  resetServiceOrderCounterButton.disabled = !canModifySettings;
   companyStockSubmitButton.textContent = editingCompanyStockItemId ? "Salvar" : "Adicionar";
   companyStockSubmitButton.title = editingCompanyStockItemId ? "Salvar produto" : "Adicionar produto";
   companyStockSubmitButton.setAttribute("aria-label", companyStockSubmitButton.title);
@@ -3828,7 +3851,8 @@ function saveAlertSettings(event) {
 function saveThemeSettings(event) {
   event.preventDefault();
 
-  if (!requireModify("settings")) {
+  if (!canModifyGlobalTheme()) {
+    themeSettingsMessage.textContent = "Apenas administrador ou Controle Total pode alterar o tema global.";
     return;
   }
 
@@ -3840,8 +3864,8 @@ function saveThemeSettings(event) {
   });
   persistCompanyInfo();
   applyThemeSettings(themeSettings);
-  themeSettingsMessage.textContent = "Tema salvo.";
-  logActivity("Tema atualizado", "Configuracoes visuais do sistema foram atualizadas.");
+  themeSettingsMessage.textContent = "Tema salvo para todos os usuarios.";
+  logActivity("Tema global atualizado", "Configuracoes visuais do sistema foram atualizadas para todos os usuarios.");
 }
 
 function clearAllLogsFromSettings() {
@@ -3892,6 +3916,36 @@ function clearLogsBeforeSelectedDate() {
   settingsLogsMessage.textContent = `${removedCount} log(s) removido(s).`;
   renderLogs();
   updateDashboardTotals();
+}
+
+function resetAgendaCounterFromSettings() {
+  if (!requireModify("settings")) {
+    return;
+  }
+
+  if (!window.confirm("Resetar a contagem de Agendamentos para AG #0001?")) {
+    return;
+  }
+
+  agendaCounter = 1;
+  persistAgendaCounter();
+  settingsSystemMessage.textContent = "Contagem de Agendamentos resetada.";
+  logActivity("Contagem resetada", `Contagem de Agendamentos resetada por ${currentUser?.login || "usuario"}.`);
+}
+
+function resetServiceOrderCounterFromSettings() {
+  if (!requireModify("settings")) {
+    return;
+  }
+
+  if (!window.confirm("Resetar a contagem de OS para OS #0001?")) {
+    return;
+  }
+
+  serviceOrderCounter = 1;
+  persistServiceOrderCounter();
+  settingsSystemMessage.textContent = "Contagem de OS resetada.";
+  logActivity("Contagem resetada", `Contagem de OS resetada por ${currentUser?.login || "usuario"}.`);
 }
 
 function addCompanyVehicle(event) {

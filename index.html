@@ -1082,6 +1082,7 @@
           <button class="settings-tab" type="button" data-settings-view="alerts">Alertas</button>
           <button class="settings-tab" type="button" data-settings-view="password">Senha</button>
           <button class="settings-tab" type="button" data-settings-view="logs">Logs</button>
+          <button class="settings-tab" type="button" data-settings-view="system">Sistema</button>
           <button class="settings-tab" type="button" data-settings-view="integrations">Integrações</button>
           <button class="settings-tab" type="button" data-settings-view="backup">Backup</button>
         </div>
@@ -1286,6 +1287,22 @@
           </div>
 
           <p id="settingsLogsMessage" class="action-message" aria-live="polite"></p>
+        </section>
+
+        <section id="settingsSystemPanel" class="settings-form service-order-view">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Sistema</p>
+              <h3>Contagens sequenciais</h3>
+            </div>
+          </div>
+
+          <div class="settings-log-actions">
+            <button id="resetAgendaCounterButton" class="subtle danger-subtle" type="button">Resetar contagem de Agendamentos</button>
+            <button id="resetServiceOrderCounterButton" class="subtle danger-subtle" type="button">Resetar contagem de OS</button>
+          </div>
+
+          <p id="settingsSystemMessage" class="action-message" aria-live="polite"></p>
         </section>
 
         <section id="settingsIntegrationsPanel" class="settings-form service-order-view">

@@ -1053,39 +1053,9 @@
           <p>Crie novos usuarios para acessos futuros. Esta funcao permanece restrita ao administrador.</p>
         </div>
 
-        <form id="userForm" class="settings-form">
-          <div class="settings-header">
-            <div>
-              <p class="eyebrow">Novo usuario</p>
-              <h3>Dados de acesso</h3>
-            </div>
-            <button class="primary" type="submit" title="Criar usuario" aria-label="Criar usuario">Adicionar</button>
-          </div>
-
-          <div class="form-grid">
-            <label>
-              <span>Nome</span>
-              <input id="newUserName" name="name" placeholder="Nome do usuario" required />
-            </label>
-
-            <label>
-              <span>Login</span>
-              <input id="newUserLogin" name="login" autocomplete="off" required />
-            </label>
-
-            <label>
-              <span>Senha</span>
-              <input id="newUserPassword" name="password" type="password" autocomplete="new-password" required />
-            </label>
-
-            <label>
-              <span>Confirmar senha</span>
-              <input id="newUserPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" required />
-            </label>
-          </div>
-
-          <p id="userMessage" class="login-message" aria-live="polite"></p>
-        </form>
+        <div class="section-actions users-actions">
+          <button id="openUserFormButton" class="primary" type="button">Adicionar Usuario</button>
+        </div>
 
         <div id="userList" class="record-list"></div>
       </section>
@@ -1233,7 +1203,7 @@
               <button class="primary" type="submit">Salvar</button>
             </div>
 
-            <div class="form-grid">
+            <div class="compact-settings-grid">
               <label>
                 <span>Alertar chamados da Agenda após</span>
                 <select id="agendaAlertDays" name="agendaDays">
@@ -1279,7 +1249,7 @@
               <button class="primary" type="submit">Salvar</button>
             </div>
 
-            <div class="form-grid">
+            <div class="compact-settings-grid">
               <label>
                 <span>Nova senha</span>
                 <input id="currentUserNewPassword" name="password" type="password" autocomplete="new-password" required />
@@ -1466,6 +1436,47 @@
         <div class="modal-actions">
           <span></span>
           <button class="primary" type="submit">Salvar senha</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="userDialog" class="modal">
+      <form id="userForm" class="modal-content">
+        <div class="settings-header">
+          <div>
+            <p class="eyebrow">Novo usuario</p>
+            <h3>Dados de acesso</h3>
+          </div>
+          <button id="closeUserDialogButton" class="subtle" type="button" title="Fechar" aria-label="Fechar">Fechar</button>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            <span>Nome</span>
+            <input id="newUserName" name="name" placeholder="Nome do usuario" required />
+          </label>
+
+          <label>
+            <span>Login</span>
+            <input id="newUserLogin" name="login" autocomplete="off" required />
+          </label>
+
+          <label>
+            <span>Senha</span>
+            <input id="newUserPassword" name="password" type="password" autocomplete="new-password" required />
+          </label>
+
+          <label>
+            <span>Confirmar senha</span>
+            <input id="newUserPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" required />
+          </label>
+        </div>
+
+        <p id="userMessage" class="login-message" aria-live="polite"></p>
+
+        <div class="modal-actions">
+          <button id="cancelUserCreateButton" class="ghost" type="button">Cancelar</button>
+          <button class="primary" type="submit" title="Criar usuario" aria-label="Criar usuario">Adicionar</button>
         </div>
       </form>
     </dialog>

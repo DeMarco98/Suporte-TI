@@ -1199,6 +1199,29 @@ body[data-theme-mode="dark"] .theme-status-grid label {
   gap: 12px;
 }
 
+.compact-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 320px);
+  gap: 8px;
+  max-width: 340px;
+}
+
+.compact-settings-grid label {
+  gap: 4px;
+}
+
+.compact-settings-grid input,
+.compact-settings-grid select {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 0.78rem;
+}
+
+.users-actions {
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
 .equipment-main-row {
   align-items: end;
 }

@@ -319,6 +319,10 @@ const dashboardRecentLogs = document.querySelector("#dashboardRecentLogs");
 const userForm = document.querySelector("#userForm");
 const userMessage = document.querySelector("#userMessage");
 const userList = document.querySelector("#userList");
+const openUserFormButton = document.querySelector("#openUserFormButton");
+const userDialog = document.querySelector("#userDialog");
+const closeUserDialogButton = document.querySelector("#closeUserDialogButton");
+const cancelUserCreateButton = document.querySelector("#cancelUserCreateButton");
 const logList = document.querySelector("#logList");
 const permissionList = document.querySelector("#permissionList");
 const agendaActionMessage = document.querySelector("#agendaActionMessage");
@@ -520,6 +524,9 @@ notificationButton.addEventListener("click", () => notificationPanel.classList.t
 alertButton.addEventListener("click", () => alertPanel.classList.toggle("hidden"));
 clearNotificationsButton.addEventListener("click", clearVisibleNotifications);
 document.addEventListener("click", closeFloatingPanelsOnOutsideClick);
+openUserFormButton.addEventListener("click", openUserDialog);
+closeUserDialogButton.addEventListener("click", closeUserDialog);
+cancelUserCreateButton.addEventListener("click", closeUserDialog);
 userForm.addEventListener("submit", createUser);
 passwordForm.addEventListener("submit", saveChangedPassword);
 currentPasswordForm.addEventListener("submit", saveCurrentUserPassword);
@@ -2066,6 +2073,28 @@ function canManageUsers() {
   return Boolean(isAdminLoggedIn || getCurrentStoredUser()?.fullControl);
 }
 
+function openUserDialog() {
+  if (!requireAdmin()) {
+    return;
+  }
+
+  userMessage.textContent = "";
+  clearFormDraft(userForm);
+  userForm.reset();
+  userDialog.showModal();
+  document.querySelector("#newUserName")?.focus();
+}
+
+function closeUserDialog() {
+  userMessage.textContent = "";
+  clearFormDraft(userForm);
+  userForm.reset();
+
+  if (userDialog.open) {
+    userDialog.close();
+  }
+}
+
 function needsDeleteAuthorization() {
   return Boolean(currentUser && !isAdminLoggedIn && !getCurrentStoredUser()?.fullControl);
 }
@@ -2276,6 +2305,7 @@ async function createUser(event) {
   clearFormDraft(userForm);
   userForm.reset();
   userMessage.textContent = "Usuario criado com sucesso.";
+  closeUserDialog();
   renderUsers();
 }
 
@@ -3470,6 +3500,7 @@ function renderPermissions() {
   [...userForm.elements].forEach((element) => {
     element.disabled = !canModifyUsers;
   });
+  openUserFormButton.disabled = !canModifyUsers;
 
   [...agendaForm.elements].forEach((element) => {
     element.disabled = !canAccessAgenda;

@@ -273,6 +273,10 @@ const loginMessage = document.querySelector("#loginMessage");
 const logoutButton = document.querySelector("#logoutButton");
 const adminStatus = document.querySelector(".user-name");
 const syncStatus = document.querySelector("#syncStatus");
+const alertButton = document.querySelector("#alertButton");
+const alertCount = document.querySelector("#alertCount");
+const alertPanel = document.querySelector("#alertPanel");
+const alertList = document.querySelector("#alertList");
 const notificationButton = document.querySelector("#notificationButton");
 const notificationCount = document.querySelector("#notificationCount");
 const notificationPanel = document.querySelector("#notificationPanel");
@@ -480,8 +484,9 @@ const networkSettingsFields = {
 loginForm.addEventListener("submit", loginAdmin);
 logoutButton.addEventListener("click", logoutAdmin);
 notificationButton.addEventListener("click", () => notificationPanel.classList.toggle("hidden"));
+alertButton.addEventListener("click", () => alertPanel.classList.toggle("hidden"));
 clearNotificationsButton.addEventListener("click", clearVisibleNotifications);
-document.addEventListener("click", closeNotificationPanelOnOutsideClick);
+document.addEventListener("click", closeFloatingPanelsOnOutsideClick);
 userForm.addEventListener("submit", createUser);
 passwordForm.addEventListener("submit", saveChangedPassword);
 currentPasswordForm.addEventListener("submit", saveCurrentUserPassword);
@@ -2334,6 +2339,7 @@ function updateServiceOrderStatus(orderId) {
   persistServiceOrders();
   logActivity("Status da OS alterado", `${formatServiceOrderNumber(order)} para ${getServiceOrderStatusLabel(nextStatus)}.`);
   renderServiceOrders();
+  renderSystemAlerts();
   renderNotifications();
 }
 
@@ -2546,6 +2552,7 @@ function render() {
   renderCompanyView();
   renderUsers();
   renderLogs();
+  renderSystemAlerts();
   renderNotifications();
   renderPermissionList();
   renderSettingsView();
@@ -2622,9 +2629,9 @@ function renderServiceOrderView() {
 function renderNotifications() {
   notificationList.innerHTML = "";
 
-  const visibleNotifications = getVisibleNotifications();
+  const visibleNotifications = getVisibleAuthorizationRequests();
   clearNotificationsButton.disabled = visibleNotifications.length === 0;
-  notificationCount.textContent = String(visibleNotifications.filter((item) => item.status === "Pendente" || item.kind === "system-alert").length);
+  notificationCount.textContent = String(visibleNotifications.filter((item) => item.status === "Pendente").length);
 
   if (visibleNotifications.length === 0) {
     const emptyState = document.createElement("div");
@@ -2649,12 +2656,12 @@ function renderNotifications() {
     title.textContent = request.title;
 
     const details = document.createElement("span");
-    details.textContent = request.kind === "system-alert" ? request.details : `${request.details} | Solicitado por: ${request.requesterName}`;
+    details.textContent = `${request.details} | Solicitado por: ${request.requesterName}`;
 
     content.append(tag, title, details);
     card.append(content);
 
-    if (request.kind !== "system-alert" && request.status === "Pendente" && canApproveAuthorizationRequests()) {
+    if (request.status === "Pendente" && canApproveAuthorizationRequests()) {
       const actions = document.createElement("div");
       actions.className = "notification-actions";
 
@@ -2680,8 +2687,41 @@ function renderNotifications() {
   });
 }
 
-function getVisibleNotifications() {
-  return [...getSystemAlerts(), ...getVisibleAuthorizationRequests()];
+function renderSystemAlerts() {
+  alertList.innerHTML = "";
+  const alerts = getSystemAlerts();
+  alertCount.textContent = String(alerts.length);
+  alertButton.classList.toggle("has-alerts", alerts.length > 0);
+
+  if (alerts.length === 0) {
+    const emptyState = document.createElement("div");
+    emptyState.className = "empty-state compact";
+    emptyState.innerHTML = "<strong>Nenhum alerta</strong><span>Chamados e OS dentro dos prazos configurados.</span>";
+    alertList.append(emptyState);
+    return;
+  }
+
+  alerts.forEach((alert) => {
+    const card = document.createElement("article");
+    card.className = "notification-card alert-card";
+
+    const content = document.createElement("div");
+    content.className = "record-content";
+
+    const tag = document.createElement("span");
+    tag.className = "record-tag";
+    tag.textContent = alert.status;
+
+    const title = document.createElement("strong");
+    title.textContent = alert.title;
+
+    const details = document.createElement("span");
+    details.textContent = alert.details;
+
+    content.append(tag, title, details);
+    card.append(content);
+    alertList.append(card);
+  });
 }
 
 function getVisibleAuthorizationRequests() {
@@ -2855,7 +2895,7 @@ function clearVisibleNotifications() {
     return;
   }
 
-  const visibleRequests = getVisibleNotifications();
+  const visibleRequests = getVisibleAuthorizationRequests();
   const key = getNotificationDismissKey();
   const dismissed = new Set([...(dismissedNotifications[key] || []), ...visibleRequests.map((request) => request.id)]);
   dismissedNotifications = {
@@ -2866,16 +2906,14 @@ function clearVisibleNotifications() {
   renderNotifications();
 }
 
-function closeNotificationPanelOnOutsideClick(event) {
-  if (notificationPanel.classList.contains("hidden")) {
-    return;
+function closeFloatingPanelsOnOutsideClick(event) {
+  if (!notificationPanel.classList.contains("hidden") && !notificationPanel.contains(event.target) && !notificationButton.contains(event.target)) {
+    notificationPanel.classList.add("hidden");
   }
 
-  if (notificationPanel.contains(event.target) || notificationButton.contains(event.target)) {
-    return;
+  if (!alertPanel.classList.contains("hidden") && !alertPanel.contains(event.target) && !alertButton.contains(event.target)) {
+    alertPanel.classList.add("hidden");
   }
-
-  notificationPanel.classList.add("hidden");
 }
 
 function updateDashboardTotals() {
@@ -3185,6 +3223,7 @@ function saveAlertSettings(event) {
   persistCompanyInfo();
   alertSettingsMessage.textContent = "Alertas salvos.";
   logActivity("Alertas atualizados", "Prazos de alerta da agenda e das OS foram atualizados.");
+  renderSystemAlerts();
   renderNotifications();
 }
 
@@ -4062,6 +4101,7 @@ function updateAgendaStatus(itemId) {
   persistAgendaItems();
   logActivity("Status da agenda alterado", `${item.clientName || "Cliente"} alterado para ${nextStatus}.`);
   renderAgendaItems();
+  renderSystemAlerts();
   renderNotifications();
 }
 

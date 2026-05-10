@@ -71,6 +71,21 @@
           <div class="user-top-actions">
             <span id="syncStatus" class="sync-status syncing">Sincronizando</span>
             <div class="notification-wrap">
+              <button id="alertButton" class="notification-button alert-button" type="button" aria-label="Alertas" title="Alertas">
+                <span aria-hidden="true">&#128680;</span>
+                <strong id="alertCount">0</strong>
+              </button>
+              <div id="alertPanel" class="notification-panel hidden">
+                <div class="settings-header">
+                  <div>
+                    <p class="eyebrow">Central</p>
+                    <h3>Alertas</h3>
+                  </div>
+                </div>
+                <div id="alertList" class="notification-list"></div>
+              </div>
+            </div>
+            <div class="notification-wrap">
               <button id="notificationButton" class="notification-button" type="button" aria-label="Notificacoes" title="Notificacoes">
                 <span aria-hidden="true">🔔</span>
                 <strong id="notificationCount">0</strong>
@@ -79,7 +94,7 @@
                 <div class="settings-header">
                   <div>
                     <p class="eyebrow">Central</p>
-              <h3>Prazos de alerta</h3>
+                    <h3>Notificacoes</h3>
                   </div>
                   <button id="clearNotificationsButton" class="subtle" type="button">Limpar notificações</button>
                 </div>

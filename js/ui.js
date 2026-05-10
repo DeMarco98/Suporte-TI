@@ -154,6 +154,15 @@ const emptyAlertSettings = {
   agendaDays: 0,
   serviceOrderDays: 0
 };
+const emptyThemeSettings = {
+  systemColor: "#f6f4ef",
+  primaryColor: "#256d85",
+  secondaryColor: "#527853",
+  layout: "classic",
+  mode: "light",
+  fontSize: "normal",
+  density: "normal"
+};
 const emptyCompanyInfo = {
   companyName: "",
   companyDocument: "",
@@ -171,6 +180,7 @@ const emptyCompanyInfo = {
   stockTypes: defaultCompanyStockTypes,
   stockItems: [],
   alertSettings: emptyAlertSettings,
+  themeSettings: emptyThemeSettings,
   updatedAt: ""
 };
 
@@ -441,6 +451,8 @@ const settingsPanels = {
 };
 const currentPasswordForm = document.querySelector("#currentPasswordForm");
 const currentPasswordMessage = document.querySelector("#currentPasswordMessage");
+const themeSettingsForm = document.querySelector("#themeSettingsForm");
+const themeSettingsMessage = document.querySelector("#themeSettingsMessage");
 const alertSettingsForm = document.querySelector("#alertSettingsForm");
 const alertSettingsMessage = document.querySelector("#alertSettingsMessage");
 const panels = {
@@ -490,6 +502,8 @@ document.addEventListener("click", closeFloatingPanelsOnOutsideClick);
 userForm.addEventListener("submit", createUser);
 passwordForm.addEventListener("submit", saveChangedPassword);
 currentPasswordForm.addEventListener("submit", saveCurrentUserPassword);
+themeSettingsForm.addEventListener("submit", saveThemeSettings);
+themeSettingsForm.addEventListener("input", previewThemeSettings);
 alertSettingsForm.addEventListener("submit", saveAlertSettings);
 settingsViewButtons.forEach((button) => button.addEventListener("click", () => switchSettingsView(button.dataset.settingsView)));
 companyForm.addEventListener("submit", saveCompanyInfo);
@@ -678,6 +692,10 @@ function normalizeCompanyInfo(info = {}) {
     alertSettings: {
       ...emptyAlertSettings,
       ...(info.alertSettings || {})
+    },
+    themeSettings: {
+      ...emptyThemeSettings,
+      ...(info.themeSettings || {})
     }
   };
 }
@@ -2595,13 +2613,60 @@ function renderSettingsView() {
     panel.classList.toggle("active", name === activeSettingsView);
   });
 
+  renderThemeSettings();
   renderAlertSettings();
+}
+
+function renderThemeSettings() {
+  const settings = getThemeSettings();
+  Object.entries(settings).forEach(([key, value]) => {
+    const field = themeSettingsForm.elements[key];
+
+    if (field) {
+      field.value = value;
+    }
+  });
+  applyThemeSettings(settings);
 }
 
 function renderAlertSettings() {
   const settings = getAlertSettings();
   alertSettingsForm.elements.agendaDays.value = String(settings.agendaDays);
   alertSettingsForm.elements.serviceOrderDays.value = String(settings.serviceOrderDays);
+}
+
+function getThemeSettings() {
+  return {
+    ...emptyThemeSettings,
+    ...(companyInfo.themeSettings || {})
+  };
+}
+
+function readThemeSettings() {
+  const data = Object.fromEntries(new FormData(themeSettingsForm).entries());
+  return {
+    ...emptyThemeSettings,
+    ...data
+  };
+}
+
+function previewThemeSettings() {
+  applyThemeSettings(readThemeSettings());
+}
+
+function applyThemeSettings(settings = getThemeSettings()) {
+  const theme = {
+    ...emptyThemeSettings,
+    ...settings
+  };
+  document.documentElement.style.setProperty("--bg", theme.systemColor);
+  document.documentElement.style.setProperty("--accent", theme.primaryColor);
+  document.documentElement.style.setProperty("--accent-dark", shadeColor(theme.primaryColor, -24));
+  document.documentElement.style.setProperty("--green", theme.secondaryColor);
+  document.body.dataset.themeMode = theme.mode;
+  document.body.dataset.layout = theme.layout;
+  document.body.dataset.fontSize = theme.fontSize;
+  document.body.dataset.density = theme.density;
 }
 
 function renderAgendaView() {
@@ -2817,20 +2882,22 @@ function getAgendaAlertReason(item, days) {
   }
 
   const isOpen = normalizeAgendaStatus(item.status) === "Aberto";
+  const openedDays = getElapsedAlertDays(item.createdAt || item.date);
+  const unchangedDays = getElapsedAlertDays(item.updatedAt || item.createdAt || item.date);
 
-  if (isOpen && isAlertOverdue(item.createdAt || item.date, days)) {
+  if (isOpen && openedDays >= Number(days || 0)) {
     return {
       type: "open",
       title: "em aberto",
-      details: `está em aberto há ${days} dia(s) ou mais.`
+      details: `está em aberto há ${openedDays} dia(s).`
     };
   }
 
-  if (!isOpen && isAlertOverdue(item.updatedAt || item.createdAt || item.date, days)) {
+  if (!isOpen && unchangedDays >= Number(days || 0)) {
     return {
       type: "stale",
       title: "sem alteração",
-      details: `está há ${days} dia(s) ou mais sem mudança de status.`
+      details: `está há ${unchangedDays} dia(s) sem mudança de status.`
     };
   }
 
@@ -2839,24 +2906,26 @@ function getAgendaAlertReason(item, days) {
 
 function getServiceOrderAlertReason(order, days) {
   const statusGroup = getServiceOrderStatusGroup(order.status);
+  const openedDays = getElapsedAlertDays(order.openedAt || order.createdAt);
+  const unchangedDays = getElapsedAlertDays(order.updatedAt || order.createdAt || order.openedAt);
 
   if (statusGroup === "closed") {
     return null;
   }
 
-  if (statusGroup === "open" && isAlertOverdue(order.openedAt || order.createdAt, days)) {
+  if (statusGroup === "open" && openedDays >= Number(days || 0)) {
     return {
       type: "open",
       title: "em aberto",
-      details: `está em aberto há ${days} dia(s) ou mais.`
+      details: `está em aberto há ${openedDays} dia(s).`
     };
   }
 
-  if (statusGroup !== "open" && isAlertOverdue(order.updatedAt || order.createdAt || order.openedAt, days)) {
+  if (statusGroup !== "open" && unchangedDays >= Number(days || 0)) {
     return {
       type: "stale",
       title: "sem alteração",
-      details: `está há ${days} dia(s) ou mais sem mudança de status.`
+      details: `está há ${unchangedDays} dia(s) sem mudança de status.`
     };
   }
 
@@ -2864,13 +2933,17 @@ function getServiceOrderAlertReason(order, days) {
 }
 
 function isAlertOverdue(dateValue, days) {
+  return getElapsedAlertDays(dateValue) >= Number(days || 0);
+}
+
+function getElapsedAlertDays(dateValue) {
   const date = parseAlertDate(dateValue);
 
   if (!date) {
-    return false;
+    return 0;
   }
 
-  return Date.now() - date.getTime() >= Number(days || 0) * 24 * 60 * 60 * 1000;
+  return Math.max(0, Math.floor((Date.now() - date.getTime()) / (24 * 60 * 60 * 1000)));
 }
 
 function parseAlertDate(value) {
@@ -2983,6 +3056,9 @@ function renderPermissions() {
     element.disabled = !canModifyCompany;
   });
   [...alertSettingsForm.elements].forEach((element) => {
+    element.disabled = !canModifySettings;
+  });
+  [...themeSettingsForm.elements].forEach((element) => {
     element.disabled = !canModifySettings;
   });
   companyStockSubmitButton.textContent = editingCompanyStockItemId ? "Salvar" : "Adicionar";
@@ -3225,6 +3301,25 @@ function saveAlertSettings(event) {
   logActivity("Alertas atualizados", "Prazos de alerta da agenda e das OS foram atualizados.");
   renderSystemAlerts();
   renderNotifications();
+}
+
+function saveThemeSettings(event) {
+  event.preventDefault();
+
+  if (!requireModify("settings")) {
+    return;
+  }
+
+  const themeSettings = readThemeSettings();
+  companyInfo = normalizeCompanyInfo({
+    ...companyInfo,
+    themeSettings,
+    updatedAt: new Date().toISOString()
+  });
+  persistCompanyInfo();
+  applyThemeSettings(themeSettings);
+  themeSettingsMessage.textContent = "Tema salvo.";
+  logActivity("Tema atualizado", "Configuracoes visuais do sistema foram atualizadas.");
 }
 
 function addCompanyVehicle(event) {
@@ -5771,6 +5866,16 @@ function normalize(value) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
+}
+
+function shadeColor(color, percent) {
+  const hex = String(color || "#256d85").replace("#", "");
+  const number = parseInt(hex.length === 3 ? hex.split("").map((item) => item + item).join("") : hex, 16);
+  const amount = Math.round(2.55 * percent);
+  const red = Math.max(0, Math.min(255, (number >> 16) + amount));
+  const green = Math.max(0, Math.min(255, ((number >> 8) & 0xff) + amount));
+  const blue = Math.max(0, Math.min(255, (number & 0xff) + amount));
+  return `#${(0x1000000 + red * 0x10000 + green * 0x100 + blue).toString(16).slice(1)}`;
 }
 
 function formatDate(value) {

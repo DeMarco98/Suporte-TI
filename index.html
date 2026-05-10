@@ -1070,26 +1070,63 @@
         </div>
 
         <section id="settingsThemePanel" class="settings-form service-order-view active">
-          <div class="settings-header">
-            <div>
-              <p class="eyebrow">Tema</p>
-              <h3>Aparencia</h3>
+          <form id="themeSettingsForm" class="nested-settings-form">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Tema</p>
+                <h3>Aparencia</h3>
+              </div>
+              <button class="primary" type="submit">Salvar</button>
             </div>
-          </div>
-          <div class="settings-placeholder-grid">
-            <article class="summary-item">
-              <span>Cor principal</span>
-              <strong>Azul atual do sistema</strong>
-            </article>
-            <article class="summary-item">
-              <span>Layout</span>
-              <strong>Compacto operacional</strong>
-            </article>
-            <article class="summary-item">
-              <span>Proximo passo</span>
-              <strong>Escolher cores e densidade da interface</strong>
-            </article>
-          </div>
+
+            <div class="form-grid theme-form-grid">
+              <label>
+                <span>Cor do sistema</span>
+                <input id="themeSystemColor" name="systemColor" type="color" />
+              </label>
+              <label>
+                <span>Cor primaria</span>
+                <input id="themePrimaryColor" name="primaryColor" type="color" />
+              </label>
+              <label>
+                <span>Cor secundaria</span>
+                <input id="themeSecondaryColor" name="secondaryColor" type="color" />
+              </label>
+              <label>
+                <span>Layout</span>
+                <select id="themeLayout" name="layout">
+                  <option value="classic">Classico lateral</option>
+                  <option value="comfortable">Espacoso</option>
+                  <option value="focus">Foco compacto</option>
+                </select>
+              </label>
+              <label>
+                <span>Modo</span>
+                <select id="themeMode" name="mode">
+                  <option value="light">Claro</option>
+                  <option value="dark">Escuro</option>
+                </select>
+              </label>
+              <label>
+                <span>Tamanho da fonte</span>
+                <select id="themeFontSize" name="fontSize">
+                  <option value="small">Pequena</option>
+                  <option value="normal">Normal</option>
+                  <option value="large">Grande</option>
+                </select>
+              </label>
+              <label>
+                <span>Densidade da interface</span>
+                <select id="themeDensity" name="density">
+                  <option value="compact">Compacta</option>
+                  <option value="normal">Normal</option>
+                  <option value="comfortable">Confortavel</option>
+                </select>
+              </label>
+            </div>
+
+            <p id="themeSettingsMessage" class="action-message" aria-live="polite"></p>
+          </form>
         </section>
 
         <section id="settingsAlertsPanel" class="settings-form service-order-view">

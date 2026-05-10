@@ -121,10 +121,10 @@ const cloudStorageKeys = [
 ];
 const dashboardSections = [
   { id: "overview", label: "Dashboard" },
-  { id: "clients", label: "Cadastro de clientes" },
-  { id: "agenda", label: "Agenda" },
+  { id: "clients", label: "Clientes" },
+  { id: "agenda", label: "Agendamento" },
   { id: "serviceOrders", label: "Ordem de Servico" },
-  { id: "company", label: "Minha empresa" },
+  { id: "company", label: "Minha Empresa" },
   { id: "users", label: "Usuarios" },
   { id: "logs", label: "Logs" },
   { id: "permissions", label: "Permissoes" },

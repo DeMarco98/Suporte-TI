@@ -2715,16 +2715,18 @@ function getSystemAlerts() {
 
   if (settings.agendaDays > 0 && canAccess("agenda")) {
     agendaItems.forEach((item) => {
-      if (isAgendaClosedForAlert(item) || !isAlertOverdue(item.updatedAt || item.createdAt || item.date, settings.agendaDays)) {
+      const reason = getAgendaAlertReason(item, settings.agendaDays);
+
+      if (!reason) {
         return;
       }
 
       const alert = {
-        id: `alert-agenda-${item.id}-${settings.agendaDays}`,
+        id: `alert-agenda-${reason.type}-${item.id}-${settings.agendaDays}`,
         kind: "system-alert",
         status: "Alerta",
-        title: `${formatAgendaNumber(item)} sem alteração`,
-        details: `${item.clientName || "Cliente sem nome"} está há ${settings.agendaDays} dia(s) sem mudança de status.`
+        title: `${formatAgendaNumber(item)} ${reason.title}`,
+        details: `${item.clientName || "Cliente sem nome"} ${reason.details}`
       };
 
       if (!dismissed.has(alert.id)) {
@@ -2735,16 +2737,18 @@ function getSystemAlerts() {
 
   if (settings.serviceOrderDays > 0 && canAccess("serviceOrders")) {
     serviceOrders.forEach((order) => {
-      if (getServiceOrderStatusGroup(order.status) === "closed" || !isAlertOverdue(order.updatedAt || order.createdAt || order.openedAt, settings.serviceOrderDays)) {
+      const reason = getServiceOrderAlertReason(order, settings.serviceOrderDays);
+
+      if (!reason) {
         return;
       }
 
       const alert = {
-        id: `alert-os-${order.id}-${settings.serviceOrderDays}`,
+        id: `alert-os-${reason.type}-${order.id}-${settings.serviceOrderDays}`,
         kind: "system-alert",
         status: "Alerta",
-        title: `${formatServiceOrderNumber(order)} sem alteração`,
-        details: `${order.clientName || "Cliente sem nome"} está há ${settings.serviceOrderDays} dia(s) sem mudança de status.`
+        title: `${formatServiceOrderNumber(order)} ${reason.title}`,
+        details: `${order.clientName || "Cliente sem nome"} ${reason.details}`
       };
 
       if (!dismissed.has(alert.id)) {
@@ -2765,6 +2769,58 @@ function getAlertSettings() {
 
 function isAgendaClosedForAlert(item) {
   return ["Concluido", "Cancelado"].includes(normalizeAgendaStatus(item.status));
+}
+
+function getAgendaAlertReason(item, days) {
+  if (isAgendaClosedForAlert(item)) {
+    return null;
+  }
+
+  const isOpen = normalizeAgendaStatus(item.status) === "Aberto";
+
+  if (isOpen && isAlertOverdue(item.createdAt || item.date, days)) {
+    return {
+      type: "open",
+      title: "em aberto",
+      details: `está em aberto há ${days} dia(s) ou mais.`
+    };
+  }
+
+  if (!isOpen && isAlertOverdue(item.updatedAt || item.createdAt || item.date, days)) {
+    return {
+      type: "stale",
+      title: "sem alteração",
+      details: `está há ${days} dia(s) ou mais sem mudança de status.`
+    };
+  }
+
+  return null;
+}
+
+function getServiceOrderAlertReason(order, days) {
+  const statusGroup = getServiceOrderStatusGroup(order.status);
+
+  if (statusGroup === "closed") {
+    return null;
+  }
+
+  if (statusGroup === "open" && isAlertOverdue(order.openedAt || order.createdAt, days)) {
+    return {
+      type: "open",
+      title: "em aberto",
+      details: `está em aberto há ${days} dia(s) ou mais.`
+    };
+  }
+
+  if (statusGroup !== "open" && isAlertOverdue(order.updatedAt || order.createdAt || order.openedAt, days)) {
+    return {
+      type: "stale",
+      title: "sem alteração",
+      details: `está há ${days} dia(s) ou mais sem mudança de status.`
+    };
+  }
+
+  return null;
 }
 
 function isAlertOverdue(dateValue, days) {

@@ -14,6 +14,9 @@ const EMAIL_TYPE_STORAGE_KEY = "cadastros-tipos-email";
 const AUTHORIZATION_STORAGE_KEY = "cadastros-autorizacoes";
 const SESSION_STORAGE_KEY = "cadastros-admin-logado";
 const DISMISSED_NOTIFICATION_STORAGE_KEY = "cadastros-notificacoes-limpas";
+const WORKSPACE_STATE_STORAGE_KEY = "cadastros-posicao-usuario";
+const FORM_DRAFT_STORAGE_KEY = "cadastros-rascunhos-formularios";
+const LOG_BACKUP_STORAGE_KEY = "cadastros-logs-backup-local";
 const ADMIN_USER = "administrador";
 const NEW_CATEGORY_VALUE = "__new_category__";
 const NEW_BRAND_MODEL_VALUE = "__new_brand_model__";
@@ -243,6 +246,7 @@ let editingPasswordUserId = "";
 let permissionDrafts = {};
 let currentUser = loadSessionUser();
 let isAdminLoggedIn = currentUser?.role === "admin";
+restoreWorkspaceState({ applyFields: false });
 let firebaseDb = null;
 let firebaseAuth = null;
 let firebaseSyncEnabled = false;
@@ -533,7 +537,11 @@ companyStockType.addEventListener("change", toggleNewCompanyStockTypeField);
 agendaForm.addEventListener("submit", addAgendaItem);
 cancelAgendaButton.addEventListener("click", resetAgendaForm);
 agendaSearchInput.addEventListener("input", renderAgendaItems);
-agendaStatusFilter.addEventListener("change", renderAgendaItems);
+agendaSearchInput.addEventListener("input", saveWorkspaceState);
+agendaStatusFilter.addEventListener("change", () => {
+  saveWorkspaceState();
+  renderAgendaItems();
+});
 agendaViewButtons.forEach((button) => {
   button.addEventListener("click", () => {
     if (button.dataset.agendaView === "create") {
@@ -547,7 +555,9 @@ agendaViewButtons.forEach((button) => {
 serviceOrderForm.addEventListener("submit", addServiceOrder);
 document.querySelector("#cancelServiceOrderButton").addEventListener("click", resetServiceOrderForm);
 serviceOrderStatusFilter.addEventListener("change", renderServiceOrders);
+serviceOrderStatusFilter.addEventListener("change", saveWorkspaceState);
 serviceOrderSearchInput.addEventListener("input", renderServiceOrders);
+serviceOrderSearchInput.addEventListener("input", saveWorkspaceState);
 serviceOrderViewButtons.forEach((button) => {
   button.addEventListener("click", () => {
     if (button.dataset.serviceOrderView === "create") {
@@ -610,12 +620,16 @@ closeEquipmentDialogButton.addEventListener("click", closeEquipmentDialog);
 deleteEquipmentButton.addEventListener("click", deleteEditingEquipment);
 closePasswordDialogButton.addEventListener("click", closePasswordDialog);
 equipmentFilter.addEventListener("input", renderRelatedRecords);
+equipmentFilter.addEventListener("input", saveWorkspaceState);
 searchInput.addEventListener("input", renderList);
+searchInput.addEventListener("input", saveWorkspaceState);
 newClientButton.addEventListener("click", startNewClient);
 deleteClientButton.addEventListener("click", deleteSelectedClient);
 dashboardTabs.forEach((tab) => tab.addEventListener("click", () => switchDashboardTab(tab.dataset.dashboardTab)));
 tabs.forEach((tab) => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
 document.addEventListener("click", handlePasswordToggleClick);
+setupFormDraftAutosave();
+restoreWorkspaceState({ applyFields: true });
 
 initializeFirebaseSync();
 renderAuth();
@@ -624,6 +638,250 @@ if (!currentUser || !firebaseSyncEnabled) {
   render();
 }
 window.suporteTiAppReady = true;
+
+function getUserScopedStorageKey(baseKey) {
+  const userKey = currentUser?.uid || currentUser?.id || normalize(currentUser?.login || "visitante");
+  return `${baseKey}:${userKey || "visitante"}`;
+}
+
+function loadWorkspaceState() {
+  const stored = localStorage.getItem(getUserScopedStorageKey(WORKSPACE_STATE_STORAGE_KEY));
+
+  if (!stored) {
+    return {};
+  }
+
+  try {
+    const parsedState = JSON.parse(stored);
+    return parsedState && typeof parsedState === "object" ? parsedState : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveWorkspaceState() {
+  if (!currentUser) {
+    return;
+  }
+
+  const state = {
+    selectedId,
+    activeTab,
+    activeDashboardTab,
+    activeServiceOrderView,
+    activeAgendaView,
+    activeCompanyView,
+    activeSettingsView,
+    search: searchInput?.value || "",
+    equipmentFilter: equipmentFilter?.value || "",
+    agendaSearch: agendaSearchInput?.value || "",
+    agendaStatus: agendaStatusFilter?.value || "all",
+    serviceOrderSearch: serviceOrderSearchInput?.value || "",
+    serviceOrderStatus: serviceOrderStatusFilter?.value || "all",
+    updatedAt: new Date().toISOString()
+  };
+
+  localStorage.setItem(getUserScopedStorageKey(WORKSPACE_STATE_STORAGE_KEY), JSON.stringify(state));
+}
+
+function restoreWorkspaceState({ applyFields = true } = {}) {
+  const state = loadWorkspaceState();
+
+  if (state.selectedId && clients.some((client) => client.id === state.selectedId)) {
+    selectedId = state.selectedId;
+  }
+
+  if (["profile", "equipment", "network", "emails"].includes(state.activeTab)) {
+    activeTab = state.activeTab;
+  }
+
+  if (dashboardSections.some((section) => section.id === state.activeDashboardTab)) {
+    activeDashboardTab = state.activeDashboardTab;
+  }
+
+  if (["list", "create"].includes(state.activeServiceOrderView)) {
+    activeServiceOrderView = state.activeServiceOrderView;
+  }
+
+  if (["list", "create"].includes(state.activeAgendaView)) {
+    activeAgendaView = state.activeAgendaView;
+  }
+
+  if (["profile", "network", "vehicles", "stock"].includes(state.activeCompanyView)) {
+    activeCompanyView = state.activeCompanyView;
+  }
+
+  if (["theme", "alerts", "password", "integrations", "backup"].includes(state.activeSettingsView)) {
+    activeSettingsView = state.activeSettingsView;
+  }
+
+  if (!applyFields) {
+    return;
+  }
+
+  if (searchInput) {
+    searchInput.value = state.search || "";
+  }
+
+  if (equipmentFilter) {
+    equipmentFilter.value = state.equipmentFilter || "";
+  }
+
+  if (agendaSearchInput) {
+    agendaSearchInput.value = state.agendaSearch || "";
+  }
+
+  if (agendaStatusFilter) {
+    agendaStatusFilter.value = state.agendaStatus || "all";
+  }
+
+  if (serviceOrderSearchInput) {
+    serviceOrderSearchInput.value = state.serviceOrderSearch || "";
+  }
+
+  if (serviceOrderStatusFilter) {
+    serviceOrderStatusFilter.value = state.serviceOrderStatus || "all";
+  }
+}
+
+function getFormDraftKey(formElement) {
+  const formId = formElement?.id || "formulario";
+
+  if (formElement === form) {
+    return `${formId}:${selectedId || "novo"}`;
+  }
+
+  if (formElement === agendaForm) {
+    return `${formId}:${editingAgendaId || "novo"}`;
+  }
+
+  if (formElement === serviceOrderForm) {
+    return `${formId}:${editingServiceOrderId || "novo"}`;
+  }
+
+  if (formElement === companyStockForm) {
+    return `${formId}:${editingCompanyStockItemId || "novo"}`;
+  }
+
+  return `${formId}:padrao`;
+}
+
+function loadFormDrafts() {
+  const stored = localStorage.getItem(getUserScopedStorageKey(FORM_DRAFT_STORAGE_KEY));
+
+  if (!stored) {
+    return {};
+  }
+
+  try {
+    const drafts = JSON.parse(stored);
+    return drafts && typeof drafts === "object" ? drafts : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveFormDraft(formElement) {
+  if (!currentUser || !formElement) {
+    return;
+  }
+
+  const formKey = getFormDraftKey(formElement);
+  const drafts = loadFormDrafts();
+  drafts[formKey] = readFormDraft(formElement);
+  localStorage.setItem(getUserScopedStorageKey(FORM_DRAFT_STORAGE_KEY), JSON.stringify(drafts));
+}
+
+function clearFormDraft(formElement) {
+  if (!formElement) {
+    return;
+  }
+
+  clearFormDraftByKey(getFormDraftKey(formElement));
+}
+
+function clearFormDraftByKey(formKey) {
+  const drafts = loadFormDrafts();
+  delete drafts[formKey];
+  localStorage.setItem(getUserScopedStorageKey(FORM_DRAFT_STORAGE_KEY), JSON.stringify(drafts));
+}
+
+function readFormDraft(formElement) {
+  const draft = {};
+
+  Array.from(formElement.elements).forEach((element) => {
+    if (!element.name || element.disabled) {
+      return;
+    }
+
+    if (element.type === "checkbox") {
+      draft[element.name] = element.checked;
+      return;
+    }
+
+    if (element.type === "radio") {
+      if (element.checked) {
+        draft[element.name] = element.value;
+      }
+      return;
+    }
+
+    draft[element.name] = element.value;
+  });
+
+  return draft;
+}
+
+function applyFormDraft(formElement) {
+  const draft = loadFormDrafts()[getFormDraftKey(formElement)];
+
+  if (!draft) {
+    return;
+  }
+
+  Array.from(formElement.elements).forEach((element) => {
+    if (!element.name || !(element.name in draft)) {
+      return;
+    }
+
+    if (element.type === "checkbox") {
+      element.checked = Boolean(draft[element.name]);
+      return;
+    }
+
+    if (element.type === "radio") {
+      element.checked = element.value === draft[element.name];
+      return;
+    }
+
+    element.value = draft[element.name] ?? "";
+  });
+}
+
+function restoreVisibleFormDrafts() {
+  [form, agendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyStockForm, userForm].forEach((formElement) => {
+    if (!formElement || formElement.offsetParent === null) {
+      return;
+    }
+
+    applyFormDraft(formElement);
+  });
+
+  toggleComputerServiceOrderFields();
+  toggleExternalRepairLocationFields();
+  toggleNewCompanyStockTypeField();
+}
+
+function setupFormDraftAutosave() {
+  [form, agendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyStockForm, userForm].forEach((formElement) => {
+    if (!formElement) {
+      return;
+    }
+
+    formElement.addEventListener("input", () => saveFormDraft(formElement));
+    formElement.addEventListener("change", () => saveFormDraft(formElement));
+  });
+}
 
 function loadClients() {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -749,6 +1007,22 @@ function createDefaultPermissions() {
 
 function loadLogs() {
   const stored = localStorage.getItem(LOG_STORAGE_KEY);
+  const backup = loadLocalLogBackup();
+
+  if (!stored) {
+    return backup;
+  }
+
+  try {
+    const parsedLogs = JSON.parse(stored);
+    return mergeLogsWithBackup(Array.isArray(parsedLogs) ? parsedLogs : [], backup);
+  } catch {
+    return backup;
+  }
+}
+
+function loadLocalLogBackup() {
+  const stored = localStorage.getItem(LOG_BACKUP_STORAGE_KEY);
 
   if (!stored) {
     return [];
@@ -760,6 +1034,32 @@ function loadLogs() {
   } catch {
     return [];
   }
+}
+
+function mergeLogsWithBackup(primaryLogs = [], backupLogs = []) {
+  const merged = [...primaryLogs, ...backupLogs];
+  const unique = new Map();
+
+  merged.forEach((log) => {
+    if (!log?.id) {
+      return;
+    }
+
+    unique.set(log.id, log);
+  });
+
+  return [...unique.values()]
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .slice(0, 250);
+}
+
+function appendLocalLogBackup(log) {
+  if (!log?.id) {
+    return;
+  }
+
+  const backupLogs = mergeLogsWithBackup([log], loadLocalLogBackup()).slice(0, 500);
+  localStorage.setItem(LOG_BACKUP_STORAGE_KEY, JSON.stringify(backupLogs));
 }
 
 function loadServiceOrders() {
@@ -1228,7 +1528,8 @@ function applyFirebaseState(key, value) {
   }
 
   firebaseSnapshotApplying = true;
-  writeLocalState(key, value);
+  const nextValue = key === LOG_STORAGE_KEY ? mergeLogsWithBackup(Array.isArray(value) ? value : [], loadLocalLogBackup()) : value;
+  writeLocalState(key, nextValue);
   reloadStateFromLocalStorage();
   firebaseSnapshotApplying = false;
   renderAuth();
@@ -1494,6 +1795,7 @@ function reloadStateFromLocalStorage() {
     }
   }
   selectedId = clients.some((client) => client.id === selectedId) ? selectedId : clients[0]?.id ?? "";
+  restoreWorkspaceState({ applyFields: true });
 }
 
 function persistClients() {
@@ -1553,7 +1855,7 @@ function persistAuthorizationRequests() {
 }
 
 function logActivity(action, details = "") {
-  createLogRecord({ state: appState, persistLogs, createId, currentUser, action, details });
+  createLogRecord({ state: appState, persistLogs, createId, currentUser, action, details }).then(appendLocalLogBackup);
   renderLogs();
   updateDashboardTotals();
 }
@@ -1971,6 +2273,7 @@ async function createUser(event) {
 
   persistUsers();
   logActivity("Usuario criado", `Login ${login} foi criado.`);
+  clearFormDraft(userForm);
   userForm.reset();
   userMessage.textContent = "Usuario criado com sucesso.";
   renderUsers();
@@ -2128,6 +2431,7 @@ function updateAgendaFromPayload(itemId, payload) {
   );
   persistAgendaItems();
   logActivity("Agenda editada", `${formatAgendaNumber(previousItem || {})} - ${payload.clientName || "Cliente sem nome"}.`);
+  clearFormDraft(agendaForm);
   renderAgendaItems();
 }
 
@@ -2157,6 +2461,7 @@ function resetAgendaForm() {
   agendaSubmitButton.setAttribute("aria-label", "Adicionar agendamento");
   agendaSubmitButton.disabled = clients.length === 0;
   agendaForm.reset();
+  clearFormDraft(agendaForm);
   renderAgendaClientOptions();
 
   if (agendaForm.elements.status) {
@@ -2243,6 +2548,7 @@ async function addServiceOrder(event) {
   logActivity(editingOrder ? "Ordem de servico editada" : "Ordem de servico criada", `${formatServiceOrderNumber(order)} - ${order.clientName}`);
   editingServiceOrderId = "";
   serviceOrderForm.reset();
+  clearFormDraft(serviceOrderForm);
   serviceOrderMessage.textContent = editingOrder ? "Ordem de servico atualizada." : "Ordem de servico adicionada.";
   updateServiceOrderFormMode();
   toggleComputerServiceOrderFields();
@@ -2304,6 +2610,7 @@ function startNewServiceOrder() {
 function resetServiceOrderForm() {
   editingServiceOrderId = "";
   serviceOrderForm.reset();
+  clearFormDraft(serviceOrderForm);
   serviceOrderMessage.textContent = "";
   updateServiceOrderFormMode();
   toggleComputerServiceOrderFields();
@@ -2601,22 +2908,26 @@ function render() {
   renderDashboardTabs();
   renderTabs();
   renderPermissions();
+  restoreVisibleFormDrafts();
 }
 
 function switchServiceOrderView(viewName) {
   activeServiceOrderView = viewName === "create" ? "create" : "list";
   serviceOrderMessage.textContent = "";
+  saveWorkspaceState();
   renderServiceOrderView();
 }
 
 function switchAgendaView(viewName) {
   activeAgendaView = viewName === "create" ? "create" : "list";
   agendaActionMessage.textContent = "";
+  saveWorkspaceState();
   renderAgendaView();
 }
 
 function switchSettingsView(viewName) {
   activeSettingsView = Object.prototype.hasOwnProperty.call(settingsPanels, viewName) ? viewName : "theme";
+  saveWorkspaceState();
   renderSettingsView();
 }
 
@@ -3356,6 +3667,7 @@ function renderCompanyInfo() {
 
 function switchCompanyView(viewName) {
   activeCompanyView = ["profile", "network", "vehicles", "stock"].includes(viewName) ? viewName : "profile";
+  saveWorkspaceState();
   renderCompanyView();
 }
 
@@ -3389,6 +3701,7 @@ function saveCompanyInfo(event) {
     updatedAt: new Date().toISOString()
   };
   persistCompanyInfo();
+  clearFormDraft(companyForm);
   companyMessage.textContent = "Perfil da empresa salvo.";
   logActivity("Perfil da empresa atualizado", "Dados do perfil interno da empresa foram atualizados.");
 }
@@ -3410,6 +3723,7 @@ function saveCompanyNetworkInfo(event) {
     updatedAt: new Date().toISOString()
   };
   persistCompanyInfo();
+  clearFormDraft(companyNetworkForm);
   companyNetworkMessage.textContent = "Rede interna salva.";
   logActivity("Rede interna atualizada", "Informacoes de rede da empresa foram atualizadas.");
 }
@@ -3482,6 +3796,7 @@ function addCompanyVehicle(event) {
     updatedAt: new Date().toISOString()
   };
   persistCompanyInfo();
+  clearFormDraft(companyVehicleForm);
   companyVehicleForm.reset();
   companyVehicleMessage.textContent = "Veiculo adicionado.";
   logActivity("Veiculo interno criado", `${vehicle.type} ${vehicle.model} - ${vehicle.plate}.`);
@@ -3625,6 +3940,7 @@ function saveCompanyStockType(event) {
     updatedAt: new Date().toISOString()
   };
   persistCompanyInfo();
+  clearFormDraft(companyStockForm);
   companyStockForm.reset();
   editingCompanyStockItemId = "";
   renderCompanyStockTypes(cleanType);
@@ -5037,6 +5353,7 @@ function saveClient(event) {
     return;
   }
 
+  const draftKeyBeforeSave = getFormDraftKey(form);
   const formData = Object.fromEntries(new FormData(form).entries());
   const now = new Date().toISOString();
   const existingIndex = clients.findIndex((client) => client.id === selectedId);
@@ -5061,6 +5378,8 @@ function saveClient(event) {
 
   persistClients();
   logActivity(action, `Cliente ${formData.name || "sem nome"}.`);
+  clearFormDraftByKey(draftKeyBeforeSave);
+  saveWorkspaceState();
   render();
 }
 
@@ -5483,6 +5802,7 @@ function selectClient(id) {
   editingEmailSettings = false;
   editingAgendaId = "";
   editingEmailId = "";
+  saveWorkspaceState();
   render();
 }
 
@@ -5505,6 +5825,8 @@ function startNewClient() {
   equipmentFilter.value = "";
   toggleNewBrandModelFields(newEquipmentBrandModel, newEquipmentBrand, newEquipmentModel, equipmentBrand, equipmentModel);
   fields.status.value = "Ativo";
+  clearFormDraft(form);
+  saveWorkspaceState();
   render();
   fields.name.focus();
 }
@@ -5541,6 +5863,7 @@ function deleteSelectedClient() {
   editingNetworkSettings = false;
   editingEmailSettings = false;
   persistClients();
+  saveWorkspaceState();
   logActivity("Cliente excluido", `Cliente ${selectedClient?.name || "sem nome"} foi excluido.`);
   render();
 }
@@ -5583,6 +5906,7 @@ function deleteClientById(clientId, askConfirmation = true) {
   editingNetworkSettings = false;
   editingEmailSettings = false;
   persistClients();
+  saveWorkspaceState();
   logActivity("Cliente excluido", `Cliente ${client.name || "sem nome"} foi excluido.`);
   render();
 }
@@ -5594,6 +5918,7 @@ function switchDashboardTab(tabName) {
 
   editingAgendaId = "";
   activeDashboardTab = tabName;
+  saveWorkspaceState();
   renderDashboardTabs();
 }
 
@@ -5624,6 +5949,7 @@ function switchTab(tabName) {
   }
 
   activeTab = tabName;
+  saveWorkspaceState();
   renderTabs();
 }
 

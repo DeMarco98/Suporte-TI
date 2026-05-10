@@ -1078,13 +1078,49 @@
         </section>
 
         <section id="settingsAlertsPanel" class="settings-form service-order-view">
-          <div class="settings-header">
-            <div>
-              <p class="eyebrow">Alertas</p>
-              <h3>Notificacoes</h3>
+          <form id="alertSettingsForm" class="nested-settings-form">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Alertas</p>
+                <h3>Status sem alteração</h3>
+              </div>
+              <button class="primary" type="submit">Salvar</button>
             </div>
-          </div>
-          <p class="muted-text">Aqui vamos concentrar preferencias de avisos, lembretes e notificacoes do sistema.</p>
+
+            <div class="form-grid">
+              <label>
+                <span>Alertar chamados da Agenda após</span>
+                <select id="agendaAlertDays" name="agendaDays">
+                  <option value="0">Desativado</option>
+                  <option value="1">1 dia sem alteração</option>
+                  <option value="2">2 dias sem alteração</option>
+                  <option value="3">3 dias sem alteração</option>
+                  <option value="5">5 dias sem alteração</option>
+                  <option value="7">7 dias sem alteração</option>
+                  <option value="10">10 dias sem alteração</option>
+                  <option value="15">15 dias sem alteração</option>
+                  <option value="30">30 dias sem alteração</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Alertar OS após</span>
+                <select id="serviceOrderAlertDays" name="serviceOrderDays">
+                  <option value="0">Desativado</option>
+                  <option value="1">1 dia sem alteração</option>
+                  <option value="2">2 dias sem alteração</option>
+                  <option value="3">3 dias sem alteração</option>
+                  <option value="5">5 dias sem alteração</option>
+                  <option value="7">7 dias sem alteração</option>
+                  <option value="10">10 dias sem alteração</option>
+                  <option value="15">15 dias sem alteração</option>
+                  <option value="30">30 dias sem alteração</option>
+                </select>
+              </label>
+            </div>
+
+            <p id="alertSettingsMessage" class="action-message" aria-live="polite"></p>
+          </form>
         </section>
 
         <section id="settingsPasswordPanel" class="settings-form service-order-view">

@@ -150,6 +150,10 @@ const emptyNetworkSettings = {
   dns: "",
   wins: ""
 };
+const emptyAlertSettings = {
+  agendaDays: 0,
+  serviceOrderDays: 0
+};
 const emptyCompanyInfo = {
   companyName: "",
   companyDocument: "",
@@ -166,6 +170,7 @@ const emptyCompanyInfo = {
   vehicles: [],
   stockTypes: defaultCompanyStockTypes,
   stockItems: [],
+  alertSettings: emptyAlertSettings,
   updatedAt: ""
 };
 
@@ -432,6 +437,8 @@ const settingsPanels = {
 };
 const currentPasswordForm = document.querySelector("#currentPasswordForm");
 const currentPasswordMessage = document.querySelector("#currentPasswordMessage");
+const alertSettingsForm = document.querySelector("#alertSettingsForm");
+const alertSettingsMessage = document.querySelector("#alertSettingsMessage");
 const panels = {
   profile: document.querySelector("#profilePanel"),
   equipment: document.querySelector("#equipmentPanel"),
@@ -478,6 +485,7 @@ document.addEventListener("click", closeNotificationPanelOnOutsideClick);
 userForm.addEventListener("submit", createUser);
 passwordForm.addEventListener("submit", saveChangedPassword);
 currentPasswordForm.addEventListener("submit", saveCurrentUserPassword);
+alertSettingsForm.addEventListener("submit", saveAlertSettings);
 settingsViewButtons.forEach((button) => button.addEventListener("click", () => switchSettingsView(button.dataset.settingsView)));
 companyForm.addEventListener("submit", saveCompanyInfo);
 companyNetworkForm.addEventListener("submit", saveCompanyNetworkInfo);
@@ -645,17 +653,28 @@ function loadCompanyInfo() {
   const stored = localStorage.getItem(COMPANY_STORAGE_KEY);
 
   if (!stored) {
-    return { ...emptyCompanyInfo };
+    return normalizeCompanyInfo();
   }
 
   try {
-    return {
-      ...emptyCompanyInfo,
-      ...JSON.parse(stored)
-    };
+    return normalizeCompanyInfo(JSON.parse(stored));
   } catch {
-    return { ...emptyCompanyInfo };
+    return normalizeCompanyInfo();
   }
+}
+
+function normalizeCompanyInfo(info = {}) {
+  return {
+    ...emptyCompanyInfo,
+    ...info,
+    vehicles: Array.isArray(info.vehicles) ? info.vehicles : [],
+    stockTypes: Array.isArray(info.stockTypes) ? info.stockTypes : defaultCompanyStockTypes,
+    stockItems: Array.isArray(info.stockItems) ? info.stockItems : [],
+    alertSettings: {
+      ...emptyAlertSettings,
+      ...(info.alertSettings || {})
+    }
+  };
 }
 
 function normalizeUser(user) {
@@ -1063,7 +1082,7 @@ async function hydrateCollectionToLocalState(key) {
 
   if (collectionName === "companyInfo") {
     const companyDoc = await firebaseDb.collection(collectionName).doc("main").get();
-    writeLocalState(key, companyDoc.exists ? { ...emptyCompanyInfo, ...companyDoc.data() } : { ...emptyCompanyInfo });
+    writeLocalState(key, companyDoc.exists ? normalizeCompanyInfo(companyDoc.data()) : normalizeCompanyInfo());
     firebaseCollectionDocIds[getFirebaseListenerId(key)] = new Set(companyDoc.exists ? [companyDoc.id] : []);
     return;
   }
@@ -1143,7 +1162,7 @@ function applyFirebaseDocumentSnapshot(key, doc) {
     return;
   }
 
-  applyFirebaseState(key, doc.exists ? { ...emptyCompanyInfo, ...doc.data() } : { ...emptyCompanyInfo });
+  applyFirebaseState(key, doc.exists ? normalizeCompanyInfo(doc.data()) : normalizeCompanyInfo());
 }
 
 function applyFirebaseCollectionSnapshot(key, snapshot) {
@@ -1357,7 +1376,7 @@ function syncStateToFirebase(key, value, options = {}) {
     firebaseDb
       .collection(collectionName)
       .doc("main")
-      .set(value || { ...emptyCompanyInfo }, { merge: false })
+      .set(normalizeCompanyInfo(value), { merge: false })
       .then(() => updateSyncStatus("synced", "Online"))
       .catch((error) => {
         console.warn("Nao foi possivel salvar companyInfo no Firebase.", error);
@@ -2315,6 +2334,7 @@ function updateServiceOrderStatus(orderId) {
   persistServiceOrders();
   logActivity("Status da OS alterado", `${formatServiceOrderNumber(order)} para ${getServiceOrderStatusLabel(nextStatus)}.`);
   renderServiceOrders();
+  renderNotifications();
 }
 
 function getNextServiceOrderStatus(status) {
@@ -2567,6 +2587,14 @@ function renderSettingsView() {
   Object.entries(settingsPanels).forEach(([name, panel]) => {
     panel.classList.toggle("active", name === activeSettingsView);
   });
+
+  renderAlertSettings();
+}
+
+function renderAlertSettings() {
+  const settings = getAlertSettings();
+  alertSettingsForm.elements.agendaDays.value = String(settings.agendaDays);
+  alertSettingsForm.elements.serviceOrderDays.value = String(settings.serviceOrderDays);
 }
 
 function renderAgendaView() {
@@ -2594,11 +2622,11 @@ function renderServiceOrderView() {
 function renderNotifications() {
   notificationList.innerHTML = "";
 
-  const visibleRequests = getVisibleAuthorizationRequests();
-  clearNotificationsButton.disabled = visibleRequests.length === 0;
-  notificationCount.textContent = String(visibleRequests.filter((item) => item.status === "Pendente").length);
+  const visibleNotifications = getVisibleNotifications();
+  clearNotificationsButton.disabled = visibleNotifications.length === 0;
+  notificationCount.textContent = String(visibleNotifications.filter((item) => item.status === "Pendente" || item.kind === "system-alert").length);
 
-  if (visibleRequests.length === 0) {
+  if (visibleNotifications.length === 0) {
     const emptyState = document.createElement("div");
     emptyState.className = "empty-state compact";
     emptyState.innerHTML = "<strong>Nenhuma notificacao</strong><span>Solicitacoes de autorizacao aparecerao aqui.</span>";
@@ -2606,7 +2634,7 @@ function renderNotifications() {
     return;
   }
 
-  visibleRequests.forEach((request) => {
+  visibleNotifications.forEach((request) => {
     const card = document.createElement("article");
     card.className = "notification-card";
 
@@ -2621,12 +2649,12 @@ function renderNotifications() {
     title.textContent = request.title;
 
     const details = document.createElement("span");
-    details.textContent = `${request.details} | Solicitado por: ${request.requesterName}`;
+    details.textContent = request.kind === "system-alert" ? request.details : `${request.details} | Solicitado por: ${request.requesterName}`;
 
     content.append(tag, title, details);
     card.append(content);
 
-    if (request.status === "Pendente" && canApproveAuthorizationRequests()) {
+    if (request.kind !== "system-alert" && request.status === "Pendente" && canApproveAuthorizationRequests()) {
       const actions = document.createElement("div");
       actions.className = "notification-actions";
 
@@ -2652,6 +2680,10 @@ function renderNotifications() {
   });
 }
 
+function getVisibleNotifications() {
+  return [...getSystemAlerts(), ...getVisibleAuthorizationRequests()];
+}
+
 function getVisibleAuthorizationRequests() {
   if (!currentUser) {
     return [];
@@ -2672,6 +2704,88 @@ function getDismissedNotificationIds() {
   return new Set(Array.isArray(dismissedNotifications[key]) ? dismissedNotifications[key] : []);
 }
 
+function getSystemAlerts() {
+  if (!currentUser) {
+    return [];
+  }
+
+  const settings = getAlertSettings();
+  const dismissed = getDismissedNotificationIds();
+  const alerts = [];
+
+  if (settings.agendaDays > 0 && canAccess("agenda")) {
+    agendaItems.forEach((item) => {
+      if (isAgendaClosedForAlert(item) || !isAlertOverdue(item.updatedAt || item.createdAt || item.date, settings.agendaDays)) {
+        return;
+      }
+
+      const alert = {
+        id: `alert-agenda-${item.id}-${settings.agendaDays}`,
+        kind: "system-alert",
+        status: "Alerta",
+        title: `${formatAgendaNumber(item)} sem alteração`,
+        details: `${item.clientName || "Cliente sem nome"} está há ${settings.agendaDays} dia(s) sem mudança de status.`
+      };
+
+      if (!dismissed.has(alert.id)) {
+        alerts.push(alert);
+      }
+    });
+  }
+
+  if (settings.serviceOrderDays > 0 && canAccess("serviceOrders")) {
+    serviceOrders.forEach((order) => {
+      if (getServiceOrderStatusGroup(order.status) === "closed" || !isAlertOverdue(order.updatedAt || order.createdAt || order.openedAt, settings.serviceOrderDays)) {
+        return;
+      }
+
+      const alert = {
+        id: `alert-os-${order.id}-${settings.serviceOrderDays}`,
+        kind: "system-alert",
+        status: "Alerta",
+        title: `${formatServiceOrderNumber(order)} sem alteração`,
+        details: `${order.clientName || "Cliente sem nome"} está há ${settings.serviceOrderDays} dia(s) sem mudança de status.`
+      };
+
+      if (!dismissed.has(alert.id)) {
+        alerts.push(alert);
+      }
+    });
+  }
+
+  return alerts;
+}
+
+function getAlertSettings() {
+  return {
+    ...emptyAlertSettings,
+    ...(companyInfo.alertSettings || {})
+  };
+}
+
+function isAgendaClosedForAlert(item) {
+  return ["Concluido", "Cancelado"].includes(normalizeAgendaStatus(item.status));
+}
+
+function isAlertOverdue(dateValue, days) {
+  const date = parseAlertDate(dateValue);
+
+  if (!date) {
+    return false;
+  }
+
+  return Date.now() - date.getTime() >= Number(days || 0) * 24 * 60 * 60 * 1000;
+}
+
+function parseAlertDate(value) {
+  if (!value) {
+    return null;
+  }
+
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? new Date(`${value}T00:00:00`) : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function getNotificationDismissKey() {
   return currentUser?.uid || currentUser?.id || normalize(currentUser?.login || "anonimo");
 }
@@ -2685,7 +2799,7 @@ function clearVisibleNotifications() {
     return;
   }
 
-  const visibleRequests = getVisibleAuthorizationRequests();
+  const visibleRequests = getVisibleNotifications();
   const key = getNotificationDismissKey();
   const dismissed = new Set([...(dismissedNotifications[key] || []), ...visibleRequests.map((request) => request.id)]);
   dismissedNotifications = {
@@ -2721,6 +2835,7 @@ function renderPermissions() {
   const canModifyAgenda = canModify("agenda");
   const canModifyServiceOrders = canModify("serviceOrders");
   const canModifyCompany = canModify("company");
+  const canModifySettings = canModify("settings");
   const canModifyUsers = isAdminLoggedIn;
   const restrictedElements = [
     ...form.elements,
@@ -2772,6 +2887,9 @@ function renderPermissions() {
   });
   [...companyStockForm.elements].forEach((element) => {
     element.disabled = !canModifyCompany;
+  });
+  [...alertSettingsForm.elements].forEach((element) => {
+    element.disabled = !canModifySettings;
   });
   companyStockSubmitButton.textContent = editingCompanyStockItemId ? "Salvar" : "Adicionar";
   companyStockSubmitButton.title = editingCompanyStockItemId ? "Salvar produto" : "Adicionar produto";
@@ -2990,6 +3108,28 @@ function saveCompanyNetworkInfo(event) {
   persistCompanyInfo();
   companyNetworkMessage.textContent = "Rede interna salva.";
   logActivity("Rede interna atualizada", "Informacoes de rede da empresa foram atualizadas.");
+}
+
+function saveAlertSettings(event) {
+  event.preventDefault();
+
+  if (!requireModify("settings")) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(alertSettingsForm).entries());
+  companyInfo = normalizeCompanyInfo({
+    ...companyInfo,
+    alertSettings: {
+      agendaDays: Number(data.agendaDays || 0),
+      serviceOrderDays: Number(data.serviceOrderDays || 0)
+    },
+    updatedAt: new Date().toISOString()
+  });
+  persistCompanyInfo();
+  alertSettingsMessage.textContent = "Alertas salvos.";
+  logActivity("Alertas atualizados", "Prazos de alerta da agenda e das OS foram atualizados.");
+  renderNotifications();
 }
 
 function addCompanyVehicle(event) {
@@ -3862,10 +4002,11 @@ function updateAgendaStatus(itemId) {
   }
 
   const nextStatus = getNextAgendaStatus(item.status);
-  agendaItems = agendaItems.map((agendaItem) => (agendaItem.id === itemId ? { ...agendaItem, status: nextStatus } : agendaItem));
+  agendaItems = agendaItems.map((agendaItem) => (agendaItem.id === itemId ? { ...agendaItem, status: nextStatus, updatedAt: new Date().toISOString() } : agendaItem));
   persistAgendaItems();
   logActivity("Status da agenda alterado", `${item.clientName || "Cliente"} alterado para ${nextStatus}.`);
   renderAgendaItems();
+  renderNotifications();
 }
 
 function editAgendaItem(itemId) {

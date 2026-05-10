@@ -1992,7 +1992,7 @@ function renderAuth() {
   syncStatus.classList.toggle("hidden", !isLoggedIn || !firebaseSyncEnabled);
 
   if (currentUser) {
-    adminStatus.textContent = isAdminLoggedIn ? "Administrador conectado" : `${currentUser.name} conectado`;
+    adminStatus.textContent = isAdminLoggedIn ? "Administrador" : currentUser.name;
   }
 
   if (!isLoggedIn) {
@@ -4130,8 +4130,9 @@ function toggleNewCompanyStockTypeField() {
 
 function renderPermissionList() {
   permissionList.innerHTML = "";
+  const configurableUsers = users.filter((user) => !isMasterAdminUser(user));
 
-  if (users.length === 0) {
+  if (configurableUsers.length === 0) {
     const emptyState = emptyRecordsTemplate.content.cloneNode(true);
     emptyState.querySelector("strong").textContent = "Nenhum usuario para configurar";
     emptyState.querySelector("span").textContent = "Crie usuarios antes de ajustar permissoes.";
@@ -4139,7 +4140,7 @@ function renderPermissionList() {
     return;
   }
 
-  users.forEach((user) => {
+  configurableUsers.forEach((user) => {
     const draft = getPermissionDraft(user);
     const card = document.createElement("article");
     card.className = `permission-card${permissionDrafts[user.id] ? " has-draft" : ""}`;
@@ -4211,6 +4212,10 @@ function renderPermissionList() {
     card.append(header, viewGroup, editGroup);
     permissionList.append(card);
   });
+}
+
+function isMasterAdminUser(user) {
+  return user?.role === "admin" || normalize(user?.login) === normalize(ADMIN_USER);
 }
 
 function createPermissionGroup(title, user, draft, type) {

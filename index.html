@@ -110,26 +110,72 @@
         <div class="panel-hero">
           <p class="eyebrow">Dashboard</p>
           <h2>Visao geral do sistema</h2>
-          <p>Acompanhe os principais numeros e use o menu lateral para acessar as areas disponiveis.</p>
+          <p>Acompanhe atendimentos, alertas, pendencias e movimentacoes recentes do sistema.</p>
         </div>
 
         <div class="dashboard-grid">
           <article class="dashboard-card">
             <span class="label">Clientes</span>
             <strong id="dashboardClientTotal">0</strong>
+            <small id="dashboardActiveClientTotal">0 ativos</small>
+          </article>
+          <article class="dashboard-card">
+            <span class="label">Agendamentos</span>
+            <strong id="dashboardAgendaTotal">0</strong>
+            <small id="dashboardOpenAgendaTotal">0 em aberto</small>
+          </article>
+          <article class="dashboard-card">
+            <span class="label">Ordens de servico</span>
+            <strong id="dashboardServiceOrderTotal">0</strong>
+            <small id="dashboardOpenServiceOrderTotal">0 em aberto</small>
+          </article>
+          <article class="dashboard-card">
+            <span class="label">Alertas</span>
+            <strong id="dashboardAlertTotal">0</strong>
+            <small>Sirene ativa por prazo</small>
+          </article>
+          <article class="dashboard-card">
+            <span class="label">Autorizações</span>
+            <strong id="dashboardAuthorizationTotal">0</strong>
+            <small>Solicitações pendentes</small>
           </article>
           <article class="dashboard-card">
             <span class="label">Usuarios</span>
             <strong id="dashboardUserTotal">0</strong>
+            <small id="dashboardActiveUserTotal">0 ativos</small>
           </article>
-          <article class="dashboard-card">
-            <span class="label">Logs</span>
-            <strong id="dashboardLogTotal">0</strong>
-          </article>
-          <article class="dashboard-card">
-            <span class="label">Agenda</span>
-            <strong id="dashboardAgendaTotal">0</strong>
-          </article>
+        </div>
+
+        <div class="dashboard-overview-grid">
+          <section class="dashboard-widget">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Atendimentos</p>
+                <h3>Status geral</h3>
+              </div>
+            </div>
+            <div id="dashboardStatusList" class="dashboard-status-list"></div>
+          </section>
+
+          <section class="dashboard-widget">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Pendencias</p>
+                <h3>Próximas ações</h3>
+              </div>
+            </div>
+            <div id="dashboardPendingList" class="dashboard-mini-list"></div>
+          </section>
+
+          <section class="dashboard-widget">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Auditoria</p>
+                <h3>Atividades recentes</h3>
+              </div>
+            </div>
+            <div id="dashboardRecentLogs" class="dashboard-mini-list"></div>
+          </section>
         </div>
       </section>
 
@@ -1082,50 +1128,95 @@
               </div>
             </div>
 
-            <div class="form-grid theme-form-grid">
-              <label>
-                <span>Cor do sistema</span>
-                <input id="themeSystemColor" name="systemColor" type="color" />
-              </label>
-              <label>
-                <span>Cor primaria</span>
-                <input id="themePrimaryColor" name="primaryColor" type="color" />
-              </label>
-              <label>
-                <span>Cor secundaria</span>
-                <input id="themeSecondaryColor" name="secondaryColor" type="color" />
-              </label>
-              <label>
-                <span>Layout</span>
-                <select id="themeLayout" name="layout">
-                  <option value="classic">Classico lateral</option>
-                  <option value="comfortable">Espacoso</option>
-                  <option value="focus">Foco compacto</option>
-                </select>
-              </label>
-              <label>
-                <span>Modo</span>
-                <select id="themeMode" name="mode">
-                  <option value="light">Claro</option>
-                  <option value="dark">Escuro</option>
-                </select>
-              </label>
-              <label>
-                <span>Tamanho da fonte</span>
-                <select id="themeFontSize" name="fontSize">
-                  <option value="small">Pequena</option>
-                  <option value="normal">Normal</option>
-                  <option value="large">Grande</option>
-                </select>
-              </label>
-              <label>
-                <span>Densidade da interface</span>
-                <select id="themeDensity" name="density">
-                  <option value="compact">Compacta</option>
-                  <option value="normal">Normal</option>
-                  <option value="comfortable">Confortavel</option>
-                </select>
-              </label>
+            <div class="theme-settings-layout">
+              <fieldset class="theme-fieldset">
+                <legend>Cores</legend>
+                <div class="theme-color-row">
+                  <label>
+                    <input id="themeSystemColor" name="systemColor" type="color" />
+                    <span>Fundo</span>
+                  </label>
+                  <label>
+                    <input id="themePrimaryColor" name="primaryColor" type="color" />
+                    <span>Primaria</span>
+                  </label>
+                  <label>
+                    <input id="themeSecondaryColor" name="secondaryColor" type="color" />
+                    <span>Secundaria</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset class="theme-fieldset">
+                <legend>Interface</legend>
+                <div class="theme-control-grid">
+                  <label>
+                    <span>Layout</span>
+                    <select id="themeLayout" name="layout">
+                      <option value="classic">Classico lateral</option>
+                      <option value="comfortable">Espacoso</option>
+                      <option value="focus">Foco compacto</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Modo</span>
+                    <select id="themeMode" name="mode">
+                      <option value="light">Claro</option>
+                      <option value="dark">Escuro</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Fonte</span>
+                    <select id="themeFontSize" name="fontSize">
+                      <option value="small">Pequena</option>
+                      <option value="normal">Normal</option>
+                      <option value="large">Grande</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Densidade</span>
+                    <select id="themeDensity" name="density">
+                      <option value="compact">Compacta</option>
+                      <option value="normal">Normal</option>
+                      <option value="comfortable">Confortavel</option>
+                    </select>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset class="theme-fieldset theme-status-fieldset">
+                <legend>Status</legend>
+                <div class="theme-status-grid">
+                  <label>
+                    <input id="themeStatusOpenColor" name="statusOpenColor" type="color" />
+                    <span>Aberto</span>
+                  </label>
+                  <label>
+                    <input id="themeStatusAnalysisColor" name="statusAnalysisColor" type="color" />
+                    <span>Em análise</span>
+                  </label>
+                  <label>
+                    <input id="themeStatusBudgetColor" name="statusBudgetColor" type="color" />
+                    <span>Orçamento</span>
+                  </label>
+                  <label>
+                    <input id="themeStatusRepairColor" name="statusRepairColor" type="color" />
+                    <span>Conserto</span>
+                  </label>
+                  <label>
+                    <input id="themeStatusClosedColor" name="statusClosedColor" type="color" />
+                    <span>Fechado</span>
+                  </label>
+                  <label>
+                    <input id="themeStatusDoneColor" name="statusDoneColor" type="color" />
+                    <span>Concluído</span>
+                  </label>
+                  <label>
+                    <input id="themeStatusCanceledColor" name="statusCanceledColor" type="color" />
+                    <span>Cancelado</span>
+                  </label>
+                </div>
+              </fieldset>
             </div>
 
             <p id="themeSettingsMessage" class="action-message" aria-live="polite"></p>

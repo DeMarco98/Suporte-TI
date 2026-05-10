@@ -161,7 +161,14 @@ const emptyThemeSettings = {
   layout: "classic",
   mode: "light",
   fontSize: "normal",
-  density: "normal"
+  density: "normal",
+  statusOpenColor: "#16833a",
+  statusAnalysisColor: "#9b7200",
+  statusBudgetColor: "#b86b00",
+  statusRepairColor: "#8a7800",
+  statusClosedColor: "#a33a3a",
+  statusDoneColor: "#1f7a4d",
+  statusCanceledColor: "#777777"
 };
 const emptyCompanyInfo = {
   companyName: "",
@@ -293,9 +300,18 @@ const notificationPanel = document.querySelector("#notificationPanel");
 const notificationList = document.querySelector("#notificationList");
 const clearNotificationsButton = document.querySelector("#clearNotificationsButton");
 const dashboardClientTotal = document.querySelector("#dashboardClientTotal");
+const dashboardActiveClientTotal = document.querySelector("#dashboardActiveClientTotal");
 const dashboardUserTotal = document.querySelector("#dashboardUserTotal");
-const dashboardLogTotal = document.querySelector("#dashboardLogTotal");
+const dashboardActiveUserTotal = document.querySelector("#dashboardActiveUserTotal");
 const dashboardAgendaTotal = document.querySelector("#dashboardAgendaTotal");
+const dashboardOpenAgendaTotal = document.querySelector("#dashboardOpenAgendaTotal");
+const dashboardServiceOrderTotal = document.querySelector("#dashboardServiceOrderTotal");
+const dashboardOpenServiceOrderTotal = document.querySelector("#dashboardOpenServiceOrderTotal");
+const dashboardAlertTotal = document.querySelector("#dashboardAlertTotal");
+const dashboardAuthorizationTotal = document.querySelector("#dashboardAuthorizationTotal");
+const dashboardStatusList = document.querySelector("#dashboardStatusList");
+const dashboardPendingList = document.querySelector("#dashboardPendingList");
+const dashboardRecentLogs = document.querySelector("#dashboardRecentLogs");
 const userForm = document.querySelector("#userForm");
 const userMessage = document.querySelector("#userMessage");
 const userList = document.querySelector("#userList");
@@ -2677,6 +2693,13 @@ function applyThemeSettings(settings = getThemeSettings()) {
   document.documentElement.style.setProperty("--accent", theme.primaryColor);
   document.documentElement.style.setProperty("--accent-dark", shadeColor(theme.primaryColor, -24));
   document.documentElement.style.setProperty("--green", theme.secondaryColor);
+  document.documentElement.style.setProperty("--status-open", theme.statusOpenColor);
+  document.documentElement.style.setProperty("--status-analysis", theme.statusAnalysisColor);
+  document.documentElement.style.setProperty("--status-budget", theme.statusBudgetColor);
+  document.documentElement.style.setProperty("--status-repair", theme.statusRepairColor);
+  document.documentElement.style.setProperty("--status-closed", theme.statusClosedColor);
+  document.documentElement.style.setProperty("--status-done", theme.statusDoneColor);
+  document.documentElement.style.setProperty("--status-canceled", theme.statusCanceledColor);
   document.body.dataset.themeMode = theme.mode;
   document.body.dataset.layout = theme.layout;
   document.body.dataset.fontSize = theme.fontSize;
@@ -3004,10 +3027,90 @@ function closeFloatingPanelsOnOutsideClick(event) {
 }
 
 function updateDashboardTotals() {
+  const openAgenda = agendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Aberto").length;
+  const openOrders = serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "open").length;
+  const pendingAuthorizations = getVisibleAuthorizationRequests().filter((item) => item.status === "Pendente").length;
+  const alerts = getSystemAlerts().length;
+
   dashboardClientTotal.textContent = String(clients.length);
+  dashboardActiveClientTotal.textContent = `${clients.filter((client) => client.status !== "Inativo").length} ativos`;
   dashboardUserTotal.textContent = String(users.length);
-  dashboardLogTotal.textContent = String(logs.length);
+  dashboardActiveUserTotal.textContent = `${users.filter((user) => user.active).length} ativos`;
   dashboardAgendaTotal.textContent = String(agendaItems.length);
+  dashboardOpenAgendaTotal.textContent = `${openAgenda} em aberto`;
+  dashboardServiceOrderTotal.textContent = String(serviceOrders.length);
+  dashboardOpenServiceOrderTotal.textContent = `${openOrders} em aberto`;
+  dashboardAlertTotal.textContent = String(alerts);
+  dashboardAuthorizationTotal.textContent = String(pendingAuthorizations);
+  renderDashboardStatusList();
+  renderDashboardPendingList();
+  renderDashboardRecentLogs();
+}
+
+function renderDashboardStatusList() {
+  dashboardStatusList.innerHTML = "";
+  const items = [
+    ["Agenda aberta", agendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Aberto").length],
+    ["Agenda em análise", agendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Em analise").length],
+    ["Agenda concluída", agendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Concluido").length],
+    ["OS abertas", serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "open").length],
+    ["OS em andamento", serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "inProgress").length],
+    ["OS fechadas", serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "closed").length]
+  ];
+
+  items.forEach(([label, value]) => {
+    dashboardStatusList.append(createDashboardStatusItem(label, value));
+  });
+}
+
+function createDashboardStatusItem(label, value) {
+  const item = document.createElement("div");
+  item.className = "dashboard-status-item";
+  item.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+  return item;
+}
+
+function renderDashboardPendingList() {
+  dashboardPendingList.innerHTML = "";
+  const items = [
+    ...getSystemAlerts().slice(0, 4).map((alert) => ({ title: alert.title, details: alert.details })),
+    ...getVisibleAuthorizationRequests()
+      .filter((request) => request.status === "Pendente")
+      .slice(0, 4)
+      .map((request) => ({ title: request.title, details: `Solicitado por ${request.requesterName}` }))
+  ].slice(0, 6);
+
+  if (items.length === 0) {
+    dashboardPendingList.append(createDashboardMiniItem("Nada pendente", "Alertas e autorizações aparecerão aqui."));
+    return;
+  }
+
+  items.forEach((item) => dashboardPendingList.append(createDashboardMiniItem(item.title, item.details)));
+}
+
+function renderDashboardRecentLogs() {
+  dashboardRecentLogs.innerHTML = "";
+  const recentLogs = logs.slice(0, 6);
+
+  if (recentLogs.length === 0) {
+    dashboardRecentLogs.append(createDashboardMiniItem("Sem atividades", "As próximas ações serão listadas aqui."));
+    return;
+  }
+
+  recentLogs.forEach((log) => {
+    dashboardRecentLogs.append(createDashboardMiniItem(log.action, `${log.actor || "Sistema"} | ${formatDate(log.createdAt)}`));
+  });
+}
+
+function createDashboardMiniItem(title, details) {
+  const item = document.createElement("article");
+  item.className = "dashboard-mini-item";
+  const strong = document.createElement("strong");
+  strong.textContent = title;
+  const span = document.createElement("span");
+  span.textContent = details;
+  item.append(strong, span);
+  return item;
 }
 
 function renderPermissions() {

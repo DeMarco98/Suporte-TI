@@ -470,6 +470,7 @@ const settingsPanels = {
   theme: document.querySelector("#settingsThemePanel"),
   alerts: document.querySelector("#settingsAlertsPanel"),
   password: document.querySelector("#settingsPasswordPanel"),
+  logs: document.querySelector("#settingsLogsPanel"),
   integrations: document.querySelector("#settingsIntegrationsPanel"),
   backup: document.querySelector("#settingsBackupPanel")
 };
@@ -480,6 +481,10 @@ const themeSettingsMessage = document.querySelector("#themeSettingsMessage");
 const restoreDefaultThemeButton = document.querySelector("#restoreDefaultThemeButton");
 const alertSettingsForm = document.querySelector("#alertSettingsForm");
 const alertSettingsMessage = document.querySelector("#alertSettingsMessage");
+const clearAllLogsButton = document.querySelector("#clearAllLogsButton");
+const clearLogsBeforeDate = document.querySelector("#clearLogsBeforeDate");
+const clearLogsBeforeButton = document.querySelector("#clearLogsBeforeButton");
+const settingsLogsMessage = document.querySelector("#settingsLogsMessage");
 const panels = {
   profile: document.querySelector("#profilePanel"),
   equipment: document.querySelector("#equipmentPanel"),
@@ -534,6 +539,8 @@ themeSettingsForm.addEventListener("submit", saveThemeSettings);
 themeSettingsForm.addEventListener("input", previewThemeSettings);
 restoreDefaultThemeButton.addEventListener("click", restoreDefaultTheme);
 alertSettingsForm.addEventListener("submit", saveAlertSettings);
+clearAllLogsButton.addEventListener("click", clearAllLogsFromSettings);
+clearLogsBeforeButton.addEventListener("click", clearLogsBeforeSelectedDate);
 settingsViewButtons.forEach((button) => button.addEventListener("click", () => switchSettingsView(button.dataset.settingsView)));
 companyForm.addEventListener("submit", saveCompanyInfo);
 companyNetworkForm.addEventListener("submit", saveCompanyNetworkInfo);
@@ -718,7 +725,7 @@ function restoreWorkspaceState({ applyFields = true } = {}) {
     activeCompanyView = state.activeCompanyView;
   }
 
-  if (["theme", "alerts", "password", "integrations", "backup"].includes(state.activeSettingsView)) {
+  if (["theme", "alerts", "password", "logs", "integrations", "backup"].includes(state.activeSettingsView)) {
     activeSettingsView = state.activeSettingsView;
   }
 
@@ -2696,7 +2703,25 @@ function updateServiceOrderFormMode() {
   serviceOrderSubmitButton.setAttribute("aria-label", serviceOrderSubmitButton.title);
 }
 
-function updateServiceOrderStatus(orderId) {
+function createServiceOrderStatusSelect(order) {
+  const select = document.createElement("select");
+  select.className = `service-order-status status-select ${getServiceOrderStatusClass(order.status)}`;
+  select.title = canModify("serviceOrders") ? "Selecionar status da OS" : "Status da OS";
+  select.disabled = !canModify("serviceOrders");
+
+  serviceOrderStatuses.forEach((status) => {
+    const option = document.createElement("option");
+    option.value = status;
+    option.textContent = getServiceOrderStatusLabel(status);
+    select.append(option);
+  });
+
+  select.value = normalizeServiceOrderStatus(order.status);
+  select.addEventListener("change", () => updateServiceOrderStatus(order.id, select.value));
+  return select;
+}
+
+function updateServiceOrderStatus(orderId, nextStatus) {
   if (!canModify("serviceOrders")) {
     return;
   }
@@ -2707,7 +2732,12 @@ function updateServiceOrderStatus(orderId) {
     return;
   }
 
-  const nextStatus = getNextServiceOrderStatus(order.status);
+  nextStatus = normalizeServiceOrderStatus(nextStatus);
+
+  if (normalizeServiceOrderStatus(order.status) === nextStatus) {
+    return;
+  }
+
   serviceOrders = serviceOrders.map((item) => (item.id === orderId ? { ...item, status: nextStatus, updatedAt: new Date().toISOString() } : item));
   persistServiceOrders();
   logActivity("Status da OS alterado", `${formatServiceOrderNumber(order)} para ${getServiceOrderStatusLabel(nextStatus)}.`);
@@ -2733,10 +2763,20 @@ function getServiceOrderStatusGroup(status) {
 }
 
 function getServiceOrderStatusLabel(status) {
-  return status || "Aberta";
+  return normalizeServiceOrderStatus(status);
+}
+
+function normalizeServiceOrderStatus(status) {
+  if (status === "Aberto") {
+    return "Aberta";
+  }
+
+  return serviceOrderStatuses.includes(status) ? status : "Aberta";
 }
 
 function getServiceOrderStatusClass(status) {
+  status = normalizeServiceOrderStatus(status);
+
   if (status === "Aberta" || status === "Aberto") {
     return "status-open";
   }
@@ -3537,6 +3577,9 @@ function renderPermissions() {
   [...themeSettingsForm.elements].forEach((element) => {
     element.disabled = !canModifySettings;
   });
+  clearAllLogsButton.disabled = !canModifySettings;
+  clearLogsBeforeDate.disabled = !canModifySettings;
+  clearLogsBeforeButton.disabled = !canModifySettings;
   companyStockSubmitButton.textContent = editingCompanyStockItemId ? "Salvar" : "Adicionar";
   companyStockSubmitButton.title = editingCompanyStockItemId ? "Salvar produto" : "Adicionar produto";
   companyStockSubmitButton.setAttribute("aria-label", companyStockSubmitButton.title);
@@ -3799,6 +3842,56 @@ function saveThemeSettings(event) {
   applyThemeSettings(themeSettings);
   themeSettingsMessage.textContent = "Tema salvo.";
   logActivity("Tema atualizado", "Configuracoes visuais do sistema foram atualizadas.");
+}
+
+function clearAllLogsFromSettings() {
+  if (!requireModify("settings")) {
+    return;
+  }
+
+  if (!window.confirm("Limpar todos os logs do sistema?")) {
+    return;
+  }
+
+  logs = [];
+  localStorage.removeItem(LOG_BACKUP_STORAGE_KEY);
+  persistLogs();
+  logActivity("Logs limpos", `Todos os logs foram limpos por ${currentUser?.login || "usuario"}.`);
+  settingsLogsMessage.textContent = "Logs limpos.";
+  renderLogs();
+  updateDashboardTotals();
+}
+
+function clearLogsBeforeSelectedDate() {
+  if (!requireModify("settings")) {
+    return;
+  }
+
+  const selectedDate = clearLogsBeforeDate.value;
+
+  if (!selectedDate) {
+    settingsLogsMessage.textContent = "Selecione uma data.";
+    clearLogsBeforeDate.focus();
+    return;
+  }
+
+  const cutoff = new Date(`${selectedDate}T00:00:00`);
+
+  if (Number.isNaN(cutoff.getTime())) {
+    settingsLogsMessage.textContent = "Data invalida.";
+    return;
+  }
+
+  const beforeCount = logs.length;
+  logs = logs.filter((log) => new Date(log.createdAt || 0) >= cutoff);
+  localStorage.setItem(LOG_BACKUP_STORAGE_KEY, JSON.stringify(logs));
+  persistLogs();
+  const removedCount = beforeCount - logs.length;
+  logActivity("Logs limpos", `${removedCount} log(s) anteriores a ${formatSimpleDate(selectedDate)} foram removidos por ${currentUser?.login || "usuario"}.`);
+  clearLogsBeforeDate.value = "";
+  settingsLogsMessage.textContent = `${removedCount} log(s) removido(s).`;
+  renderLogs();
+  updateDashboardTotals();
 }
 
 function addCompanyVehicle(event) {
@@ -4605,13 +4698,7 @@ function renderAgendaItems() {
     const titleWrap = document.createElement("div");
     titleWrap.className = "record-content";
 
-    const statusButton = document.createElement("button");
-    statusButton.className = `service-order-status ${getAgendaStatusClass(item.status)}`;
-    statusButton.type = "button";
-    statusButton.textContent = getAgendaStatusLabel(item.status);
-    statusButton.title = canModify("agenda") ? "Clique para alterar o status" : "Status da agenda";
-    statusButton.disabled = !canModify("agenda");
-    statusButton.addEventListener("click", () => updateAgendaStatus(item.id));
+    const statusButton = createAgendaStatusSelect(item);
 
     const title = document.createElement("strong");
     title.textContent = formatAgendaNumber(item);
@@ -4666,7 +4753,25 @@ function renderAgendaItems() {
   });
 }
 
-function updateAgendaStatus(itemId) {
+function createAgendaStatusSelect(item) {
+  const select = document.createElement("select");
+  select.className = `service-order-status status-select ${getAgendaStatusClass(item.status)}`;
+  select.title = canModify("agenda") ? "Selecionar status da agenda" : "Status da agenda";
+  select.disabled = !canModify("agenda");
+
+  agendaStatuses.forEach((status) => {
+    const option = document.createElement("option");
+    option.value = status;
+    option.textContent = getAgendaStatusLabel(status);
+    select.append(option);
+  });
+
+  select.value = normalizeAgendaStatus(item.status);
+  select.addEventListener("change", () => updateAgendaStatus(item.id, select.value));
+  return select;
+}
+
+function updateAgendaStatus(itemId, nextStatus) {
   if (!requireModify("agenda")) {
     return;
   }
@@ -4677,7 +4782,12 @@ function updateAgendaStatus(itemId) {
     return;
   }
 
-  const nextStatus = getNextAgendaStatus(item.status);
+  nextStatus = normalizeAgendaStatus(nextStatus);
+
+  if (normalizeAgendaStatus(item.status) === nextStatus) {
+    return;
+  }
+
   agendaItems = agendaItems.map((agendaItem) => (agendaItem.id === itemId ? { ...agendaItem, status: nextStatus, updatedAt: new Date().toISOString() } : agendaItem));
   persistAgendaItems();
   logActivity("Status da agenda alterado", `${item.clientName || "Cliente"} alterado para ${nextStatus}.`);
@@ -4957,13 +5067,7 @@ function renderServiceOrders() {
     const orderActions = document.createElement("div");
     orderActions.className = "service-order-card-actions";
 
-    const statusButton = document.createElement("button");
-    statusButton.className = `service-order-status ${getServiceOrderStatusClass(order.status)}`;
-    statusButton.type = "button";
-    statusButton.textContent = getServiceOrderStatusLabel(order.status);
-    statusButton.title = canModify("serviceOrders") ? "Clique para alterar o status" : "Status da OS";
-    statusButton.disabled = !canModify("serviceOrders");
-    statusButton.addEventListener("click", () => updateServiceOrderStatus(order.id));
+    const statusButton = createServiceOrderStatusSelect(order);
 
     orderActions.append(statusButton);
 
@@ -5156,6 +5260,7 @@ function renderNetworkSettingsMode(settings) {
 
 function renderNetworkSettingsSummary(settings) {
   networkSettingsSummary.innerHTML = "";
+  networkSettingsSummary.classList.add("compact-summary");
 
   if (!hasSavedNetworkSettings(settings)) {
     const emptyState = document.createElement("div");
@@ -5175,17 +5280,7 @@ function renderNetworkSettingsSummary(settings) {
   ];
 
   rows.forEach(([label, value]) => {
-    const item = document.createElement("div");
-    item.className = "summary-item";
-
-    const labelElement = document.createElement("span");
-    labelElement.textContent = label;
-
-    const valueElement = document.createElement("strong");
-    valueElement.textContent = value || "Nao informado";
-
-    item.append(labelElement, valueElement);
-    networkSettingsSummary.append(item);
+    networkSettingsSummary.append(createCompactSummaryItem(label, value));
   });
 }
 
@@ -5213,6 +5308,7 @@ function renderEmailSettingsMode(settings) {
 
 function renderEmailSettingsSummary(settings) {
   emailSettingsSummary.innerHTML = "";
+  emailSettingsSummary.classList.add("compact-summary");
 
   if (!hasSavedEmailSettings(settings)) {
     const emptyState = document.createElement("div");
@@ -5232,18 +5328,22 @@ function renderEmailSettingsSummary(settings) {
   ];
 
   rows.forEach(([label, value]) => {
-    const item = document.createElement("div");
-    item.className = "summary-item";
-
-    const labelElement = document.createElement("span");
-    labelElement.textContent = label;
-
-    const valueElement = document.createElement("strong");
-    valueElement.textContent = value || "Nao informado";
-
-    item.append(labelElement, valueElement);
-    emailSettingsSummary.append(item);
+    emailSettingsSummary.append(createCompactSummaryItem(label, value));
   });
+}
+
+function createCompactSummaryItem(label, value) {
+  const item = document.createElement("div");
+  item.className = `summary-item compact-summary-item${value ? "" : " is-empty"}`;
+
+  const labelElement = document.createElement("span");
+  labelElement.textContent = label;
+
+  const valueElement = document.createElement("strong");
+  valueElement.textContent = value || "Nao informado";
+
+  item.append(labelElement, valueElement);
+  return item;
 }
 
 function renderRelatedRecords() {

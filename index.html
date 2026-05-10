@@ -523,7 +523,7 @@
         <div id="agendaList" class="record-list"></div>
         </section>
 
-        <form id="agendaForm" class="settings-form service-order-view">
+        <form id="agendaForm" class="settings-form service-order-view compact-create-form">
           <div class="settings-header">
             <div>
               <p class="eyebrow">Agenda</p>
@@ -531,7 +531,7 @@
             </div>
           </div>
 
-          <div class="form-grid">
+          <div class="form-grid compact-form-grid">
             <label>
               <span>Cliente</span>
               <select id="agendaClient" name="clientId" required></select>
@@ -604,7 +604,7 @@
           <div id="serviceOrderList" class="record-list"></div>
         </section>
 
-        <form id="serviceOrderForm" class="settings-form service-order-view">
+        <form id="serviceOrderForm" class="settings-form service-order-view compact-create-form">
           <div class="settings-header">
             <div>
               <p class="eyebrow">Nova OS</p>
@@ -612,7 +612,7 @@
             </div>
           </div>
 
-          <div class="form-grid">
+          <div class="form-grid compact-form-grid">
             <label>
               <span>Data de abertura</span>
               <input id="serviceOrderDate" name="openedAt" type="date" />
@@ -655,7 +655,7 @@
           </div>
 
           <div id="commonServiceOrderEquipmentFields" class="settings-form compact-nested-form">
-            <div class="form-grid equipment-main-row">
+            <div class="form-grid compact-form-grid equipment-main-row">
               <label>
                 <span>Marca/Modelo</span>
                 <input id="serviceOrderBrandModel" name="brandModel" required />
@@ -685,7 +685,7 @@
               </div>
             </div>
 
-            <div class="form-grid">
+            <div class="form-grid compact-form-grid">
               <label>
                 <span>S/N</span>
                 <input id="serviceOrderSerialNumber" name="serialNumber" />
@@ -800,7 +800,7 @@
             <textarea id="serviceOrderEquipmentNotes" name="equipmentNotes" rows="3"></textarea>
           </label>
 
-          <div class="form-grid">
+          <div class="form-grid compact-form-grid">
             <label>
               <span>Orcamento enviado</span>
               <select id="serviceOrderBudgetSent" name="budgetSent">
@@ -818,7 +818,7 @@
             </label>
           </div>
 
-          <div id="externalRepairLocationWrap" class="form-grid hidden">
+          <div id="externalRepairLocationWrap" class="form-grid compact-form-grid hidden">
             <label>
               <span>Local do conserto</span>
               <select id="externalRepairLocation" name="externalRepairLocation"></select>
@@ -862,7 +862,7 @@
           <button class="company-tab" type="button" data-company-view="stock">Estoque</button>
         </div>
 
-        <form id="companyForm" class="settings-form service-order-view active">
+        <form id="companyForm" class="settings-form service-order-view compact-create-form active">
           <div class="settings-header">
             <div>
               <p class="eyebrow">Perfil</p>
@@ -871,7 +871,7 @@
             <button class="primary" type="submit">Salvar</button>
           </div>
 
-          <div class="form-grid">
+          <div class="form-grid compact-form-grid">
             <label>
               <span>Nome da empresa</span>
               <input id="companyName" name="companyName" />
@@ -901,7 +901,7 @@
           <p id="companyMessage" class="action-message" aria-live="polite"></p>
         </form>
 
-        <section id="companyNetworkPanel" class="settings-form service-order-view">
+        <section id="companyNetworkPanel" class="settings-form service-order-view compact-create-form">
           <form id="companyNetworkForm" class="nested-settings-form">
             <div class="settings-header">
               <div>
@@ -911,7 +911,7 @@
               <button class="primary" type="submit">Salvar</button>
             </div>
 
-            <div class="form-grid">
+            <div class="form-grid compact-form-grid">
               <label>
                 <span>Provedor de internet</span>
                 <input id="companyNetworkProvider" name="networkProvider" />
@@ -952,7 +952,7 @@
           </form>
         </section>
 
-        <section id="companyVehiclesPanel" class="settings-form service-order-view">
+        <section id="companyVehiclesPanel" class="settings-form service-order-view compact-create-form">
           <div class="settings-header">
             <div>
               <p class="eyebrow">Veiculos</p>
@@ -960,7 +960,7 @@
             </div>
           </div>
 
-          <form id="companyVehicleForm" class="inline-form company-vehicle-form">
+          <form id="companyVehicleForm" class="inline-form company-vehicle-form compact-company-inline-form">
             <label>
               <span>Tipo</span>
               <select id="companyVehicleType" name="type" required>
@@ -996,7 +996,7 @@
           <div id="companyVehicleList" class="record-list"></div>
         </section>
 
-        <section id="companyStockPanel" class="settings-form service-order-view">
+        <section id="companyStockPanel" class="settings-form service-order-view compact-create-form">
           <div class="settings-header">
             <div>
               <p class="eyebrow">Estoque</p>
@@ -1004,7 +1004,7 @@
             </div>
           </div>
 
-          <form id="companyStockForm" class="inline-form company-stock-form">
+          <form id="companyStockForm" class="inline-form company-stock-form compact-company-inline-form">
             <label>
               <span>Tipo de produto</span>
               <select id="companyStockType" name="type" required></select>
@@ -1081,6 +1081,7 @@
           <button class="settings-tab active" type="button" data-settings-view="theme">Tema</button>
           <button class="settings-tab" type="button" data-settings-view="alerts">Alertas</button>
           <button class="settings-tab" type="button" data-settings-view="password">Senha</button>
+          <button class="settings-tab" type="button" data-settings-view="logs">Logs</button>
           <button class="settings-tab" type="button" data-settings-view="integrations">Integrações</button>
           <button class="settings-tab" type="button" data-settings-view="backup">Backup</button>
         </div>
@@ -1262,6 +1263,29 @@
 
             <p id="currentPasswordMessage" class="action-message" aria-live="polite"></p>
           </form>
+        </section>
+
+        <section id="settingsLogsPanel" class="settings-form service-order-view">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Logs</p>
+              <h3>Manutencao dos registros</h3>
+            </div>
+          </div>
+
+          <div class="settings-log-actions">
+            <button id="clearAllLogsButton" class="subtle danger-subtle" type="button">Limpar todos os logs</button>
+
+            <label>
+              <span>Excluir logs anteriores a</span>
+              <div class="inline-confirm-field">
+                <input id="clearLogsBeforeDate" type="date" />
+                <button id="clearLogsBeforeButton" class="subtle" type="button">Excluir</button>
+              </div>
+            </label>
+          </div>
+
+          <p id="settingsLogsMessage" class="action-message" aria-live="polite"></p>
         </section>
 
         <section id="settingsIntegrationsPanel" class="settings-form service-order-view">

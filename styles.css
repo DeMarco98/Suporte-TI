@@ -201,6 +201,10 @@ body[data-theme-mode="dark"] .alert-card {
   background: rgba(163, 58, 58, 0.16);
 }
 
+body[data-theme-mode="dark"] .compact-summary-item.is-empty strong {
+  color: #94a2aa;
+}
+
 body[data-theme-mode="dark"] ::placeholder {
   color: #8f9ca3;
 }
@@ -1001,6 +1005,110 @@ textarea:focus {
   justify-content: flex-end;
 }
 
+.compact-create-form {
+  max-width: 920px;
+  gap: 9px;
+  padding: 10px;
+}
+
+.compact-create-form .settings-header {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.compact-create-form .settings-header h3 {
+  font-size: 0.96rem;
+}
+
+.compact-create-form .eyebrow {
+  margin-bottom: 2px;
+  font-size: 0.6rem;
+}
+
+.compact-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.compact-create-form label {
+  gap: 4px;
+  font-size: 0.74rem;
+}
+
+.compact-create-form input,
+.compact-create-form select {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 0.78rem;
+}
+
+.compact-create-form textarea {
+  min-height: 66px;
+  padding: 8px;
+  font-size: 0.78rem;
+}
+
+.compact-create-form .compact-nested-form {
+  gap: 8px;
+  margin-top: 0;
+  border-style: dashed;
+  background: rgba(255, 253, 248, 0.62);
+  padding: 9px;
+}
+
+.compact-create-form #commonServiceOrderEquipmentFields {
+  border-style: solid;
+}
+
+.compact-create-form .check-options {
+  gap: 6px;
+}
+
+.compact-create-form .check-row {
+  min-height: 28px;
+  gap: 5px;
+}
+
+.compact-create-form .field-title {
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+}
+
+.compact-create-form .service-order-form-actions {
+  margin-top: 2px;
+}
+
+.compact-company-inline-form {
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.compact-company-inline-form label {
+  gap: 4px;
+}
+
+.compact-company-inline-form input,
+.compact-company-inline-form select {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 0.78rem;
+}
+
+.compact-company-inline-form textarea {
+  min-height: 58px;
+  padding: 8px;
+  font-size: 0.78rem;
+}
+
+.compact-company-inline-form button {
+  min-height: 30px;
+  align-self: end;
+}
+
+.compact-create-form .record-list {
+  margin-top: 8px;
+}
+
 .client-form {
   display: grid;
   gap: 14px;
@@ -1053,6 +1161,11 @@ textarea:focus {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.settings-summary.compact-summary {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px;
 }
 
 .settings-placeholder-grid {
@@ -1160,6 +1273,10 @@ body[data-theme-mode="dark"] .theme-status-grid label {
   background: #11181d;
 }
 
+body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
+  background: #11181d;
+}
+
 .compact-actions {
   margin: 0;
 }
@@ -1193,6 +1310,37 @@ body[data-theme-mode="dark"] .theme-status-grid label {
   font-size: 0.84rem;
 }
 
+.compact-summary-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
+  border-radius: 7px;
+  padding: 5px 8px;
+}
+
+.compact-summary-item span {
+  flex: 0 0 auto;
+  font-size: 0.62rem;
+}
+
+.compact-summary-item strong {
+  min-width: 0;
+  text-align: right;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.compact-summary-item.is-empty {
+  opacity: 0.72;
+}
+
+.compact-summary-item.is-empty strong {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1215,6 +1363,39 @@ body[data-theme-mode="dark"] .theme-status-grid label {
   min-height: 30px;
   padding: 0 8px;
   font-size: 0.78rem;
+}
+
+.settings-log-actions {
+  display: grid;
+  grid-template-columns: minmax(150px, max-content) minmax(220px, 340px);
+  align-items: end;
+  gap: 10px;
+  max-width: 560px;
+}
+
+.settings-log-actions label {
+  gap: 4px;
+}
+
+.settings-log-actions input {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 0.76rem;
+}
+
+.settings-log-actions .subtle {
+  min-height: 28px;
+}
+
+.danger-subtle {
+  border-color: rgba(163, 58, 58, 0.24);
+  color: var(--danger);
+}
+
+.danger-subtle:hover {
+  border-color: rgba(163, 58, 58, 0.38);
+  background: rgba(163, 58, 58, 0.08);
+  color: var(--danger);
 }
 
 .users-actions {
@@ -1501,6 +1682,17 @@ body[data-theme-mode="dark"] .theme-status-grid label {
   padding: 0 8px;
   font-size: 0.76rem;
   font-weight: 900;
+}
+
+.service-order-status.status-select {
+  width: auto;
+  min-width: 112px;
+  cursor: pointer;
+  padding-right: 24px;
+}
+
+.service-order-status.status-select:disabled {
+  cursor: default;
 }
 
 .service-order-status.status-open {
@@ -1977,6 +2169,10 @@ button:disabled {
 
   .settings-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-log-actions {
+    grid-template-columns: 1fr;
   }
 
   .inline-form button,

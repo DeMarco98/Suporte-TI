@@ -53,13 +53,20 @@ body[data-theme-mode="dark"] {
 body[data-theme-mode="dark"] .dashboard-sidebar-panel,
 body[data-theme-mode="dark"] .welcome-panel,
 body[data-theme-mode="dark"] .login-form,
+body[data-theme-mode="dark"] .sidebar,
+body[data-theme-mode="dark"] .workspace,
+body[data-theme-mode="dark"] .admin-strip,
 body[data-theme-mode="dark"] .settings-form,
 body[data-theme-mode="dark"] .settings-guide,
 body[data-theme-mode="dark"] .record-card,
 body[data-theme-mode="dark"] .summary,
+body[data-theme-mode="dark"] .summary-item,
 body[data-theme-mode="dark"] .notification-panel,
 body[data-theme-mode="dark"] .notification-card,
 body[data-theme-mode="dark"] .permission-card,
+body[data-theme-mode="dark"] .modal,
+body[data-theme-mode="dark"] .modal-content,
+body[data-theme-mode="dark"] .equipment-extra-fields,
 body[data-theme-mode="dark"] .dashboard-widget,
 body[data-theme-mode="dark"] .dashboard-card {
   background: var(--panel);
@@ -82,17 +89,26 @@ body[data-theme-mode="dark"] .panel-hero {
 }
 
 body[data-theme-mode="dark"] .dashboard-tab {
-  background: #20282e;
-  color: #dce4e8;
-  border-color: rgba(255, 255, 255, 0.06);
+  background: #1b2329;
+  color: #e4ecef;
+  border-color: #2d3941;
 }
 
-body[data-theme-mode="dark"] .dashboard-tab:hover,
+body[data-theme-mode="dark"] .dashboard-tab:hover {
+  background: #22313a;
+  color: #ffffff;
+  border-color: rgba(108, 184, 207, 0.38);
+  border-left-color: var(--accent);
+}
+
 body[data-theme-mode="dark"] .dashboard-tab.active {
-  background: #eaf5f7;
-  color: #174f62;
+  background: linear-gradient(90deg, rgba(37, 109, 133, 0.42), rgba(37, 109, 133, 0.14));
+  color: #ffffff;
+  border-color: rgba(108, 184, 207, 0.44);
+  border-left-color: var(--accent);
 }
 
+body[data-theme-mode="dark"] .tab,
 body[data-theme-mode="dark"] .service-order-tab,
 body[data-theme-mode="dark"] .agenda-tab,
 body[data-theme-mode="dark"] .company-tab,
@@ -100,12 +116,26 @@ body[data-theme-mode="dark"] .settings-tab {
   color: #d9e2e6;
 }
 
+body[data-theme-mode="dark"] .tab:hover,
+body[data-theme-mode="dark"] .service-order-tab:hover,
+body[data-theme-mode="dark"] .agenda-tab:hover,
+body[data-theme-mode="dark"] .company-tab:hover,
+body[data-theme-mode="dark"] .settings-tab:hover {
+  background: #1f2a31;
+  color: #ffffff;
+  border-color: rgba(108, 184, 207, 0.32);
+  border-bottom-color: var(--accent);
+}
+
+body[data-theme-mode="dark"] .tab.active,
 body[data-theme-mode="dark"] .service-order-tab.active,
 body[data-theme-mode="dark"] .agenda-tab.active,
 body[data-theme-mode="dark"] .company-tab.active,
 body[data-theme-mode="dark"] .settings-tab.active {
-  background: #eaf5f7;
-  color: #174f62;
+  background: #21313a;
+  color: #ffffff;
+  border-color: rgba(108, 184, 207, 0.36);
+  border-bottom-color: var(--accent);
 }
 
 body[data-theme-mode="dark"] .ghost,
@@ -122,6 +152,57 @@ body[data-theme-mode="dark"] .primary {
 body[data-theme-mode="dark"] .dashboard-status-item,
 body[data-theme-mode="dark"] .dashboard-mini-item {
   background: #11161a;
+}
+
+body[data-theme-mode="dark"] .client-item,
+body[data-theme-mode="dark"] .permission-option,
+body[data-theme-mode="dark"] .permission-status .check-row,
+body[data-theme-mode="dark"] .switch-row,
+body[data-theme-mode="dark"] .password-toggle,
+body[data-theme-mode="dark"] .draft-button,
+body[data-theme-mode="dark"] .empty-state,
+body[data-theme-mode="dark"] .service-order-technical {
+  background: #10171c;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+body[data-theme-mode="dark"] .client-item:hover,
+body[data-theme-mode="dark"] .record-card.clickable:hover {
+  background: #17242b;
+  border-color: rgba(108, 184, 207, 0.46);
+}
+
+body[data-theme-mode="dark"] .client-item.active {
+  background: #20343d;
+  border-color: rgba(108, 184, 207, 0.58);
+}
+
+body[data-theme-mode="dark"] .service-order-status:hover:not(:disabled) {
+  background: #10171c;
+}
+
+body[data-theme-mode="dark"] .sync-status {
+  background: #10171c;
+  color: var(--ink);
+}
+
+body[data-theme-mode="dark"] .sync-status.synced {
+  background: rgba(22, 131, 58, 0.16);
+}
+
+body[data-theme-mode="dark"] .sync-status.syncing {
+  background: rgba(37, 109, 133, 0.22);
+}
+
+body[data-theme-mode="dark"] .sync-status.offline,
+body[data-theme-mode="dark"] .alert-button.has-alerts,
+body[data-theme-mode="dark"] .alert-card {
+  background: rgba(163, 58, 58, 0.16);
+}
+
+body[data-theme-mode="dark"] ::placeholder {
+  color: #8f9ca3;
 }
 
 body[data-font-size="small"] {

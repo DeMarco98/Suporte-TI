@@ -2919,14 +2919,16 @@ function getAgendaAlertReason(item, days) {
   }
 
   const isOpen = normalizeAgendaStatus(item.status) === "Aberto";
-  const openedDays = getElapsedAlertDays(item.createdAt || item.date);
-  const unchangedDays = getElapsedAlertDays(item.updatedAt || item.createdAt || item.date);
+  const openedDate = item.date || item.createdAt;
+  const unchangedDate = item.updatedAt || item.createdAt || item.date;
+  const openedDays = getElapsedAlertDays(openedDate);
+  const unchangedDays = getElapsedAlertDays(unchangedDate);
 
   if (isOpen && openedDays >= Number(days || 0)) {
     return {
       type: "open",
       title: "em aberto",
-      details: `está em aberto há ${openedDays} dia(s).`
+      details: `está em aberto há ${openedDays} dia(s), desde ${formatAlertDate(openedDate)}.`
     };
   }
 
@@ -2934,7 +2936,7 @@ function getAgendaAlertReason(item, days) {
     return {
       type: "stale",
       title: "sem alteração",
-      details: `está há ${unchangedDays} dia(s) sem mudança de status.`
+      details: `está há ${unchangedDays} dia(s) sem mudança de status, desde ${formatAlertDate(unchangedDate)}.`
     };
   }
 
@@ -2943,8 +2945,10 @@ function getAgendaAlertReason(item, days) {
 
 function getServiceOrderAlertReason(order, days) {
   const statusGroup = getServiceOrderStatusGroup(order.status);
-  const openedDays = getElapsedAlertDays(order.openedAt || order.createdAt);
-  const unchangedDays = getElapsedAlertDays(order.updatedAt || order.createdAt || order.openedAt);
+  const openedDate = order.openedAt || order.createdAt;
+  const unchangedDate = order.updatedAt || order.createdAt || order.openedAt;
+  const openedDays = getElapsedAlertDays(openedDate);
+  const unchangedDays = getElapsedAlertDays(unchangedDate);
 
   if (statusGroup === "closed") {
     return null;
@@ -2954,7 +2958,7 @@ function getServiceOrderAlertReason(order, days) {
     return {
       type: "open",
       title: "em aberto",
-      details: `está em aberto há ${openedDays} dia(s).`
+      details: `está em aberto há ${openedDays} dia(s), desde ${formatAlertDate(openedDate)}.`
     };
   }
 
@@ -2962,7 +2966,7 @@ function getServiceOrderAlertReason(order, days) {
     return {
       type: "stale",
       title: "sem alteração",
-      details: `está há ${unchangedDays} dia(s) sem mudança de status.`
+      details: `está há ${unchangedDays} dia(s) sem mudança de status, desde ${formatAlertDate(unchangedDate)}.`
     };
   }
 
@@ -2980,7 +2984,10 @@ function getElapsedAlertDays(dateValue) {
     return 0;
   }
 
-  return Math.max(0, Math.floor((Date.now() - date.getTime()) / (24 * 60 * 60 * 1000)));
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return Math.max(0, Math.floor((todayStart.getTime() - dateStart.getTime()) / (24 * 60 * 60 * 1000)));
 }
 
 function parseAlertDate(value) {
@@ -2990,6 +2997,16 @@ function parseAlertDate(value) {
 
   const date = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? new Date(`${value}T00:00:00`) : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatAlertDate(value) {
+  const date = parseAlertDate(value);
+
+  if (!date) {
+    return "data nao informada";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
 function getNotificationDismissKey() {

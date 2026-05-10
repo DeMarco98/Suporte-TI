@@ -859,6 +859,39 @@ textarea:focus {
   padding: 2px;
 }
 
+#settingsThemePanel {
+  max-width: 760px;
+}
+
+#themeSettingsForm {
+  gap: 8px;
+}
+
+.theme-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(120px, max-content));
+  align-items: end;
+  justify-content: start;
+  gap: 8px;
+}
+
+.theme-form-grid label {
+  width: 120px;
+}
+
+.theme-form-grid label:has(select) {
+  width: 150px;
+}
+
+.theme-form-grid span {
+  font-size: 0.68rem;
+}
+
+.theme-form-grid select {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 0.76rem;
+}
+
 .compact-actions {
   margin: 0;
 }

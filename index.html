@@ -1322,7 +1322,18 @@
               <h3>Exportacao e seguranca</h3>
             </div>
           </div>
-          <p class="muted-text">Aqui vamos adicionar opcoes para exportar dados e criar rotinas de backup.</p>
+
+          <div class="backup-actions">
+            <button id="downloadBackupButton" class="subtle" type="button">Baixar backup JSON</button>
+            <button id="saveLocalBackupButton" class="subtle" type="button">Salvar copia local</button>
+            <button id="restoreBackupFileButton" class="subtle" type="button">Restaurar de arquivo</button>
+            <button id="restoreLocalBackupButton" class="subtle" type="button">Restaurar copia local</button>
+            <button id="clearLocalBackupButton" class="subtle danger-subtle" type="button">Apagar copia local</button>
+            <input id="backupFileInput" class="hidden" type="file" accept="application/json,.json" />
+          </div>
+
+          <p id="backupLocalInfo" class="muted-text">Nenhuma copia local salva neste navegador.</p>
+          <p id="backupMessage" class="action-message" aria-live="polite"></p>
         </section>
       </section>
       </section>

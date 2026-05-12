@@ -17,6 +17,7 @@ const DISMISSED_NOTIFICATION_STORAGE_KEY = "cadastros-notificacoes-limpas";
 const WORKSPACE_STATE_STORAGE_KEY = "cadastros-posicao-usuario";
 const FORM_DRAFT_STORAGE_KEY = "cadastros-rascunhos-formularios";
 const LOG_BACKUP_STORAGE_KEY = "cadastros-logs-backup-local";
+const LOCAL_BACKUP_STORAGE_KEY = "cadastros-backup-local";
 const ADMIN_USER = "administrador";
 const NEW_CATEGORY_VALUE = "__new_category__";
 const NEW_BRAND_MODEL_VALUE = "__new_brand_model__";
@@ -489,6 +490,14 @@ const settingsLogsMessage = document.querySelector("#settingsLogsMessage");
 const resetAgendaCounterButton = document.querySelector("#resetAgendaCounterButton");
 const resetServiceOrderCounterButton = document.querySelector("#resetServiceOrderCounterButton");
 const settingsSystemMessage = document.querySelector("#settingsSystemMessage");
+const downloadBackupButton = document.querySelector("#downloadBackupButton");
+const saveLocalBackupButton = document.querySelector("#saveLocalBackupButton");
+const restoreBackupFileButton = document.querySelector("#restoreBackupFileButton");
+const restoreLocalBackupButton = document.querySelector("#restoreLocalBackupButton");
+const clearLocalBackupButton = document.querySelector("#clearLocalBackupButton");
+const backupFileInput = document.querySelector("#backupFileInput");
+const backupLocalInfo = document.querySelector("#backupLocalInfo");
+const backupMessage = document.querySelector("#backupMessage");
 const panels = {
   profile: document.querySelector("#profilePanel"),
   equipment: document.querySelector("#equipmentPanel"),
@@ -547,6 +556,12 @@ clearAllLogsButton.addEventListener("click", clearAllLogsFromSettings);
 clearLogsBeforeButton.addEventListener("click", clearLogsBeforeSelectedDate);
 resetAgendaCounterButton.addEventListener("click", resetAgendaCounterFromSettings);
 resetServiceOrderCounterButton.addEventListener("click", resetServiceOrderCounterFromSettings);
+downloadBackupButton.addEventListener("click", downloadSystemBackup);
+saveLocalBackupButton.addEventListener("click", saveLocalSystemBackup);
+restoreBackupFileButton.addEventListener("click", () => backupFileInput.click());
+restoreLocalBackupButton.addEventListener("click", restoreLocalSystemBackup);
+clearLocalBackupButton.addEventListener("click", clearLocalSystemBackup);
+backupFileInput.addEventListener("change", restoreSystemBackupFromFile);
 settingsViewButtons.forEach((button) => button.addEventListener("click", () => switchSettingsView(button.dataset.settingsView)));
 companyForm.addEventListener("submit", saveCompanyInfo);
 companyNetworkForm.addEventListener("submit", saveCompanyNetworkInfo);
@@ -2086,6 +2101,10 @@ function canModifyGlobalTheme() {
   return canApproveAuthorizationRequests();
 }
 
+function canManageBackups() {
+  return canApproveAuthorizationRequests();
+}
+
 function canManageUsers() {
   return Boolean(isAdminLoggedIn || getCurrentStoredUser()?.fullControl);
 }
@@ -3024,6 +3043,7 @@ function renderSettingsView() {
 
   renderThemeSettings();
   renderAlertSettings();
+  renderBackupInfo();
 }
 
 function renderThemeSettings() {
@@ -3538,6 +3558,8 @@ function renderPermissions() {
   const canModifyCompany = canModify("company");
   const canModifySettings = canModify("settings");
   const canModifyTheme = canModifyGlobalTheme();
+  const canBackup = canManageBackups();
+  const hasLocalBackup = Boolean(getLocalSystemBackup());
   const canModifyUsers = isAdminLoggedIn;
   const restrictedElements = [
     ...form.elements,
@@ -3603,6 +3625,11 @@ function renderPermissions() {
   clearLogsBeforeButton.disabled = !canModifySettings;
   resetAgendaCounterButton.disabled = !canModifySettings;
   resetServiceOrderCounterButton.disabled = !canModifySettings;
+  [downloadBackupButton, saveLocalBackupButton, restoreBackupFileButton, restoreLocalBackupButton, clearLocalBackupButton].forEach((button) => {
+    button.disabled = !canBackup;
+  });
+  restoreLocalBackupButton.disabled = !canBackup || !hasLocalBackup;
+  clearLocalBackupButton.disabled = !canBackup || !hasLocalBackup;
   companyStockSubmitButton.textContent = editingCompanyStockItemId ? "Salvar" : "Adicionar";
   companyStockSubmitButton.title = editingCompanyStockItemId ? "Salvar produto" : "Adicionar produto";
   companyStockSubmitButton.setAttribute("aria-label", companyStockSubmitButton.title);
@@ -3946,6 +3973,227 @@ function resetServiceOrderCounterFromSettings() {
   persistServiceOrderCounter();
   settingsSystemMessage.textContent = "Contagem de OS resetada.";
   logActivity("Contagem resetada", `Contagem de OS resetada por ${currentUser?.login || "usuario"}.`);
+}
+
+function renderBackupInfo() {
+  const backup = getLocalSystemBackup();
+
+  if (!backup) {
+    backupLocalInfo.textContent = "Nenhuma copia local salva neste navegador.";
+    return;
+  }
+
+  backupLocalInfo.textContent = `Copia local salva em ${formatDate(backup.createdAt)} por ${backup.createdBy?.login || "usuario"}.`;
+}
+
+function createSystemBackup() {
+  return {
+    app: "Suporte-TI",
+    type: "system-backup",
+    version: 1,
+    createdAt: new Date().toISOString(),
+    createdBy: {
+      name: currentUser?.name || "Usuario",
+      login: currentUser?.login || "usuario"
+    },
+    data: {
+      clients,
+      equipmentCategories,
+      equipmentBrandModels,
+      companyInfo,
+      users,
+      logs,
+      agendaItems,
+      agendaCounter,
+      serviceOrders,
+      serviceOrderCounter,
+      serviceOrderEquipmentTypes,
+      externalRepairLocations,
+      emailTypes,
+      authorizationRequests
+    }
+  };
+}
+
+function downloadSystemBackup() {
+  if (!canManageBackups()) {
+    backupMessage.textContent = "Apenas administrador ou Controle Total pode gerar backup.";
+    return;
+  }
+
+  const backup = createSystemBackup();
+  const content = JSON.stringify(backup, null, 2);
+  const blob = new Blob([content], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `suporte-ti-backup-${getBackupFileDate()}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  backupMessage.textContent = "Backup baixado.";
+  logActivity("Backup exportado", `Backup JSON gerado por ${currentUser?.login || "usuario"}.`);
+}
+
+function saveLocalSystemBackup() {
+  if (!canManageBackups()) {
+    backupMessage.textContent = "Apenas administrador ou Controle Total pode salvar backup.";
+    return;
+  }
+
+  const backup = createSystemBackup();
+  localStorage.setItem(LOCAL_BACKUP_STORAGE_KEY, JSON.stringify(backup));
+  backupMessage.textContent = "Copia local salva neste navegador.";
+  renderBackupInfo();
+  logActivity("Backup local salvo", `Backup local salvo por ${currentUser?.login || "usuario"}.`);
+}
+
+function restoreSystemBackupFromFile(event) {
+  if (!canManageBackups()) {
+    backupMessage.textContent = "Apenas administrador ou Controle Total pode restaurar backup.";
+    backupFileInput.value = "";
+    return;
+  }
+
+  const file = event.target.files?.[0];
+
+  if (!file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const backup = JSON.parse(String(reader.result || "{}"));
+      restoreSystemBackup(backup, "arquivo");
+    } catch {
+      backupMessage.textContent = "Arquivo de backup invalido.";
+    } finally {
+      backupFileInput.value = "";
+    }
+  };
+  reader.readAsText(file);
+}
+
+function restoreLocalSystemBackup() {
+  if (!canManageBackups()) {
+    backupMessage.textContent = "Apenas administrador ou Controle Total pode restaurar backup.";
+    return;
+  }
+
+  const backup = getLocalSystemBackup();
+
+  if (!backup) {
+    backupMessage.textContent = "Nenhuma copia local encontrada.";
+    return;
+  }
+
+  restoreSystemBackup(backup, "copia local");
+}
+
+function clearLocalSystemBackup() {
+  if (!canManageBackups()) {
+    backupMessage.textContent = "Apenas administrador ou Controle Total pode apagar backup.";
+    return;
+  }
+
+  if (!window.confirm("Apagar a copia local de backup deste navegador?")) {
+    return;
+  }
+
+  localStorage.removeItem(LOCAL_BACKUP_STORAGE_KEY);
+  backupMessage.textContent = "Copia local apagada.";
+  renderBackupInfo();
+  logActivity("Backup local apagado", `Backup local apagado por ${currentUser?.login || "usuario"}.`);
+}
+
+function restoreSystemBackup(backup, sourceLabel) {
+  const data = getBackupData(backup);
+
+  if (!data) {
+    backupMessage.textContent = "Backup invalido ou incompatível.";
+    return;
+  }
+
+  if (!window.confirm(`Restaurar backup de ${sourceLabel}? Os dados atuais serao substituidos.`)) {
+    return;
+  }
+
+  applySystemBackupData(data);
+  backupMessage.textContent = "Backup restaurado com sucesso.";
+  logActivity("Backup restaurado", `Backup restaurado de ${sourceLabel} por ${currentUser?.login || "usuario"}.`);
+  render();
+}
+
+function getBackupData(backup) {
+  if (!backup || typeof backup !== "object") {
+    return null;
+  }
+
+  const data = backup.data && typeof backup.data === "object" ? backup.data : backup;
+  return data.clients || data.companyInfo || data.serviceOrders || data.agendaItems ? data : null;
+}
+
+function applySystemBackupData(data) {
+  clients = Array.isArray(data.clients) ? data.clients.map(normalizeClient) : clients;
+  equipmentCategories = Array.isArray(data.equipmentCategories) ? uniqueTextOptions(data.equipmentCategories) : equipmentCategories;
+  equipmentBrandModels = Array.isArray(data.equipmentBrandModels) ? data.equipmentBrandModels : equipmentBrandModels;
+  companyInfo = data.companyInfo ? normalizeCompanyInfo(data.companyInfo) : companyInfo;
+  users = Array.isArray(data.users) ? data.users.map(normalizeUser) : users;
+  logs = Array.isArray(data.logs) ? data.logs : logs;
+  agendaItems = Array.isArray(data.agendaItems) ? ensureAgendaNumbers(data.agendaItems) : agendaItems;
+  agendaCounter = Number(data.agendaCounter || getNextCounterFromItems(agendaItems));
+  serviceOrders = Array.isArray(data.serviceOrders) ? data.serviceOrders : serviceOrders;
+  serviceOrderCounter = Number(data.serviceOrderCounter || getNextCounterFromItems(serviceOrders));
+  serviceOrderEquipmentTypes = Array.isArray(data.serviceOrderEquipmentTypes) ? uniqueTextOptions(data.serviceOrderEquipmentTypes) : serviceOrderEquipmentTypes;
+  externalRepairLocations = Array.isArray(data.externalRepairLocations) ? uniqueTextOptions(data.externalRepairLocations) : externalRepairLocations;
+  emailTypes = Array.isArray(data.emailTypes) ? uniqueTextOptions(data.emailTypes) : emailTypes;
+  authorizationRequests = Array.isArray(data.authorizationRequests) ? data.authorizationRequests : authorizationRequests;
+  selectedId = clients.some((client) => client.id === selectedId) ? selectedId : clients[0]?.id ?? "";
+  persistAllSystemBackupData();
+  localStorage.setItem(LOG_BACKUP_STORAGE_KEY, JSON.stringify(logs));
+}
+
+function persistAllSystemBackupData() {
+  persistClients();
+  persistEquipmentCategories();
+  persistEquipmentBrandModels();
+  persistCompanyInfo();
+  persistUsers();
+  persistLogs();
+  persistAgendaItems();
+  persistAgendaCounter();
+  persistServiceOrders();
+  persistServiceOrderCounter();
+  persistServiceOrderEquipmentTypes();
+  persistExternalRepairLocations();
+  persistEmailTypes();
+  persistAuthorizationRequests();
+}
+
+function getLocalSystemBackup() {
+  const stored = localStorage.getItem(LOCAL_BACKUP_STORAGE_KEY);
+
+  if (!stored) {
+    return null;
+  }
+
+  try {
+    const backup = JSON.parse(stored);
+    return getBackupData(backup) ? backup : null;
+  } catch {
+    return null;
+  }
+}
+
+function getBackupFileDate() {
+  return new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+}
+
+function getNextCounterFromItems(items) {
+  const maxNumber = items.reduce((max, item) => Math.max(max, Number(item.number || 0)), 0);
+  return maxNumber + 1 || 1;
 }
 
 function addCompanyVehicle(event) {

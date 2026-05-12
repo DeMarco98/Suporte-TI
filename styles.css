@@ -1373,6 +1373,17 @@ body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
   max-width: 560px;
 }
 
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 720px;
+}
+
+.backup-actions .subtle {
+  min-height: 28px;
+}
+
 .settings-log-actions label {
   gap: 4px;
 }

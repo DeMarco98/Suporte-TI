@@ -4956,6 +4956,11 @@ async function updateFirebaseUserPassword(user, password) {
       return false;
     }
 
+    if (code.includes("internal")) {
+      passwordMessage.textContent = "Erro interno na funcao do Firebase. Publique/atualize a Cloud Function updateUserPassword.";
+      return false;
+    }
+
     passwordMessage.textContent = `Nao foi possivel alterar a senha no Firebase. Codigo: ${code || "desconhecido"}.`;
     return false;
   }

@@ -18,6 +18,7 @@ const WORKSPACE_STATE_STORAGE_KEY = "cadastros-posicao-usuario";
 const FORM_DRAFT_STORAGE_KEY = "cadastros-rascunhos-formularios";
 const LOG_BACKUP_STORAGE_KEY = "cadastros-logs-backup-local";
 const LOCAL_BACKUP_STORAGE_KEY = "cadastros-backup-local";
+const LOCAL_THEME_STORAGE_KEY = "cadastros-tema-local";
 const ADMIN_USER = "administrador";
 const NEW_CATEGORY_VALUE = "__new_category__";
 const NEW_BRAND_MODEL_VALUE = "__new_brand_model__";
@@ -2051,6 +2052,10 @@ function canAccess(tabName) {
     return true;
   }
 
+  if (tabName === "settings") {
+    return true;
+  }
+
   if (tabName === "permissions") {
     return isAdminLoggedIn;
   }
@@ -3025,15 +3030,24 @@ function switchAgendaView(viewName) {
 }
 
 function switchSettingsView(viewName) {
-  activeSettingsView = Object.prototype.hasOwnProperty.call(settingsPanels, viewName) ? viewName : "theme";
+  activeSettingsView = getAllowedSettingsViews().includes(viewName) ? viewName : getDefaultSettingsView();
   saveWorkspaceState();
   renderSettingsView();
 }
 
 function renderSettingsView() {
+  const allowedViews = getAllowedSettingsViews();
+
+  if (!allowedViews.includes(activeSettingsView)) {
+    activeSettingsView = getDefaultSettingsView();
+  }
+
   settingsViewButtons.forEach((button) => {
     const isActive = button.dataset.settingsView === activeSettingsView;
+    const isAllowed = allowedViews.includes(button.dataset.settingsView);
     button.classList.toggle("active", isActive);
+    button.classList.toggle("hidden", !isAllowed);
+    button.disabled = !isAllowed;
     button.setAttribute("aria-selected", String(isActive));
   });
 
@@ -3044,6 +3058,18 @@ function renderSettingsView() {
   renderThemeSettings();
   renderAlertSettings();
   renderBackupInfo();
+}
+
+function getAllowedSettingsViews() {
+  if (canApproveAuthorizationRequests()) {
+    return Object.keys(settingsPanels);
+  }
+
+  return ["theme", "password"];
+}
+
+function getDefaultSettingsView() {
+  return "theme";
 }
 
 function renderThemeSettings() {
@@ -3067,20 +3093,63 @@ function renderAlertSettings() {
 function getThemeSettings() {
   return {
     ...emptyThemeSettings,
+    ...(companyInfo.themeSettings || {}),
+    ...getLocalThemeSettings()
+  };
+}
+
+function getGlobalThemeSettings() {
+  return {
+    ...emptyThemeSettings,
     ...(companyInfo.themeSettings || {})
   };
+}
+
+function getLocalThemeSettings() {
+  if (!currentUser) {
+    return {};
+  }
+
+  const stored = localStorage.getItem(getUserScopedStorageKey(LOCAL_THEME_STORAGE_KEY));
+
+  if (!stored) {
+    return {};
+  }
+
+  try {
+    const parsedTheme = JSON.parse(stored);
+    return parsedTheme && typeof parsedTheme === "object" ? parsedTheme : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalThemeSettings(settings) {
+  if (!currentUser) {
+    return;
+  }
+
+  localStorage.setItem(getUserScopedStorageKey(LOCAL_THEME_STORAGE_KEY), JSON.stringify(settings));
+}
+
+function clearLocalThemeSettings() {
+  if (!currentUser) {
+    return;
+  }
+
+  localStorage.removeItem(getUserScopedStorageKey(LOCAL_THEME_STORAGE_KEY));
 }
 
 function readThemeSettings() {
   const data = Object.fromEntries(new FormData(themeSettingsForm).entries());
   return {
-    ...emptyThemeSettings,
+    ...getThemeSettings(),
     ...data
   };
 }
 
 function previewThemeSettings() {
-  if (!canModifyGlobalTheme()) {
+  if (!canModifyGlobalTheme() && !currentUser) {
     return;
   }
 
@@ -3089,7 +3158,14 @@ function previewThemeSettings() {
 
 function restoreDefaultTheme() {
   if (!canModifyGlobalTheme()) {
-    themeSettingsMessage.textContent = "Apenas administrador ou Controle Total pode alterar o tema global.";
+    const theme = {
+      ...getGlobalThemeSettings(),
+      mode: emptyThemeSettings.mode
+    };
+    saveLocalThemeSettings({ mode: emptyThemeSettings.mode });
+    renderThemeSettings();
+    applyThemeSettings(theme);
+    themeSettingsMessage.textContent = "Tema local restaurado.";
     return;
   }
 
@@ -3558,6 +3634,7 @@ function renderPermissions() {
   const canModifyCompany = canModify("company");
   const canModifySettings = canModify("settings");
   const canModifyTheme = canModifyGlobalTheme();
+  const canModifyLocalTheme = Boolean(currentUser);
   const canBackup = canManageBackups();
   const hasLocalBackup = Boolean(getLocalSystemBackup());
   const canModifyUsers = isAdminLoggedIn;
@@ -3617,9 +3694,19 @@ function renderPermissions() {
     element.disabled = !canModifySettings;
   });
   [...themeSettingsForm.elements].forEach((element) => {
-    element.disabled = !canModifyTheme;
+    if (canModifyTheme) {
+      element.disabled = false;
+      return;
+    }
+
+    if (element.name === "mode" || element.type === "submit") {
+      element.disabled = !canModifyLocalTheme;
+      return;
+    }
+
+    element.disabled = true;
   });
-  restoreDefaultThemeButton.disabled = !canModifyTheme;
+  restoreDefaultThemeButton.disabled = !canModifyLocalTheme;
   clearAllLogsButton.disabled = !canModifySettings;
   clearLogsBeforeDate.disabled = !canModifySettings;
   clearLogsBeforeButton.disabled = !canModifySettings;
@@ -3878,17 +3965,40 @@ function saveAlertSettings(event) {
 function saveThemeSettings(event) {
   event.preventDefault();
 
-  if (!canModifyGlobalTheme()) {
-    themeSettingsMessage.textContent = "Apenas administrador ou Controle Total pode alterar o tema global.";
+  if (!currentUser) {
+    themeSettingsMessage.textContent = "Faça login para salvar o tema.";
     return;
   }
 
   const themeSettings = readThemeSettings();
+
+  if (!canModifyGlobalTheme()) {
+    saveLocalThemeSettings({ mode: themeSettings.mode });
+    applyThemeSettings({
+      ...getGlobalThemeSettings(),
+      mode: themeSettings.mode
+    });
+    themeSettingsMessage.textContent = "Tema salvo apenas para seu usuario.";
+    logActivity("Tema local atualizado", `Modo ${themeSettings.mode === "dark" ? "escuro" : "claro"} salvo por ${currentUser?.login || "usuario"}.`);
+    return;
+  }
+
+  const applyForEveryone = window.confirm("Aplicar tema para todos os usuarios? Clique em OK para todos ou Cancelar para salvar apenas para seu usuario.");
+
+  if (!applyForEveryone) {
+    saveLocalThemeSettings(themeSettings);
+    applyThemeSettings(themeSettings);
+    themeSettingsMessage.textContent = "Tema salvo apenas para seu usuario.";
+    logActivity("Tema local atualizado", `Configuracoes visuais salvas apenas para ${currentUser?.login || "usuario"}.`);
+    return;
+  }
+
   companyInfo = normalizeCompanyInfo({
     ...companyInfo,
     themeSettings,
     updatedAt: new Date().toISOString()
   });
+  clearLocalThemeSettings();
   persistCompanyInfo();
   applyThemeSettings(themeSettings);
   themeSettingsMessage.textContent = "Tema salvo para todos os usuarios.";

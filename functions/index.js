@@ -4,6 +4,7 @@ const functions = require("firebase-functions");
 admin.initializeApp();
 
 const db = admin.firestore();
+const MASTER_ADMIN_EMAIL = "eduarddo.black@gmail.com";
 
 async function assertCanManageUsers(context) {
   if (!context.auth) {
@@ -12,7 +13,7 @@ async function assertCanManageUsers(context) {
 
   const requesterUid = context.auth.uid;
   const requesterEmail = context.auth.token.email || "";
-  const configuredAdminEmail = process.env.BOOTSTRAP_ADMIN_EMAIL || functions.config()?.app?.bootstrap_admin_email || "";
+  const configuredAdminEmail = process.env.BOOTSTRAP_ADMIN_EMAIL || MASTER_ADMIN_EMAIL;
 
   if (configuredAdminEmail && requesterEmail.toLowerCase() === configuredAdminEmail.toLowerCase()) {
     return;
@@ -60,29 +61,49 @@ async function resolveUid(data) {
 }
 
 exports.updateUserPassword = functions.https.onCall(async (data, context) => {
-  await assertCanManageUsers(context);
-  validatePassword(data.password);
+  try {
+    await assertCanManageUsers(context);
+    validatePassword(data.password);
 
-  const uid = await resolveUid(data);
-  await admin.auth().updateUser(uid, {
-    password: data.password
-  });
+    const uid = await resolveUid(data);
+    await admin.auth().updateUser(uid, {
+      password: data.password
+    });
 
-  await db.collection("users").doc(uid).set(
-    {
-      updatedAt: new Date().toISOString()
-    },
-    { merge: true }
-  );
+    await db.collection("users").doc(uid).set(
+      {
+        updatedAt: new Date().toISOString()
+      },
+      { merge: true }
+    );
 
-  return { success: true };
+    return { success: true };
+  } catch (error) {
+    console.error("updateUserPassword failed", error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError("internal", error.message || "Erro interno ao alterar senha.");
+  }
 });
 
 exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
-  await assertCanManageUsers(context);
+  try {
+    await assertCanManageUsers(context);
 
-  const uid = await resolveUid(data);
-  await admin.auth().deleteUser(uid);
+    const uid = await resolveUid(data);
+    await admin.auth().deleteUser(uid);
 
-  return { success: true };
+    return { success: true };
+  } catch (error) {
+    console.error("deleteUserAccount failed", error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError("internal", error.message || "Erro interno ao excluir usuario.");
+  }
 });

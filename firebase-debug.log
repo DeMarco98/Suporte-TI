@@ -1,0 +1,143 @@
+[debug] [2026-05-12T21:48:12.044Z] ----------------------------------------------------------------------
+[debug] [2026-05-12T21:48:12.046Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only functions
+[debug] [2026-05-12T21:48:12.046Z] CLI Version:   15.17.0
+[debug] [2026-05-12T21:48:12.046Z] Platform:      win32
+[debug] [2026-05-12T21:48:12.046Z] Node Version:  v24.15.0
+[debug] [2026-05-12T21:48:12.046Z] Time:          Tue May 12 2026 18:48:12 GMT-0300 (Horário Padrão de Brasília)
+[debug] [2026-05-12T21:48:12.046Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-12T21:48:12.963Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-12T21:48:12.964Z] > authorizing via signed-in user (eduarddo.black@gmail.com)
+[debug] [2026-05-12T21:48:12.964Z] [iam] checking project suporte-ti-3a66e for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-05-12T21:48:12.964Z] Checked if tokens are valid: true, expires at: 1778624700097
+[debug] [2026-05-12T21:48:12.965Z] Checked if tokens are valid: true, expires at: 1778624700097
+[debug] [2026-05-12T21:48:12.965Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/suporte-ti-3a66e:testIamPermissions [none]
+[debug] [2026-05-12T21:48:12.965Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/suporte-ti-3a66e:testIamPermissions  x-goog-user-project=suporte-ti-3a66e
+[debug] [2026-05-12T21:48:12.965Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/suporte-ti-3a66e:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-05-12T21:48:13.806Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/suporte-ti-3a66e:testIamPermissions 200
+[debug] [2026-05-12T21:48:13.806Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/suporte-ti-3a66e:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-05-12T21:48:13.806Z] Checked if tokens are valid: true, expires at: 1778624700097
+[debug] [2026-05-12T21:48:13.806Z] Checked if tokens are valid: true, expires at: 1778624700097
+[debug] [2026-05-12T21:48:13.806Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/suporte-ti-3a66e/serviceAccounts/suporte-ti-3a66e@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-05-12T21:48:13.806Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/suporte-ti-3a66e/serviceAccounts/suporte-ti-3a66e@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-05-12T21:48:14.681Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/suporte-ti-3a66e/serviceAccounts/suporte-ti-3a66e@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2026-05-12T21:48:14.681Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/suporte-ti-3a66e/serviceAccounts/suporte-ti-3a66e@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[info] 
+[info] === Deploying to 'suporte-ti-3a66e'...
+[info] 
+[info] i  deploying functions 
+[debug] [2026-05-12T21:48:14.684Z] Checked if tokens are valid: true, expires at: 1778624700097
+[debug] [2026-05-12T21:48:14.684Z] Checked if tokens are valid: true, expires at: 1778624700097
+[debug] [2026-05-12T21:48:14.684Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/suporte-ti-3a66e [none]
+[debug] [2026-05-12T21:48:14.896Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/suporte-ti-3a66e 200
+[debug] [2026-05-12T21:48:14.896Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/suporte-ti-3a66e {"projectNumber":"678058422521","projectId":"suporte-ti-3a66e","lifecycleState":"ACTIVE","name":"Suporte TI","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-05-05T22:26:18.898Z"}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: preparing codebase n for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-05-12T21:48:14.899Z] Checked if tokens are valid: true, expires at: 1778624700097
+[debug] [2026-05-12T21:48:14.899Z] Checked if tokens are valid: true, expires at: 1778624700097
+[debug] [2026-05-12T21:48:14.899Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/suporte-ti-3a66e/adminSdkConfig [none]
+[debug] [2026-05-12T21:48:15.313Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/suporte-ti-3a66e/adminSdkConfig 200
+[debug] [2026-05-12T21:48:15.313Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/suporte-ti-3a66e/adminSdkConfig {"projectId":"suporte-ti-3a66e","storageBucket":"suporte-ti-3a66e.firebasestorage.app"}
+[debug] [2026-05-12T21:48:15.314Z] Validating nodejs source
+[warn] !  functions: Runtime Node.js 20 was deprecated on 2026-04-30 and will be decommissioned on 2026-10-30, after which you will not be able to deploy without upgrading. Consider upgrading now to avoid disruption. See https://cloud.google.com/functions/docs/runtime-support for full details on the lifecycle policy 
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-05-12T21:48:15.826Z] > [functions] package.json contents: {
+  "name": "suporte-ti-functions",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.2"
+  }
+}
+[debug] [2026-05-12T21:48:15.826Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[debug] [2026-05-12T21:48:15.827Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-05-12T21:48:15.836Z] Found firebase-functions binary at 'D:\Projetos\Cadastros\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8615
+
+[debug] [2026-05-12T21:48:16.155Z] Got response from /__/functions.yaml {"endpoints":{"updateUserPassword":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"updateUserPassword"},"deleteUserAccount":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"deleteUserAccount"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2026-05-12T21:48:20.183Z] Validating nodejs source
+[warn] !  functions: Couldn't find firebase-functions package in your source code. Have you run 'npm install'? 
+[debug] [2026-05-12T21:48:20.184Z] getFunctionsSDKVersion encountered error: Cannot find module 'firebase-functions'
+Require stack:
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\runtimes\node\versioning.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\runtimes\node\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\runtimes\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\prepare.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\emulator\functionsEmulatorShared.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\frameworks\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\hosting\prepare.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\hosting\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\commands\deploy.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\commands\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\cli.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js {"code":"MODULE_NOT_FOUND","requireStack":["C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\deploy\\functions\\runtimes\\node\\versioning.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\deploy\\functions\\runtimes\\node\\index.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\deploy\\functions\\runtimes\\index.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\deploy\\functions\\prepare.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\emulator\\functionsEmulatorShared.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\frameworks\\index.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\deploy\\hosting\\prepare.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\deploy\\hosting\\index.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\deploy\\index.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\commands\\deploy.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\commands\\index.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\index.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\bin\\cli.js","C:\\Users\\De Marco\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\bin\\firebase.js"]}
+[debug] [2026-05-12T21:48:20.186Z] checkFunctionsSDKVersion encountered error: Invalid Version:  {}
+[debug] [2026-05-12T21:48:20.186Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "24"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.0.0"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.4.1"
+  },
+  "private": true
+}
+[debug] [2026-05-12T21:48:20.186Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase n to determine what to deploy 
+[debug] [2026-05-12T21:48:20.187Z] Could not parse firebase-functions version '' into semver.
+[debug] [2026-05-12T21:48:20.187Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-05-12T21:48:20.316Z] Error: Cannot find module 'firebase-functions'
+Require stack:
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\runtimes\node\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\runtimes\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\prepare.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\emulator\functionsEmulatorShared.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\frameworks\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\hosting\prepare.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\hosting\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\commands\deploy.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\commands\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\index.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\cli.js
+- C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1476:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1049:27)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1094:12)
+    at require.resolve (node:internal/modules/helpers:171:31)
+    at Delegate.findFunctionsBinary (C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\runtimes\node\index.js:101:33)
+    at Delegate.spawnFunctionsProcess (C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\runtimes\node\index.js:131:30)
+    at Delegate.serveAdmin (C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\runtimes\node\index.js:152:35)
+    at Delegate.discoverBuild (C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\runtimes\node\index.js:192:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async loadCodebases (C:\Users\De Marco\AppData\Roaming\npm\node_modules\firebase-tools\lib\deploy\functions\prepare.js:496:33)
+[error] 
+[error] Error: An unexpected error has occurred.

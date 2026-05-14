@@ -1480,6 +1480,69 @@ body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
   padding: 8px;
 }
 
+.vehicle-detail-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.vehicle-detail-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  padding: 6px 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.vehicle-detail-tab.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.vehicle-detail-panel {
+  display: none;
+}
+
+.vehicle-detail-panel.active {
+  display: block;
+}
+
+.vehicle-document-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.vehicle-document-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.vehicle-document-card legend {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.document-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.document-file-name {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
 .report-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.8fr);

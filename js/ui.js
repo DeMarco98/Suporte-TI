@@ -248,6 +248,7 @@ let editingDvrId = "";
 let editingServiceOrderId = "";
 let editingCompanyVehicleId = "";
 let editingCompanyVehicleFineDrafts = [];
+let editingCompanyVehicleDocumentationDraft = createEmptyVehicleDocumentation();
 let editingCompanyStockItemId = "";
 let editingPasswordUserId = "";
 let permissionDrafts = {};
@@ -469,9 +470,25 @@ const companyVehicleDetailsDialog = document.querySelector("#companyVehicleDetai
 const companyVehicleDetailsForm = document.querySelector("#companyVehicleDetailsForm");
 const companyVehicleDetailsTitle = document.querySelector("#companyVehicleDetailsTitle");
 const closeCompanyVehicleDetailsDialogButton = document.querySelector("#closeCompanyVehicleDetailsDialogButton");
+const vehicleDetailTabs = document.querySelectorAll(".vehicle-detail-tab");
+const vehicleDetailPanels = {
+  info: document.querySelector("#vehicleInfoDetailPanel"),
+  maintenance: document.querySelector("#vehicleMaintenanceDetailPanel"),
+  documentation: document.querySelector("#vehicleDocumentationDetailPanel"),
+  fines: document.querySelector("#vehicleFinesDetailPanel")
+};
+const companyVehicleInfoSummary = document.querySelector("#companyVehicleInfoSummary");
 const companyVehicleFineDriver = document.querySelector("#companyVehicleFineDriver");
 const addCompanyVehicleFineButton = document.querySelector("#addCompanyVehicleFineButton");
 const companyVehicleFineList = document.querySelector("#companyVehicleFineList");
+const vehicleIpvaPdfInput = document.querySelector("#vehicleIpvaPdfInput");
+const vehicleLicensingPdfInput = document.querySelector("#vehicleLicensingPdfInput");
+const importVehicleIpvaPdfButton = document.querySelector("#importVehicleIpvaPdfButton");
+const importVehicleLicensingPdfButton = document.querySelector("#importVehicleLicensingPdfButton");
+const exportVehicleIpvaPdfButton = document.querySelector("#exportVehicleIpvaPdfButton");
+const exportVehicleLicensingPdfButton = document.querySelector("#exportVehicleLicensingPdfButton");
+const vehicleIpvaPdfName = document.querySelector("#vehicleIpvaPdfName");
+const vehicleLicensingPdfName = document.querySelector("#vehicleLicensingPdfName");
 const companyVehicleMessage = document.querySelector("#companyVehicleMessage");
 const companyVehicleList = document.querySelector("#companyVehicleList");
 const companyStockForm = document.querySelector("#companyStockForm");
@@ -613,6 +630,13 @@ deleteCompanyVehicleButton.addEventListener("click", deleteEditingCompanyVehicle
 companyVehicleDetailsForm.addEventListener("submit", saveCompanyVehicleDetails);
 closeCompanyVehicleDetailsDialogButton.addEventListener("click", closeCompanyVehicleDetailsDialog);
 addCompanyVehicleFineButton.addEventListener("click", addCompanyVehicleFineDraft);
+vehicleDetailTabs.forEach((tab) => tab.addEventListener("click", () => switchCompanyVehicleDetailView(tab.dataset.vehicleDetailView)));
+importVehicleIpvaPdfButton.addEventListener("click", () => vehicleIpvaPdfInput.click());
+importVehicleLicensingPdfButton.addEventListener("click", () => vehicleLicensingPdfInput.click());
+vehicleIpvaPdfInput.addEventListener("change", (event) => importCompanyVehicleDocumentPdf(event, "ipva"));
+vehicleLicensingPdfInput.addEventListener("change", (event) => importCompanyVehicleDocumentPdf(event, "licensing"));
+exportVehicleIpvaPdfButton.addEventListener("click", () => exportCompanyVehicleDocumentPdf("ipva"));
+exportVehicleLicensingPdfButton.addEventListener("click", () => exportCompanyVehicleDocumentPdf("licensing"));
 companyStockForm.addEventListener("submit", saveCompanyStockType);
 companyStockType.addEventListener("change", toggleNewCompanyStockTypeField);
 agendaForm.addEventListener("submit", addAgendaItem);
@@ -1072,10 +1096,14 @@ function normalizeCompanyVehicle(vehicle = {}) {
     driverName: vehicle.driverName || "",
     maintenanceDate: vehicle.maintenanceDate || "",
     maintenance: vehicle.maintenance || "",
+    documentation: normalizeVehicleDocumentation(vehicle.documentation),
     fines: Array.isArray(vehicle.fines)
       ? vehicle.fines.map((fine) => ({
           id: fine.id || createId("MUL"),
           type: fine.type || "",
+          severity: fine.severity || "",
+          points: fine.points || "",
+          value: fine.value || "",
           date: fine.date || "",
           driverId: fine.driverId || "",
           driverName: fine.driverName || ""
@@ -1083,6 +1111,43 @@ function normalizeCompanyVehicle(vehicle = {}) {
       : [],
     createdAt: vehicle.createdAt || new Date().toISOString(),
     updatedAt: vehicle.updatedAt || ""
+  };
+}
+
+function createEmptyVehicleDocumentation() {
+  return {
+    ipva: {
+      year: "",
+      dueDate: "",
+      value: "",
+      status: "",
+      notes: "",
+      pdfName: "",
+      pdfData: ""
+    },
+    licensing: {
+      year: "",
+      dueDate: "",
+      value: "",
+      status: "",
+      notes: "",
+      pdfName: "",
+      pdfData: ""
+    }
+  };
+}
+
+function normalizeVehicleDocumentation(documentation = {}) {
+  const emptyDocumentation = createEmptyVehicleDocumentation();
+  return {
+    ipva: {
+      ...emptyDocumentation.ipva,
+      ...(documentation.ipva || {})
+    },
+    licensing: {
+      ...emptyDocumentation.licensing,
+      ...(documentation.licensing || {})
+    }
   };
 }
 
@@ -4534,11 +4599,18 @@ function generateVehicleReport(event) {
       `Ultima manutencao: ${formatSimpleDate(vehicle.maintenanceDate)}`,
       `Manutencao feita: ${vehicle.maintenance || "Nao informado"}`
     ];
+    const documentation = normalizeVehicleDocumentation(vehicle.documentation);
+    lines.push(
+      `IPVA: Ano ${documentation.ipva.year || "Nao informado"} | Vencimento ${formatSimpleDate(documentation.ipva.dueDate)} | Valor ${documentation.ipva.value || "Nao informado"} | Status ${documentation.ipva.status || "Nao informado"}`,
+      `Licenciamento: Ano ${documentation.licensing.year || "Nao informado"} | Vencimento ${formatSimpleDate(documentation.licensing.dueDate)} | Valor ${documentation.licensing.value || "Nao informado"} | Status ${documentation.licensing.status || "Nao informado"}`
+    );
 
     if (vehicle.fines?.length) {
       lines.push("Multas:");
       vehicle.fines.forEach((fine) => {
-        lines.push(`- ${fine.type || "Multa"} | ${formatSimpleDate(fine.date)} | Condutor: ${fine.driverName || "Nao informado"}`);
+        lines.push(
+          `- ${fine.type || "Multa"} | Gravidade: ${fine.severity || "Nao informado"} | Pontos: ${fine.points || "0"} | Valor: ${fine.value || "Nao informado"} | Infrator: ${fine.driverName || "Nao informado"} | Data: ${formatSimpleDate(fine.date)}`
+        );
       });
     } else {
       lines.push("Multas: nenhuma registrada");
@@ -4769,22 +4841,146 @@ function openCompanyVehicleDetailsDialog(vehicleId) {
 
   editingCompanyVehicleId = vehicle.id;
   editingCompanyVehicleFineDrafts = Array.isArray(vehicle.fines) ? vehicle.fines.map((fine) => ({ ...fine })) : [];
+  editingCompanyVehicleDocumentationDraft = normalizeVehicleDocumentation(vehicle.documentation);
   companyVehicleDetailsTitle.textContent = [vehicle.model, vehicle.plate].filter(Boolean).join(" - ") || "Detalhes do veiculo";
   companyVehicleDetailsForm.reset();
+  renderCompanyVehicleInfoSummary(vehicle);
   companyVehicleDetailsForm.elements.maintenanceDate.value = vehicle.maintenanceDate || "";
   companyVehicleDetailsForm.elements.maintenance.value = vehicle.maintenance || "";
+  fillCompanyVehicleDocumentationForm(editingCompanyVehicleDocumentationDraft);
   renderCompanyVehicleDriverOptions(companyVehicleFineDriver);
   renderCompanyVehicleFineDrafts();
+  switchCompanyVehicleDetailView("info");
   companyVehicleDetailsDialog.showModal();
 }
 
 function closeCompanyVehicleDetailsDialog() {
   editingCompanyVehicleFineDrafts = [];
+  editingCompanyVehicleDocumentationDraft = createEmptyVehicleDocumentation();
   companyVehicleDetailsForm.reset();
 
   if (companyVehicleDetailsDialog.open) {
     companyVehicleDetailsDialog.close();
   }
+}
+
+function switchCompanyVehicleDetailView(viewName) {
+  const activeView = vehicleDetailPanels[viewName] ? viewName : "info";
+
+  vehicleDetailTabs.forEach((tab) => {
+    const isActive = tab.dataset.vehicleDetailView === activeView;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  });
+
+  Object.entries(vehicleDetailPanels).forEach(([name, panel]) => {
+    panel.classList.toggle("active", name === activeView);
+  });
+}
+
+function renderCompanyVehicleInfoSummary(vehicle) {
+  companyVehicleInfoSummary.innerHTML = "";
+  [
+    ["Tipo", vehicle.type],
+    ["Modelo", vehicle.model],
+    ["Placa", vehicle.plate],
+    ["Condutor", getCompanyVehicleDriverName(vehicle)],
+    ["Ultima manutencao", formatSimpleDate(vehicle.maintenanceDate)],
+    ["Multas", String(vehicle.fines?.length || 0)]
+  ].forEach(([label, value]) => {
+    const item = document.createElement("span");
+    item.className = "compact-summary-item";
+
+    const strong = document.createElement("strong");
+    strong.textContent = `${label}: `;
+    item.append(strong, document.createTextNode(value || "Nao informado"));
+    companyVehicleInfoSummary.append(item);
+  });
+}
+
+function fillCompanyVehicleDocumentationForm(documentation) {
+  companyVehicleDetailsForm.elements.ipvaYear.value = documentation.ipva.year || "";
+  companyVehicleDetailsForm.elements.ipvaDueDate.value = documentation.ipva.dueDate || "";
+  companyVehicleDetailsForm.elements.ipvaValue.value = documentation.ipva.value || "";
+  companyVehicleDetailsForm.elements.ipvaStatus.value = documentation.ipva.status || "";
+  companyVehicleDetailsForm.elements.ipvaNotes.value = documentation.ipva.notes || "";
+  companyVehicleDetailsForm.elements.licensingYear.value = documentation.licensing.year || "";
+  companyVehicleDetailsForm.elements.licensingDueDate.value = documentation.licensing.dueDate || "";
+  companyVehicleDetailsForm.elements.licensingValue.value = documentation.licensing.value || "";
+  companyVehicleDetailsForm.elements.licensingStatus.value = documentation.licensing.status || "";
+  companyVehicleDetailsForm.elements.licensingNotes.value = documentation.licensing.notes || "";
+  renderCompanyVehicleDocumentFileNames();
+}
+
+function readCompanyVehicleDocumentationForm() {
+  editingCompanyVehicleDocumentationDraft = normalizeVehicleDocumentation({
+    ipva: {
+      ...editingCompanyVehicleDocumentationDraft.ipva,
+      year: companyVehicleDetailsForm.elements.ipvaYear.value.trim(),
+      dueDate: companyVehicleDetailsForm.elements.ipvaDueDate.value,
+      value: companyVehicleDetailsForm.elements.ipvaValue.value.trim(),
+      status: companyVehicleDetailsForm.elements.ipvaStatus.value,
+      notes: companyVehicleDetailsForm.elements.ipvaNotes.value.trim()
+    },
+    licensing: {
+      ...editingCompanyVehicleDocumentationDraft.licensing,
+      year: companyVehicleDetailsForm.elements.licensingYear.value.trim(),
+      dueDate: companyVehicleDetailsForm.elements.licensingDueDate.value,
+      value: companyVehicleDetailsForm.elements.licensingValue.value.trim(),
+      status: companyVehicleDetailsForm.elements.licensingStatus.value,
+      notes: companyVehicleDetailsForm.elements.licensingNotes.value.trim()
+    }
+  });
+  return editingCompanyVehicleDocumentationDraft;
+}
+
+function renderCompanyVehicleDocumentFileNames() {
+  vehicleIpvaPdfName.textContent = editingCompanyVehicleDocumentationDraft.ipva.pdfName || "Sem PDF";
+  vehicleLicensingPdfName.textContent = editingCompanyVehicleDocumentationDraft.licensing.pdfName || "Sem PDF";
+  exportVehicleIpvaPdfButton.disabled = !editingCompanyVehicleDocumentationDraft.ipva.pdfData || !canModify("company");
+  exportVehicleLicensingPdfButton.disabled = !editingCompanyVehicleDocumentationDraft.licensing.pdfData || !canModify("company");
+}
+
+function importCompanyVehicleDocumentPdf(event, documentType) {
+  const file = event.target.files?.[0];
+
+  if (!file) {
+    return;
+  }
+
+  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+    companyVehicleMessage.textContent = "Importe apenas arquivos PDF.";
+    event.target.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    editingCompanyVehicleDocumentationDraft = normalizeVehicleDocumentation({
+      ...editingCompanyVehicleDocumentationDraft,
+      [documentType]: {
+        ...editingCompanyVehicleDocumentationDraft[documentType],
+        pdfName: file.name,
+        pdfData: reader.result
+      }
+    });
+    renderCompanyVehicleDocumentFileNames();
+    event.target.value = "";
+  });
+  reader.readAsDataURL(file);
+}
+
+function exportCompanyVehicleDocumentPdf(documentType) {
+  const documentData = editingCompanyVehicleDocumentationDraft[documentType];
+
+  if (!documentData?.pdfData) {
+    return;
+  }
+
+  const link = document.createElement("a");
+  link.href = documentData.pdfData;
+  link.download = documentData.pdfName || `${documentType}-${getReportFileDate()}.pdf`;
+  link.click();
 }
 
 function saveCompanyVehicleDetails(event) {
@@ -4796,6 +4992,7 @@ function saveCompanyVehicleDetails(event) {
 
   const data = Object.fromEntries(new FormData(companyVehicleDetailsForm).entries());
   const vehicle = getCompanyVehicleById(editingCompanyVehicleId);
+  const documentation = readCompanyVehicleDocumentationForm();
 
   companyInfo = {
     ...emptyCompanyInfo,
@@ -4806,6 +5003,7 @@ function saveCompanyVehicleDetails(event) {
             ...item,
             maintenanceDate: data.maintenanceDate || "",
             maintenance: data.maintenance.trim(),
+            documentation,
             fines: editingCompanyVehicleFineDrafts,
             updatedAt: new Date().toISOString()
           })
@@ -4827,6 +5025,9 @@ function addCompanyVehicleFineDraft() {
   }
 
   const typeInput = companyVehicleDetailsForm.elements.fineType;
+  const severityInput = companyVehicleDetailsForm.elements.fineSeverity;
+  const pointsInput = companyVehicleDetailsForm.elements.finePoints;
+  const valueInput = companyVehicleDetailsForm.elements.fineValue;
   const dateInput = companyVehicleDetailsForm.elements.fineDate;
   const driverInput = companyVehicleDetailsForm.elements.fineDriverId;
   const type = typeInput.value.trim();
@@ -4841,6 +5042,9 @@ function addCompanyVehicleFineDraft() {
     {
       id: createId("MUL"),
       type,
+      severity: severityInput.value || "",
+      points: pointsInput.value || "",
+      value: valueInput.value.trim(),
       date: dateInput.value || "",
       driverId: driverInput.value || "",
       driverName: driver?.name || ""
@@ -4848,6 +5052,9 @@ function addCompanyVehicleFineDraft() {
     ...editingCompanyVehicleFineDrafts
   ];
   typeInput.value = "";
+  severityInput.value = "";
+  pointsInput.value = "";
+  valueInput.value = "";
   dateInput.value = "";
   driverInput.value = "";
   renderCompanyVehicleFineDrafts();
@@ -4875,7 +5082,13 @@ function renderCompanyVehicleFineDrafts() {
     title.textContent = fine.type || "Multa";
 
     const details = document.createElement("span");
-    details.textContent = `Data: ${formatSimpleDate(fine.date)} | Condutor: ${fine.driverName || "Nao informado"}`;
+    details.textContent = [
+      `Gravidade: ${fine.severity || "Nao informado"}`,
+      `Pontos: ${fine.points || "0"}`,
+      `Valor: ${fine.value || "Nao informado"}`,
+      `Infrator: ${fine.driverName || "Nao informado"}`,
+      `Data: ${formatSimpleDate(fine.date)}`
+    ].join(" | ");
 
     const removeButton = document.createElement("button");
     removeButton.className = "icon-danger";

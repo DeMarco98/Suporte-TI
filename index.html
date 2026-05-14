@@ -1224,10 +1224,22 @@
         </div>
 
         <section id="financeEmployeesPanel" class="service-order-view active">
+          <div class="settings-form compact-filter-form">
+            <label>
+              <span>Pesquisar funcionario</span>
+              <input id="financeEmployeeSearchInput" type="search" placeholder="Nome, login, salario ou valor" />
+            </label>
+          </div>
           <div id="financeUserList" class="record-list"></div>
         </section>
 
         <section id="financeGlobalExpensesPanel" class="service-order-view">
+          <div class="settings-form compact-filter-form">
+            <label>
+              <span>Pesquisar despesa</span>
+              <input id="financeGlobalExpenseSearchInput" type="search" placeholder="Categoria, valor, status ou data" />
+            </label>
+          </div>
           <form id="financeGlobalExpenseForm" class="settings-form compact-create-form">
             <div class="form-grid compact-form-grid">
               <label>
@@ -1244,7 +1256,7 @@
               </label>
               <label>
                 <span>Valor</span>
-                <input name="value" inputmode="decimal" required placeholder="0,00" />
+                <input name="value" inputmode="decimal" required placeholder="R$ 0,00" data-money-input />
               </label>
               <label>
                 <span>Forma de pagamento</span>
@@ -1276,6 +1288,12 @@
         </section>
 
         <section id="financePaymentsPanel" class="service-order-view">
+          <div class="settings-form compact-filter-form">
+            <label>
+              <span>Pesquisar pagamento</span>
+              <input id="financePaymentSearchInput" type="search" placeholder="Cliente, valor, status ou data" />
+            </label>
+          </div>
           <form id="financePaymentForm" class="settings-form compact-create-form">
             <div class="form-grid compact-form-grid">
               <label>
@@ -1288,7 +1306,7 @@
               </label>
               <label>
                 <span>Valor</span>
-                <input name="value" inputmode="decimal" required placeholder="0,00" />
+                <input name="value" inputmode="decimal" required placeholder="R$ 0,00" data-money-input />
               </label>
               <label>
                 <span>Forma de pagamento</span>
@@ -1319,6 +1337,12 @@
         </section>
 
         <section id="financeClientsPanel" class="service-order-view">
+          <div class="settings-form compact-filter-form">
+            <label>
+              <span>Pesquisar cliente</span>
+              <input id="financeClientBillingSearchInput" type="search" placeholder="Nome, mensalidade, vencimento ou pagamento" />
+            </label>
+          </div>
           <div class="finance-client-layout">
             <aside class="finance-client-sidebar">
               <div id="financeClientBillingList" class="client-list"></div>
@@ -1799,12 +1823,68 @@
           <button id="closeFinanceDialogButton" class="subtle" type="button" title="Fechar" aria-label="Fechar">Fechar</button>
         </div>
 
+        <div id="financeEmployeeSummary" class="finance-employee-summary"></div>
+
         <div class="vehicle-detail-tabs" aria-label="Opcoes financeiras">
-          <button class="finance-tab active" type="button" data-finance-view="advances">Vale</button>
+          <button class="finance-tab active" type="button" data-finance-view="employee">Funcionario</button>
+          <button class="finance-tab" type="button" data-finance-view="advances">Vale</button>
           <button class="finance-tab" type="button" data-finance-view="commissions">Comissão</button>
         </div>
 
-        <section id="financeAdvancesPanel" class="vehicle-detail-panel active">
+        <section id="financeEmployeePanel" class="vehicle-detail-panel active">
+          <form id="financeEmployeeSettingsForm" class="settings-form compact-create-form">
+            <div class="form-grid compact-form-grid">
+              <label>
+                <span>Salario</span>
+                <input id="financeEmployeeSalary" name="salary" inputmode="decimal" placeholder="R$ 0,00" data-money-input />
+              </label>
+            </div>
+            <button class="primary" type="submit">Salvar salario</button>
+          </form>
+
+          <form id="financeVacationForm" class="settings-form compact-create-form">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Ferias</p>
+                <h3>Registro de ferias</h3>
+              </div>
+            </div>
+            <div class="form-grid compact-form-grid">
+              <label>
+                <span>Inicio</span>
+                <input id="financeVacationStartDate" name="startDate" type="date" required />
+              </label>
+              <label>
+                <span>Fim</span>
+                <input id="financeVacationEndDate" name="endDate" type="date" required />
+              </label>
+              <label>
+                <span>Status</span>
+                <select id="financeVacationStatus" name="status">
+                  <option value="Programada">Programada</option>
+                  <option value="Em andamento">Em andamento</option>
+                  <option value="Concluida">Concluida</option>
+                  <option value="Cancelada">Cancelada</option>
+                </select>
+              </label>
+              <label class="full-width">
+                <span>Observacao</span>
+                <textarea id="financeVacationDescription" name="description" rows="2"></textarea>
+              </label>
+            </div>
+            <button class="primary" type="submit">Registrar ferias</button>
+          </form>
+
+          <div class="settings-form compact-filter-form">
+            <label>
+              <span>Pesquisar ferias</span>
+              <input id="financeVacationSearchInput" type="search" placeholder="Data, status ou observacao" />
+            </label>
+          </div>
+          <div id="financeVacationList" class="record-list compact-record-list"></div>
+        </section>
+
+        <section id="financeAdvancesPanel" class="vehicle-detail-panel">
           <form id="financeAdvanceForm" class="settings-form compact-create-form">
             <div class="form-grid compact-form-grid">
               <label>
@@ -1813,15 +1893,21 @@
               </label>
               <label>
                 <span>Valor</span>
-                <input id="financeAdvanceValue" name="value" inputmode="decimal" required placeholder="0,00" />
+                <input id="financeAdvanceValue" name="value" inputmode="decimal" required placeholder="R$ 0,00" data-money-input />
               </label>
               <label class="full-width">
                 <span>Descrição</span>
                 <textarea id="financeAdvanceDescription" name="description" rows="2" required></textarea>
               </label>
             </div>
-            <button class="primary" type="submit">Adicionar vale</button>
+            <button id="financeAdvanceSubmitButton" class="primary" type="submit">Adicionar vale</button>
           </form>
+          <div class="settings-form compact-filter-form">
+            <label>
+              <span>Pesquisar vale</span>
+              <input id="financeAdvanceSearchInput" type="search" placeholder="Valor, data ou descricao" />
+            </label>
+          </div>
           <div id="financeAdvanceList" class="record-list compact-record-list"></div>
         </section>
 
@@ -1839,7 +1925,7 @@
               </label>
               <label>
                 <span>Valor da comissão</span>
-                <input id="financeCommissionValue" name="value" inputmode="decimal" required placeholder="0,00" />
+                <input id="financeCommissionValue" name="value" inputmode="decimal" required placeholder="R$ 0,00" data-money-input />
               </label>
               <label>
                 <span>Data</span>
@@ -1852,6 +1938,12 @@
             </div>
             <button class="primary" type="submit">Adicionar comissão</button>
           </form>
+          <div class="settings-form compact-filter-form">
+            <label>
+              <span>Pesquisar comissao</span>
+              <input id="financeCommissionSearchInput" type="search" placeholder="Cliente, valor, data ou descricao" />
+            </label>
+          </div>
           <div id="financeCommissionList" class="record-list compact-record-list"></div>
         </section>
 
@@ -1879,7 +1971,7 @@
               </label>
               <label>
                 <span>Valor</span>
-                <input id="financeExpenseValue" name="value" inputmode="decimal" required placeholder="0,00" />
+                <input id="financeExpenseValue" name="value" inputmode="decimal" required placeholder="R$ 0,00" data-money-input />
               </label>
               <label>
                 <span>Forma de pagamento</span>
@@ -1928,7 +2020,7 @@
               </label>
               <label>
                 <span>Valor mensal</span>
-                <input id="financeMonthlyValue" name="value" inputmode="decimal" required placeholder="0,00" />
+                <input id="financeMonthlyValue" name="value" inputmode="decimal" required placeholder="R$ 0,00" data-money-input />
               </label>
               <label>
                 <span>Vencimento</span>
@@ -1984,7 +2076,7 @@
               </label>
               <label>
                 <span>Valor</span>
-                <input id="financeSporadicValue" name="value" inputmode="decimal" required placeholder="0,00" />
+                <input id="financeSporadicValue" name="value" inputmode="decimal" required placeholder="R$ 0,00" data-money-input />
               </label>
               <label>
                 <span>Forma de pagamento</span>

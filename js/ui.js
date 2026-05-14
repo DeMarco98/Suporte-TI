@@ -271,6 +271,7 @@ let editingCompanyVehicleFineDrafts = [];
 let editingCompanyVehicleDocumentationDraft = createEmptyVehicleDocumentation();
 let editingCompanyStockItemId = "";
 let editingFinanceUserId = "";
+let editingFinanceAdvanceId = "";
 let selectedFinanceClientId = "";
 let editingFinanceClientBilling = false;
 let editingPasswordUserId = "";
@@ -595,6 +596,7 @@ const stockReportForm = document.querySelector("#stockReportForm");
 const vehicleReportForm = document.querySelector("#vehicleReportForm");
 const reportMessage = document.querySelector("#reportMessage");
 const financeUserList = document.querySelector("#financeUserList");
+const financeEmployeeSearchInput = document.querySelector("#financeEmployeeSearchInput");
 const financeMainTabs = document.querySelectorAll(".finance-main-tab");
 const financeMainPanels = {
   employees: document.querySelector("#financeEmployeesPanel"),
@@ -603,10 +605,13 @@ const financeMainPanels = {
   clients: document.querySelector("#financeClientsPanel")
 };
 const financeGlobalExpenseForm = document.querySelector("#financeGlobalExpenseForm");
+const financeGlobalExpenseSearchInput = document.querySelector("#financeGlobalExpenseSearchInput");
 const financeGlobalExpenseList = document.querySelector("#financeGlobalExpenseList");
 const financePaymentForm = document.querySelector("#financePaymentForm");
 const financePaymentClient = document.querySelector("#financePaymentClient");
+const financePaymentSearchInput = document.querySelector("#financePaymentSearchInput");
 const financePaymentList = document.querySelector("#financePaymentList");
+const financeClientBillingSearchInput = document.querySelector("#financeClientBillingSearchInput");
 const financeClientBillingList = document.querySelector("#financeClientBillingList");
 const financeClientBillingDetails = document.querySelector("#financeClientBillingDetails");
 const financePanelMessage = document.querySelector("#financePanelMessage");
@@ -615,16 +620,26 @@ const financeDialogTitle = document.querySelector("#financeDialogTitle");
 const closeFinanceDialogButton = document.querySelector("#closeFinanceDialogButton");
 const financeTabs = document.querySelectorAll(".finance-tab");
 const financePanels = {
+  employee: document.querySelector("#financeEmployeePanel"),
   advances: document.querySelector("#financeAdvancesPanel"),
   commissions: document.querySelector("#financeCommissionsPanel")
 };
+const financeEmployeeSummary = document.querySelector("#financeEmployeeSummary");
+const financeEmployeeSettingsForm = document.querySelector("#financeEmployeeSettingsForm");
+const financeEmployeeSalary = document.querySelector("#financeEmployeeSalary");
+const financeVacationForm = document.querySelector("#financeVacationForm");
+const financeVacationSearchInput = document.querySelector("#financeVacationSearchInput");
+const financeVacationList = document.querySelector("#financeVacationList");
 const financeAdvanceForm = document.querySelector("#financeAdvanceForm");
+const financeAdvanceSubmitButton = document.querySelector("#financeAdvanceSubmitButton");
+const financeAdvanceSearchInput = document.querySelector("#financeAdvanceSearchInput");
 const financeAdvanceList = document.querySelector("#financeAdvanceList");
 const financeCommissionForm = document.querySelector("#financeCommissionForm");
 const financeCommissionClient = document.querySelector("#financeCommissionClient");
 const addTemporaryFinanceClientButton = document.querySelector("#addTemporaryFinanceClientButton");
 const temporaryFinanceClientLabel = document.querySelector("#temporaryFinanceClientLabel");
 const temporaryFinanceClientName = document.querySelector("#temporaryFinanceClientName");
+const financeCommissionSearchInput = document.querySelector("#financeCommissionSearchInput");
 const financeCommissionList = document.querySelector("#financeCommissionList");
 const financeExpenseForm = document.querySelector("#financeExpenseForm");
 const financeExpenseList = document.querySelector("#financeExpenseList");
@@ -712,11 +727,20 @@ stockReportForm.addEventListener("submit", generateStockReport);
 vehicleReportForm.addEventListener("submit", generateVehicleReport);
 closeFinanceDialogButton.addEventListener("click", closeFinanceDialog);
 financeMainTabs.forEach((tab) => tab.addEventListener("click", () => switchFinanceMainView(tab.dataset.financeMainView)));
+financeEmployeeSearchInput.addEventListener("input", renderFinanceUsers);
+financeGlobalExpenseSearchInput.addEventListener("input", renderFinanceGlobalRecords);
 financeGlobalExpenseForm.addEventListener("submit", addFinanceGlobalExpense);
+financePaymentSearchInput.addEventListener("input", renderFinanceGlobalRecords);
 financePaymentForm.addEventListener("submit", addFinancePayment);
+financeClientBillingSearchInput.addEventListener("input", renderFinanceClientBillingList);
 financeTabs.forEach((tab) => tab.addEventListener("click", () => switchFinanceView(tab.dataset.financeView)));
+financeEmployeeSettingsForm.addEventListener("submit", saveFinanceEmployeeSettings);
+financeVacationForm.addEventListener("submit", addFinanceVacation);
+financeVacationSearchInput.addEventListener("input", renderFinanceRecords);
 financeAdvanceForm.addEventListener("submit", addFinanceAdvance);
+financeAdvanceSearchInput.addEventListener("input", renderFinanceRecords);
 financeCommissionForm.addEventListener("submit", addFinanceCommission);
+financeCommissionSearchInput.addEventListener("input", renderFinanceRecords);
 financeExpenseForm.addEventListener("submit", addFinanceExpense);
 financeMonthlyForm.addEventListener("submit", addFinanceMonthly);
 financeSporadicForm.addEventListener("submit", addFinanceSporadic);
@@ -743,6 +767,15 @@ exportVehicleIpvaPdfButton.addEventListener("click", () => exportCompanyVehicleD
 exportVehicleLicensingPdfButton.addEventListener("click", () => exportCompanyVehicleDocumentPdf("licensing"));
 companyStockForm.addEventListener("submit", saveCompanyStockType);
 companyStockType.addEventListener("change", toggleNewCompanyStockTypeField);
+document.addEventListener(
+  "blur",
+  (event) => {
+    if (event.target.matches("[data-money-input]")) {
+      formatMoneyInput(event.target);
+    }
+  },
+  true
+);
 agendaForm.addEventListener("submit", addAgendaItem);
 cancelAgendaButton.addEventListener("click", resetAgendaForm);
 agendaSearchInput.addEventListener("input", renderAgendaItems);
@@ -1115,7 +1148,7 @@ function applyFormDraft(formElement) {
 }
 
 function restoreVisibleFormDrafts() {
-  [form, agendaForm, infrastructureAgendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, financeAdvanceForm, financeCommissionForm, financeExpenseForm, financeMonthlyForm, financeSporadicForm, financeGlobalExpenseForm, financePaymentForm, userForm].forEach((formElement) => {
+  [form, agendaForm, infrastructureAgendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, financeEmployeeSettingsForm, financeVacationForm, financeAdvanceForm, financeCommissionForm, financeExpenseForm, financeMonthlyForm, financeSporadicForm, financeGlobalExpenseForm, financePaymentForm, userForm].forEach((formElement) => {
     if (!formElement || formElement.offsetParent === null) {
       return;
     }
@@ -1129,7 +1162,7 @@ function restoreVisibleFormDrafts() {
 }
 
 function setupFormDraftAutosave() {
-  [form, agendaForm, infrastructureAgendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, financeAdvanceForm, financeCommissionForm, financeExpenseForm, financeMonthlyForm, financeSporadicForm, financeGlobalExpenseForm, financePaymentForm, userForm].forEach((formElement) => {
+  [form, agendaForm, infrastructureAgendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, financeEmployeeSettingsForm, financeVacationForm, financeAdvanceForm, financeCommissionForm, financeExpenseForm, financeMonthlyForm, financeSporadicForm, financeGlobalExpenseForm, financePaymentForm, userForm].forEach((formElement) => {
     if (!formElement) {
       return;
     }
@@ -1281,6 +1314,17 @@ function normalizeFinanceGlobalInfo(financeGlobal = {}) {
 function normalizeFinanceInfo(finance = {}) {
   return Object.entries(finance && typeof finance === "object" ? finance : {}).reduce((records, [userId, value]) => {
     records[userId] = {
+      salary: value?.salary || "",
+      vacations: Array.isArray(value?.vacations)
+        ? value.vacations.map((item) => ({
+            id: item.id || createId("FER"),
+            startDate: item.startDate || "",
+            endDate: item.endDate || "",
+            status: item.status || "Programada",
+            description: item.description || "",
+            createdAt: item.createdAt || new Date().toISOString()
+          }))
+        : [],
       advances: Array.isArray(value?.advances)
         ? value.advances.map((item) => ({
             id: item.id || createId("VAL"),
@@ -4494,7 +4538,7 @@ function renderPermissions() {
   });
   restoreLocalBackupButton.disabled = !canBackup || !hasLocalBackup;
   clearLocalBackupButton.disabled = !canBackup || !hasLocalBackup;
-  [...financeAdvanceForm.elements, ...financeCommissionForm.elements, ...financeExpenseForm.elements, ...financeMonthlyForm.elements, ...financeSporadicForm.elements].forEach((element) => {
+  [...financeEmployeeSettingsForm.elements, ...financeVacationForm.elements, ...financeAdvanceForm.elements, ...financeCommissionForm.elements, ...financeExpenseForm.elements, ...financeMonthlyForm.elements, ...financeSporadicForm.elements].forEach((element) => {
     element.disabled = !canModifyFinance;
   });
   [...financeGlobalExpenseForm.elements, ...financePaymentForm.elements].forEach((element) => {
@@ -5129,9 +5173,73 @@ function renderReportStatusChecks(container, statuses, name) {
   });
 }
 
+function normalizeSearch(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function parseMoney(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const text = String(value || "")
+    .replace(/\s/g, "")
+    .replace("R$", "")
+    .replace(/\./g, "")
+    .replace(",", ".")
+    .replace(/[^\d.-]/g, "");
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  }).format(parseMoney(value));
+}
+
+function formatMoneyInput(input) {
+  if (!input.value.trim()) {
+    return;
+  }
+
+  input.value = formatMoney(input.value);
+}
+
+function getFinanceTotals(records) {
+  const salary = parseMoney(records.salary);
+  const advances = records.advances.reduce((total, item) => total + parseMoney(item.value), 0);
+  const commissions = records.commissions.reduce((total, item) => total + parseMoney(item.value), 0);
+
+  return {
+    salary,
+    advances,
+    commissions,
+    net: salary + commissions - advances
+  };
+}
+
 function renderFinanceUsers() {
   financeUserList.innerHTML = "";
-  const visibleUsers = users.filter((user) => user.active !== false || canApproveAuthorizationRequests());
+  const search = normalizeSearch(financeEmployeeSearchInput.value);
+  const visibleUsers = users.filter((user) => {
+    if (user.active === false && !canApproveAuthorizationRequests()) {
+      return false;
+    }
+
+    if (!search) {
+      return true;
+    }
+
+    const records = getFinanceRecords(user.id);
+    const totals = getFinanceTotals(records);
+    return normalizeSearch([user.name, user.login, records.salary, formatMoney(totals.net), records.advances.length, records.commissions.length].join(" ")).includes(search);
+  });
 
   if (visibleUsers.length === 0) {
     const emptyState = emptyRecordsTemplate.content.cloneNode(true);
@@ -5157,8 +5265,9 @@ function renderFinanceUsers() {
     const title = document.createElement("strong");
     title.textContent = user.name || user.login || "Usuario";
 
+    const totals = getFinanceTotals(records);
     const details = document.createElement("span");
-    details.textContent = `Vales: ${records.advances.length} | Comissoes: ${records.commissions.length}`;
+    details.textContent = `Salario: ${formatMoney(totals.salary)} | Vales: ${formatMoney(totals.advances)} | Comissoes: ${formatMoney(totals.commissions)} | Liquido: ${formatMoney(totals.net)}`;
 
     card.addEventListener("click", () => openFinanceDialog(user.id));
     card.addEventListener("keydown", (event) => {
@@ -5186,21 +5295,30 @@ function openFinanceDialog(userId) {
   }
 
   editingFinanceUserId = user.id;
+  editingFinanceAdvanceId = "";
   financeDialogTitle.textContent = user.name || user.login || "Usuario";
   financeMessage.textContent = "";
+  financeEmployeeSettingsForm.reset();
+  financeVacationForm.reset();
   financeAdvanceForm.reset();
+  financeAdvanceSubmitButton.textContent = "Adicionar vale";
   financeCommissionForm.reset();
+  renderFinanceEmployeeSettings();
   renderFinanceClientOptions();
   hideTemporaryFinanceClientField();
   renderFinanceRecords();
-  switchFinanceView("advances");
+  switchFinanceView("employee");
   financeDialog.showModal();
   renderPermissions();
 }
 
 function closeFinanceDialog() {
   editingFinanceUserId = "";
+  editingFinanceAdvanceId = "";
+  financeEmployeeSettingsForm.reset();
+  financeVacationForm.reset();
   financeAdvanceForm.reset();
+  financeAdvanceSubmitButton.textContent = "Adicionar vale";
   financeCommissionForm.reset();
   hideTemporaryFinanceClientField();
 
@@ -5229,7 +5347,7 @@ function renderFinanceMainView() {
 }
 
 function switchFinanceView(viewName) {
-  const activeView = financePanels[viewName] ? viewName : "advances";
+  const activeView = financePanels[viewName] ? viewName : "employee";
   financeTabs.forEach((tab) => {
     const isActive = tab.dataset.financeView === activeView;
     tab.classList.toggle("active", isActive);
@@ -5321,6 +5439,78 @@ function hideTemporarySporadicClientField() {
   financeSporadicClient.required = clients.filter((client) => client.clientType === "Esporadico").length > 0;
 }
 
+function renderFinanceEmployeeSettings() {
+  const records = getFinanceRecords(editingFinanceUserId);
+  const totals = getFinanceTotals(records);
+  financeEmployeeSalary.value = records.salary || "";
+  financeEmployeeSummary.innerHTML = `
+    <span class="summary-item">
+      <small>Salario</small>
+      <strong>${escapeHtml(formatMoney(totals.salary))}</strong>
+    </span>
+    <span class="summary-item">
+      <small>Vales</small>
+      <strong>${escapeHtml(formatMoney(totals.advances))}</strong>
+    </span>
+    <span class="summary-item">
+      <small>Comissoes</small>
+      <strong>${escapeHtml(formatMoney(totals.commissions))}</strong>
+    </span>
+    <span class="summary-item finance-net-value">
+      <small>Liquido</small>
+      <strong>${escapeHtml(formatMoney(totals.net))}</strong>
+    </span>
+  `;
+}
+
+async function saveFinanceEmployeeSettings(event) {
+  event.preventDefault();
+
+  if (!requireModify("finance") || !editingFinanceUserId) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(financeEmployeeSettingsForm).entries());
+  const salary = formatMoney(data.salary);
+  const saveResult = await updateFinanceRecords(editingFinanceUserId, (records) => ({
+    ...records,
+    salary
+  }));
+  financeEmployeeSalary.value = salary;
+  financeMessage.textContent = getSaveResultMessage(saveResult, "Salario salvo.");
+  logActivity("Salario financeiro atualizado", `${getFinanceUserName(editingFinanceUserId)} teve o salario atualizado.`);
+  renderFinanceEmployeeSettings();
+  renderFinanceUsers();
+}
+
+async function addFinanceVacation(event) {
+  event.preventDefault();
+
+  if (!requireModify("finance") || !editingFinanceUserId) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(financeVacationForm).entries());
+  const saveResult = await updateFinanceRecords(editingFinanceUserId, (records) => ({
+    ...records,
+    vacations: [
+      {
+        id: createId("FER"),
+        startDate: data.startDate,
+        endDate: data.endDate,
+        status: data.status || "Programada",
+        description: data.description.trim(),
+        createdAt: new Date().toISOString()
+      },
+      ...records.vacations
+    ]
+  }));
+  financeVacationForm.reset();
+  financeMessage.textContent = getSaveResultMessage(saveResult, "Ferias registradas.");
+  logActivity("Ferias financeiras registradas", `${getFinanceUserName(editingFinanceUserId)} teve ferias registradas.`);
+  renderFinanceRecords();
+}
+
 async function addFinanceAdvance(event) {
   event.preventDefault();
 
@@ -5329,22 +5519,26 @@ async function addFinanceAdvance(event) {
   }
 
   const data = Object.fromEntries(new FormData(financeAdvanceForm).entries());
+  const value = formatMoney(data.value);
+  const advance = {
+    id: editingFinanceAdvanceId || createId("VAL"),
+    date: data.date,
+    value,
+    description: data.description.trim(),
+    createdAt: new Date().toISOString()
+  };
+  const isEditing = Boolean(editingFinanceAdvanceId);
   const saveResult = await updateFinanceRecords(editingFinanceUserId, (records) => ({
     ...records,
-    advances: [
-      {
-        id: createId("VAL"),
-        date: data.date,
-        value: data.value.trim(),
-        description: data.description.trim(),
-        createdAt: new Date().toISOString()
-      },
-      ...records.advances
-    ]
+    advances: isEditing ? records.advances.map((item) => (item.id === editingFinanceAdvanceId ? { ...item, ...advance, createdAt: item.createdAt || advance.createdAt } : item)) : [advance, ...records.advances]
   }));
+  editingFinanceAdvanceId = "";
   financeAdvanceForm.reset();
-  financeMessage.textContent = getSaveResultMessage(saveResult, "Vale adicionado.");
-  logActivity("Vale financeiro adicionado", `${getFinanceUserName(editingFinanceUserId)} recebeu um vale de ${data.value}.`);
+  financeAdvanceSubmitButton.textContent = "Adicionar vale";
+  financeMessage.textContent = getSaveResultMessage(saveResult, isEditing ? "Vale atualizado." : "Vale adicionado.");
+  logActivity(isEditing ? "Vale financeiro atualizado" : "Vale financeiro adicionado", `${getFinanceUserName(editingFinanceUserId)} recebeu um vale de ${value}.`);
+  renderFinanceEmployeeSettings();
+  renderFinanceEmployeeSettings();
   renderFinanceRecords();
   renderFinanceUsers();
 }
@@ -5360,6 +5554,7 @@ async function addFinanceCommission(event) {
   const temporaryClientName = data.temporaryClientName?.trim() || "";
   const client = clients.find((item) => item.id === data.clientId);
   const clientName = temporaryClientName || client?.name || "";
+  const value = formatMoney(data.value);
 
   if (!clientName) {
     temporaryFinanceClientName.focus();
@@ -5374,7 +5569,7 @@ async function addFinanceCommission(event) {
         date: data.date,
         clientId: temporaryClientName ? "" : data.clientId,
         clientName,
-        value: data.value.trim(),
+        value,
         description: data.description.trim(),
         temporary: Boolean(temporaryClientName),
         createdAt: new Date().toISOString()
@@ -5399,6 +5594,7 @@ function addFinanceExpense(event) {
   }
 
   const data = Object.fromEntries(new FormData(financeExpenseForm).entries());
+  const value = formatMoney(data.value);
   updateFinanceRecords(editingFinanceUserId, (records) => ({
     ...records,
     expenses: [
@@ -5407,7 +5603,7 @@ function addFinanceExpense(event) {
         date: data.date,
         dueDate: data.dueDate || "",
         category: data.category,
-        value: data.value.trim(),
+        value,
         payment: data.payment || "",
         status: data.status || "Pendente",
         description: data.description.trim(),
@@ -5418,7 +5614,7 @@ function addFinanceExpense(event) {
   }));
   financeExpenseForm.reset();
   financeMessage.textContent = "Despesa adicionada.";
-  logActivity("Despesa financeira adicionada", `${getFinanceUserName(editingFinanceUserId)} registrou despesa de ${data.value}.`);
+  logActivity("Despesa financeira adicionada", `${getFinanceUserName(editingFinanceUserId)} registrou despesa de ${value}.`);
   renderFinanceRecords();
   renderFinanceUsers();
 }
@@ -5431,6 +5627,7 @@ async function addFinanceGlobalExpense(event) {
   }
 
   const data = Object.fromEntries(new FormData(financeGlobalExpenseForm).entries());
+  const value = formatMoney(data.value);
   const saveResult = await updateFinanceGlobalRecords((records) => ({
     ...records,
     expenses: [
@@ -5439,7 +5636,7 @@ async function addFinanceGlobalExpense(event) {
         date: data.date,
         dueDate: data.dueDate || "",
         category: data.category.trim(),
-        value: data.value.trim(),
+        value,
         payment: data.payment || "",
         status: data.status || "Pendente",
         description: data.description.trim(),
@@ -5450,7 +5647,7 @@ async function addFinanceGlobalExpense(event) {
   }));
   financeGlobalExpenseForm.reset();
   financePanelMessage.textContent = getSaveResultMessage(saveResult, "Despesa adicionada.");
-  logActivity("Despesa financeira adicionada", `${data.category} - ${data.value}.`);
+  logActivity("Despesa financeira adicionada", `${data.category} - ${value}.`);
   renderFinanceGlobalRecords();
 }
 
@@ -5463,6 +5660,7 @@ async function addFinancePayment(event) {
 
   const data = Object.fromEntries(new FormData(financePaymentForm).entries());
   const client = clients.find((item) => item.id === data.clientId);
+  const value = formatMoney(data.value);
 
   if (!client) {
     return;
@@ -5476,7 +5674,7 @@ async function addFinancePayment(event) {
         date: data.date,
         clientId: client.id,
         clientName: client.name || "Cliente sem nome",
-        value: data.value.trim(),
+        value,
         payment: data.payment || "",
         status: data.status || "Recebido",
         description: data.description.trim(),
@@ -5488,7 +5686,7 @@ async function addFinancePayment(event) {
   financePaymentForm.reset();
   renderFinancePaymentClientOptions();
   financePanelMessage.textContent = getSaveResultMessage(saveResult, "Pagamento adicionado.");
-  logActivity("Pagamento financeiro adicionado", `${client.name || "Cliente"} - ${data.value}.`);
+  logActivity("Pagamento financeiro adicionado", `${client.name || "Cliente"} - ${value}.`);
   renderFinanceGlobalRecords();
 }
 
@@ -5503,6 +5701,7 @@ function addFinanceMonthly(event) {
   const temporaryClientName = data.temporaryClientName?.trim() || "";
   const client = clients.find((item) => item.id === data.clientId);
   const clientName = temporaryClientName || client?.name || "";
+  const value = formatMoney(data.value);
 
   if (!clientName) {
     temporaryMonthlyClientName.focus();
@@ -5517,7 +5716,7 @@ function addFinanceMonthly(event) {
         clientId: temporaryClientName ? "" : data.clientId,
         clientName,
         service: data.service.trim(),
-        value: data.value.trim(),
+        value,
         dueDay: data.dueDay || "",
         frequency: data.frequency || "Mensal",
         status: data.status || "Ativo",
@@ -5548,6 +5747,7 @@ function addFinanceSporadic(event) {
   const temporaryClientName = data.temporaryClientName?.trim() || "";
   const client = clients.find((item) => item.id === data.clientId);
   const clientName = temporaryClientName || client?.name || "";
+  const value = formatMoney(data.value);
 
   if (!clientName) {
     temporarySporadicClientName.focus();
@@ -5563,7 +5763,7 @@ function addFinanceSporadic(event) {
         clientName,
         service: data.service.trim(),
         date: data.date,
-        value: data.value.trim(),
+        value,
         payment: data.payment || "",
         status: data.status || "Pendente",
         description: data.description.trim(),
@@ -5584,14 +5784,16 @@ function addFinanceSporadic(event) {
 
 function renderFinanceRecords() {
   const records = getFinanceRecords(editingFinanceUserId);
-  renderFinanceRecordList(financeAdvanceList, records.advances, "Vale");
+  renderFinanceEmployeeSettings();
+  renderFinanceRecordList(financeVacationList, filterFinanceRecords(records.vacations, "Ferias", financeVacationSearchInput.value), "Ferias");
+  renderFinanceRecordList(financeAdvanceList, filterFinanceRecords(records.advances, "Vale", financeAdvanceSearchInput.value), "Vale");
   renderFinanceRecordList(financeCommissionList, records.commissions, "Comissão");
 }
 
 function renderFinanceGlobalRecords() {
   const records = getFinanceGlobalRecords();
-  renderFinanceRecordList(financeGlobalExpenseList, records.expenses, "Despesa");
-  renderFinanceRecordList(financePaymentList, records.payments, "Pagamento");
+  renderFinanceRecordList(financeGlobalExpenseList, filterFinanceRecords(records.expenses, "Despesa", financeGlobalExpenseSearchInput.value), "Despesa");
+  renderFinanceRecordList(financePaymentList, filterFinanceRecords(records.payments, "Pagamento", financePaymentSearchInput.value), "Pagamento");
 }
 
 function renderFinanceClientBillingList() {
@@ -5606,9 +5808,25 @@ function renderFinanceClientBillingList() {
     return;
   }
 
+  const search = normalizeSearch(financeClientBillingSearchInput.value);
   const sortedClients = clients
-    .slice()
+    .filter((client) => {
+      if (!search) {
+        return true;
+      }
+
+      const billing = getFinanceGlobalRecords().clients[client.id] || {};
+      return normalizeSearch([client.name, client.clientType, billing.monthlyValue, billing.dueDay, billing.paymentMethod, billing.billed, billing.sendType, billing.email, billing.boletoSent].join(" ")).includes(search);
+    })
     .sort((first, second) => (first.name || "").localeCompare(second.name || ""));
+
+  if (sortedClients.length === 0) {
+    const emptyState = emptyRecordsTemplate.content.cloneNode(true);
+    emptyState.querySelector("strong").textContent = "Nenhum cliente encontrado";
+    emptyState.querySelector("span").textContent = "Ajuste a pesquisa para localizar o cliente.";
+    financeClientBillingList.append(emptyState);
+    return;
+  }
 
   if (!selectedFinanceClientId || !sortedClients.some((client) => client.id === selectedFinanceClientId)) {
     selectedFinanceClientId = sortedClients[0]?.id || "";
@@ -5622,7 +5840,7 @@ function renderFinanceClientBillingList() {
     button.type = "button";
     button.innerHTML = `
       <span class="client-name">${escapeHtml(client.name || "Cliente sem nome")}</span>
-      <span class="client-meta">${escapeHtml(client.clientType || "Cliente")} | ${billing.monthlyValue ? `R$ ${escapeHtml(billing.monthlyValue)}` : "Sem mensalidade"}</span>
+      <span class="client-meta">${escapeHtml(client.clientType || "Cliente")} | ${billing.monthlyValue ? escapeHtml(formatMoney(billing.monthlyValue)) : "Sem mensalidade"}</span>
     `;
     button.addEventListener("click", () => selectFinanceClient(client.id));
     financeClientBillingList.append(button);
@@ -5660,7 +5878,7 @@ function renderFinanceClientBillingDetails() {
         <button id="editFinanceClientBillingButton" class="subtle" type="button">Editar</button>
       </div>
       <div class="service-order-summary">
-        ${createFinanceClientSummaryItem("Mensalidade", billing.monthlyValue ? `R$ ${billing.monthlyValue}` : "Nao informado")}
+        ${createFinanceClientSummaryItem("Mensalidade", billing.monthlyValue ? formatMoney(billing.monthlyValue) : "Nao informado")}
         ${createFinanceClientSummaryItem("Vencimento", billing.dueDay ? `Dia ${billing.dueDay}` : "Nao informado")}
         ${createFinanceClientSummaryItem("Pagamento", billing.paymentMethod || "Nao informado")}
         ${createFinanceClientSummaryItem("Faturado", billing.billed || "Nao")}
@@ -5692,7 +5910,7 @@ function renderFinanceClientBillingDetails() {
     <div class="form-grid compact-form-grid">
       <label>
         <span>Mensalidade</span>
-        <input name="monthlyValue" inputmode="decimal" placeholder="0,00" value="${escapeAttribute(billing.monthlyValue || "")}" />
+        <input name="monthlyValue" inputmode="decimal" placeholder="R$ 0,00" value="${escapeAttribute(billing.monthlyValue || "")}" data-money-input />
       </label>
       <label>
         <span>Vencimento</span>
@@ -5780,7 +5998,7 @@ async function saveFinanceClientBilling(event) {
     clients: {
       ...records.clients,
       [clientId]: {
-        monthlyValue: data.monthlyValue.trim(),
+        monthlyValue: data.monthlyValue ? formatMoney(data.monthlyValue) : "",
         dueDay: data.dueDay || "",
         paymentMethod: data.paymentMethod || "",
         billed: data.billed || "Nao",
@@ -5823,8 +6041,9 @@ function escapeAttribute(value) {
 
 function renderFinanceRecordList(container, items, type) {
   container.innerHTML = "";
+  const visibleItems = filterFinanceRecords(items, type, getFinanceListSearchValue(type));
 
-  if (items.length === 0) {
+  if (visibleItems.length === 0) {
     const emptyState = emptyRecordsTemplate.content.cloneNode(true);
     emptyState.querySelector("strong").textContent = `Nenhum registro de ${type.toLowerCase()}`;
     emptyState.querySelector("span").textContent = "Os lançamentos aparecerão aqui.";
@@ -5832,7 +6051,7 @@ function renderFinanceRecordList(container, items, type) {
     return;
   }
 
-  items.forEach((item) => {
+  visibleItems.forEach((item) => {
     const card = document.createElement("article");
     card.className = "record-card compact-record-card";
 
@@ -5847,8 +6066,110 @@ function renderFinanceRecordList(container, items, type) {
 
     content.append(title, details);
     card.append(content);
+
+    if (type === "Vale") {
+      const actions = document.createElement("div");
+      actions.className = "record-actions";
+
+      const editButton = document.createElement("button");
+      editButton.className = "subtle icon-button";
+      editButton.type = "button";
+      editButton.title = "Editar vale";
+      editButton.setAttribute("aria-label", "Editar vale");
+      editButton.textContent = "✎";
+      editButton.disabled = !canModify("finance");
+      editButton.addEventListener("click", () => editFinanceAdvance(item.id));
+
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "danger icon-button";
+      deleteButton.type = "button";
+      deleteButton.title = "Excluir vale";
+      deleteButton.setAttribute("aria-label", "Excluir vale");
+      deleteButton.textContent = "x";
+      deleteButton.disabled = !canModify("finance");
+      deleteButton.addEventListener("click", () => deleteFinanceAdvance(item.id));
+
+      actions.append(editButton, deleteButton);
+      card.append(actions);
+    }
     container.append(card);
   });
+}
+
+function getFinanceListSearchValue(type) {
+  if (type === "Vale") {
+    return financeAdvanceSearchInput.value;
+  }
+
+  if (type === "Comissao" || type.startsWith("Comiss")) {
+    return financeCommissionSearchInput.value;
+  }
+
+  if (type === "Ferias") {
+    return financeVacationSearchInput.value;
+  }
+
+  if (type === "Despesa") {
+    return financeGlobalExpenseSearchInput.value;
+  }
+
+  if (type === "Pagamento") {
+    return financePaymentSearchInput.value;
+  }
+
+  return "";
+}
+
+function filterFinanceRecords(items, type, searchValue = "") {
+  const search = normalizeSearch(searchValue);
+
+  if (!search) {
+    return items;
+  }
+
+  return items.filter((item) => normalizeSearch([type, getFinanceRecordTitle(item, type), getFinanceRecordDetails(item, type), item.value, item.status, item.date, item.startDate, item.endDate, item.description].join(" ")).includes(search));
+}
+
+function editFinanceAdvance(advanceId) {
+  if (!canModify("finance")) {
+    return;
+  }
+
+  const records = getFinanceRecords(editingFinanceUserId);
+  const advance = records.advances.find((item) => item.id === advanceId);
+
+  if (!advance) {
+    return;
+  }
+
+  editingFinanceAdvanceId = advance.id;
+  financeAdvanceForm.elements.date.value = advance.date || "";
+  financeAdvanceForm.elements.value.value = advance.value || "";
+  financeAdvanceForm.elements.description.value = advance.description || "";
+  financeAdvanceSubmitButton.textContent = "Salvar vale";
+  switchFinanceView("advances");
+}
+
+async function deleteFinanceAdvance(advanceId) {
+  if (!requireModify("finance") || !editingFinanceUserId) {
+    return;
+  }
+
+  const confirmed = window.confirm("Excluir este vale?");
+
+  if (!confirmed) {
+    return;
+  }
+
+  const saveResult = await updateFinanceRecords(editingFinanceUserId, (records) => ({
+    ...records,
+    advances: records.advances.filter((item) => item.id !== advanceId)
+  }));
+  financeMessage.textContent = getSaveResultMessage(saveResult, "Vale excluido.");
+  logActivity("Vale financeiro excluido", `${getFinanceUserName(editingFinanceUserId)} teve um vale removido.`);
+  renderFinanceEmployeeSettings();
+  renderFinanceRecords();
+  renderFinanceUsers();
 }
 
 function updateFinanceRecords(userId, updater) {
@@ -5873,7 +6194,7 @@ function updateFinanceGlobalRecords(updater) {
 }
 
 function getFinanceRecords(userId) {
-  return normalizeFinanceInfo(companyInfo.finance)[userId] || { advances: [], commissions: [], sporadic: [], expenses: [], monthly: [] };
+  return normalizeFinanceInfo(companyInfo.finance)[userId] || { salary: "", vacations: [], advances: [], commissions: [], sporadic: [], expenses: [], monthly: [] };
 }
 
 function getFinanceGlobalRecords() {
@@ -5881,6 +6202,26 @@ function getFinanceGlobalRecords() {
 }
 
 function getFinanceRecordTitle(item, type) {
+  if (type === "Ferias") {
+    return `${formatSimpleDate(item.startDate)} ate ${formatSimpleDate(item.endDate)}`;
+  }
+
+  if (type === "Comissao" || type.startsWith("Comiss")) {
+    return `${item.clientName || "Cliente"} - ${formatMoney(item.value)}`;
+  }
+
+  if (type === "Despesa") {
+    return `${item.category || "Despesa"} - ${formatMoney(item.value)}`;
+  }
+
+  if (type === "Pagamento") {
+    return `${item.clientName || "Cliente"} - ${formatMoney(item.value)}`;
+  }
+
+  if (["Mensalista", "Esporadico", "Vale"].includes(type)) {
+    return type === "Vale" ? formatMoney(item.value) : `${item.clientName || "Cliente"} - ${formatMoney(item.value)}`;
+  }
+
   if (type === "Comissão") {
     return `${item.clientName || "Cliente"} - ${item.value || "0,00"}`;
   }
@@ -5905,6 +6246,17 @@ function getFinanceRecordTitle(item, type) {
 }
 
 function getFinanceRecordDetails(item, type) {
+  if (type === "Ferias") {
+    return [
+      `Inicio: ${formatSimpleDate(item.startDate)}`,
+      `Fim: ${formatSimpleDate(item.endDate)}`,
+      `Status: ${item.status || "Programada"}`,
+      item.description
+    ]
+      .filter(Boolean)
+      .join(" | ");
+  }
+
   if (type === "Despesa") {
     return [
       `Data: ${formatSimpleDate(item.date)}`,

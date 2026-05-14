@@ -257,6 +257,7 @@ let activeAgendaView = "list";
 let activeInfrastructureAgendaView = "list";
 let activeCompanyView = "profile";
 let activeSettingsView = "theme";
+let activeFinanceMainView = "employees";
 let editingEmailSettings = false;
 let editingNetworkSettings = false;
 let editingAgendaId = "";
@@ -270,6 +271,8 @@ let editingCompanyVehicleFineDrafts = [];
 let editingCompanyVehicleDocumentationDraft = createEmptyVehicleDocumentation();
 let editingCompanyStockItemId = "";
 let editingFinanceUserId = "";
+let selectedFinanceClientId = "";
+let editingFinanceClientBilling = false;
 let editingPasswordUserId = "";
 let permissionDrafts = {};
 let currentUser = loadSessionUser();
@@ -605,6 +608,7 @@ const financePaymentForm = document.querySelector("#financePaymentForm");
 const financePaymentClient = document.querySelector("#financePaymentClient");
 const financePaymentList = document.querySelector("#financePaymentList");
 const financeClientBillingList = document.querySelector("#financeClientBillingList");
+const financeClientBillingDetails = document.querySelector("#financeClientBillingDetails");
 const financePanelMessage = document.querySelector("#financePanelMessage");
 const financeDialog = document.querySelector("#financeDialog");
 const financeDialogTitle = document.querySelector("#financeDialogTitle");
@@ -637,7 +641,6 @@ const temporarySporadicClientLabel = document.querySelector("#temporarySporadicC
 const temporarySporadicClientName = document.querySelector("#temporarySporadicClientName");
 const financeSporadicList = document.querySelector("#financeSporadicList");
 const financeMessage = document.querySelector("#financeMessage");
-let activeFinanceMainView = "employees";
 const panels = {
   profile: document.querySelector("#profilePanel"),
   equipment: document.querySelector("#equipmentPanel"),
@@ -2153,55 +2156,64 @@ function persistState(key, value) {
   writeLocalState(key, value);
 
   if (firebaseSnapshotApplying) {
-    return;
+    return Promise.resolve({ saved: true, localOnly: true });
   }
 
   updateSyncStatus(firebaseSyncEnabled ? "syncing" : "offline", firebaseSyncEnabled ? "Sincronizando" : "Offline");
-  syncStateToFirebase(key, value);
+  return syncStateToFirebase(key, value);
 }
 
 function syncStateToFirebase(key, value, options = {}) {
   if (!firebaseSyncEnabled || (firebaseHydrating && !options.force)) {
-    return;
+    return Promise.resolve({ saved: false, localOnly: true });
   }
 
   const collectionName = getFirestoreCollectionName(key);
 
   if (!collectionName) {
-    return;
+    return Promise.resolve({ saved: false, localOnly: true });
   }
 
   if (collectionName === "counters") {
-    firebaseDb
+    return firebaseDb
       .collection(collectionName)
       .doc(getCounterDocumentId(key))
       .set({ value: Number(value || 1), updatedAt: new Date().toISOString() }, { merge: true })
-      .then(() => updateSyncStatus("synced", "Online"))
+      .then(() => {
+        updateSyncStatus("synced", "Online");
+        return { saved: true };
+      })
       .catch((error) => {
         console.warn("Nao foi possivel salvar contador no Firebase.", error);
         updateSyncStatus("offline", "Offline");
+        return { saved: false, error };
       });
-    return;
   }
 
   if (collectionName === "companyInfo") {
-    firebaseDb
+    return firebaseDb
       .collection(collectionName)
       .doc("main")
       .set(normalizeCompanyInfo(value), { merge: false })
-      .then(() => updateSyncStatus("synced", "Online"))
+      .then(() => {
+        updateSyncStatus("synced", "Online");
+        return { saved: true };
+      })
       .catch((error) => {
         console.warn("Nao foi possivel salvar companyInfo no Firebase.", error);
         updateSyncStatus("offline", "Offline");
+        return { saved: false, error };
       });
-    return;
   }
 
   const items = Array.isArray(value) ? value : [];
-  syncCollection(collectionName, items).catch((error) => {
-    console.warn(`Nao foi possivel salvar ${collectionName} no Firebase.`, error);
-    updateSyncStatus("offline", "Offline");
-  });
+  return syncCollection(collectionName, items)
+    .then(() => ({ saved: true }))
+    .catch((error) => {
+      console.warn(`Nao foi possivel salvar ${collectionName} no Firebase.`, error);
+      updateSyncStatus("offline", "Offline");
+      return { saved: false, error };
+    });
 }
 
 function isCounterStorageKey(key) {
@@ -2291,7 +2303,7 @@ function persistEquipmentBrandModels() {
 }
 
 function persistCompanyInfo() {
-  persistState(COMPANY_STORAGE_KEY, companyInfo);
+  return persistState(COMPANY_STORAGE_KEY, companyInfo);
 }
 
 function persistUsers() {
@@ -3744,6 +3756,18 @@ function getGlobalThemeSettings() {
   };
 }
 
+function getSaveResultMessage(result, successMessage) {
+  if (result?.saved) {
+    return `${successMessage} Sincronizado no Firebase.`;
+  }
+
+  if (result?.localOnly) {
+    return `${successMessage} Atenção: ficou apenas neste navegador porque o Firebase nao esta conectado.`;
+  }
+
+  return `${successMessage} Atenção: nao foi possivel confirmar a sincronizacao com o Firebase.`;
+}
+
 function getLocalThemeSettings() {
   if (!currentUser) {
     return {};
@@ -4582,7 +4606,7 @@ function renderCompanyView() {
   companyStockPanel.classList.toggle("active", activeCompanyView === "stock");
 }
 
-function saveCompanyInfo(event) {
+async function saveCompanyInfo(event) {
   event.preventDefault();
 
   if (!requireModify("company")) {
@@ -4598,13 +4622,13 @@ function saveCompanyInfo(event) {
     stockItems: getCompanyStockItems(),
     updatedAt: new Date().toISOString()
   };
-  persistCompanyInfo();
+  const saveResult = await persistCompanyInfo();
   clearFormDraft(companyForm);
-  companyMessage.textContent = "Perfil da empresa salvo.";
+  companyMessage.textContent = getSaveResultMessage(saveResult, "Perfil da empresa salvo.");
   logActivity("Perfil da empresa atualizado", "Dados do perfil interno da empresa foram atualizados.");
 }
 
-function saveCompanyNetworkInfo(event) {
+async function saveCompanyNetworkInfo(event) {
   event.preventDefault();
 
   if (!requireModify("company")) {
@@ -4620,9 +4644,9 @@ function saveCompanyNetworkInfo(event) {
     stockItems: getCompanyStockItems(),
     updatedAt: new Date().toISOString()
   };
-  persistCompanyInfo();
+  const saveResult = await persistCompanyInfo();
   clearFormDraft(companyNetworkForm);
-  companyNetworkMessage.textContent = "Rede interna salva.";
+  companyNetworkMessage.textContent = getSaveResultMessage(saveResult, "Rede interna salva.");
   logActivity("Rede interna atualizada", "Informacoes de rede da empresa foram atualizadas.");
 }
 
@@ -5219,7 +5243,7 @@ function hideTemporarySporadicClientField() {
   financeSporadicClient.required = clients.filter((client) => client.clientType === "Esporadico").length > 0;
 }
 
-function addFinanceAdvance(event) {
+async function addFinanceAdvance(event) {
   event.preventDefault();
 
   if (!requireModify("finance") || !editingFinanceUserId) {
@@ -5227,7 +5251,7 @@ function addFinanceAdvance(event) {
   }
 
   const data = Object.fromEntries(new FormData(financeAdvanceForm).entries());
-  updateFinanceRecords(editingFinanceUserId, (records) => ({
+  const saveResult = await updateFinanceRecords(editingFinanceUserId, (records) => ({
     ...records,
     advances: [
       {
@@ -5241,13 +5265,13 @@ function addFinanceAdvance(event) {
     ]
   }));
   financeAdvanceForm.reset();
-  financeMessage.textContent = "Vale adicionado.";
+  financeMessage.textContent = getSaveResultMessage(saveResult, "Vale adicionado.");
   logActivity("Vale financeiro adicionado", `${getFinanceUserName(editingFinanceUserId)} recebeu um vale de ${data.value}.`);
   renderFinanceRecords();
   renderFinanceUsers();
 }
 
-function addFinanceCommission(event) {
+async function addFinanceCommission(event) {
   event.preventDefault();
 
   if (!requireModify("finance") || !editingFinanceUserId) {
@@ -5264,7 +5288,7 @@ function addFinanceCommission(event) {
     return;
   }
 
-  updateFinanceRecords(editingFinanceUserId, (records) => ({
+  const saveResult = await updateFinanceRecords(editingFinanceUserId, (records) => ({
     ...records,
     commissions: [
       {
@@ -5283,7 +5307,7 @@ function addFinanceCommission(event) {
   financeCommissionForm.reset();
   renderFinanceClientOptions();
   hideTemporaryFinanceClientField();
-  financeMessage.textContent = "Comissão adicionada.";
+  financeMessage.textContent = getSaveResultMessage(saveResult, "Comissão adicionada.");
   logActivity("Comissão financeira adicionada", `${getFinanceUserName(editingFinanceUserId)} recebeu comissão de ${data.value}.`);
   renderFinanceRecords();
   renderFinanceUsers();
@@ -5321,7 +5345,7 @@ function addFinanceExpense(event) {
   renderFinanceUsers();
 }
 
-function addFinanceGlobalExpense(event) {
+async function addFinanceGlobalExpense(event) {
   event.preventDefault();
 
   if (!requireModify("finance")) {
@@ -5329,7 +5353,7 @@ function addFinanceGlobalExpense(event) {
   }
 
   const data = Object.fromEntries(new FormData(financeGlobalExpenseForm).entries());
-  updateFinanceGlobalRecords((records) => ({
+  const saveResult = await updateFinanceGlobalRecords((records) => ({
     ...records,
     expenses: [
       {
@@ -5347,12 +5371,12 @@ function addFinanceGlobalExpense(event) {
     ]
   }));
   financeGlobalExpenseForm.reset();
-  financePanelMessage.textContent = "Despesa adicionada.";
+  financePanelMessage.textContent = getSaveResultMessage(saveResult, "Despesa adicionada.");
   logActivity("Despesa financeira adicionada", `${data.category} - ${data.value}.`);
   renderFinanceGlobalRecords();
 }
 
-function addFinancePayment(event) {
+async function addFinancePayment(event) {
   event.preventDefault();
 
   if (!requireModify("finance")) {
@@ -5366,7 +5390,7 @@ function addFinancePayment(event) {
     return;
   }
 
-  updateFinanceGlobalRecords((records) => ({
+  const saveResult = await updateFinanceGlobalRecords((records) => ({
     ...records,
     payments: [
       {
@@ -5385,7 +5409,7 @@ function addFinancePayment(event) {
   }));
   financePaymentForm.reset();
   renderFinancePaymentClientOptions();
-  financePanelMessage.textContent = "Pagamento adicionado.";
+  financePanelMessage.textContent = getSaveResultMessage(saveResult, "Pagamento adicionado.");
   logActivity("Pagamento financeiro adicionado", `${client.name || "Cliente"} - ${data.value}.`);
   renderFinanceGlobalRecords();
 }
@@ -5494,6 +5518,7 @@ function renderFinanceGlobalRecords() {
 
 function renderFinanceClientBillingList() {
   financeClientBillingList.innerHTML = "";
+  financeClientBillingDetails.innerHTML = "";
 
   if (clients.length === 0) {
     const emptyState = emptyRecordsTemplate.content.cloneNode(true);
@@ -5503,83 +5528,161 @@ function renderFinanceClientBillingList() {
     return;
   }
 
-  const financeClients = getFinanceGlobalRecords().clients;
-  clients
+  const sortedClients = clients
     .slice()
-    .sort((first, second) => (first.name || "").localeCompare(second.name || ""))
-    .forEach((client) => {
-      const billing = financeClients[client.id] || {};
-      const card = document.createElement("article");
-      card.className = "record-card";
+    .sort((first, second) => (first.name || "").localeCompare(second.name || ""));
 
-      const formElement = document.createElement("form");
-      formElement.className = "settings-form compact-create-form finance-client-billing-form";
-      formElement.dataset.clientId = client.id;
-      formElement.innerHTML = `
-        <div class="settings-header">
-          <div>
-            <span class="record-tag">${client.clientType || "Cliente"}</span>
-            <strong>${escapeHtml(client.name || "Cliente sem nome")}</strong>
-          </div>
-          <button class="primary" type="submit">Salvar</button>
-        </div>
-        <div class="form-grid compact-form-grid">
-          <label>
-            <span>Mensalidade</span>
-            <input name="monthlyValue" inputmode="decimal" placeholder="0,00" value="${escapeAttribute(billing.monthlyValue || "")}" />
-          </label>
-          <label>
-            <span>Vencimento</span>
-            <input name="dueDay" type="number" min="1" max="31" placeholder="Dia" value="${escapeAttribute(billing.dueDay || "")}" />
-          </label>
-          <label>
-            <span>Forma de pagamento</span>
-            <select name="paymentMethod">
-              ${createSelectOptions(["", "Pix", "Dinheiro", "Cartao", "Boleto", "Transferencia"], billing.paymentMethod || "", "Nao informado")}
-            </select>
-          </label>
-          <label>
-            <span>Faturado</span>
-            <select name="billed">
-              ${createSelectOptions(["Sim", "Nao"], billing.billed || "Nao")}
-            </select>
-          </label>
-          <label>
-            <span>Tipo de envio</span>
-            <select name="sendType" data-send-type>
-              ${createSelectOptions(["WhatsApp", "Email"], billing.sendType || "WhatsApp")}
-            </select>
-          </label>
-          <label data-email-wrap>
-            <span>Email de envio</span>
-            <input name="email" type="email" placeholder="financeiro@cliente.com.br" value="${escapeAttribute(billing.email || client.email || "")}" />
-          </label>
-          <label>
-            <span>Boleto enviado</span>
-            <select name="boletoSent">
-              ${createSelectOptions(["Sim", "Nao"], billing.boletoSent || "Nao")}
-            </select>
-          </label>
-        </div>
-      `;
-      formElement.addEventListener("submit", saveFinanceClientBilling);
-      const sendTypeSelect = formElement.querySelector("[data-send-type]");
-      const emailWrap = formElement.querySelector("[data-email-wrap]");
-      const emailInput = formElement.elements.email;
-      const toggleEmailField = () => {
-        const isEmail = sendTypeSelect.value === "Email";
-        emailWrap.classList.toggle("hidden", !isEmail);
-        emailInput.disabled = !isEmail || !canModify("finance");
-        emailInput.required = isEmail;
-      };
-      sendTypeSelect.addEventListener("change", toggleEmailField);
-      toggleEmailField();
-      card.append(formElement);
-      financeClientBillingList.append(card);
-    });
+  if (!selectedFinanceClientId || !sortedClients.some((client) => client.id === selectedFinanceClientId)) {
+    selectedFinanceClientId = sortedClients[0]?.id || "";
+    editingFinanceClientBilling = false;
+  }
+
+  sortedClients.forEach((client) => {
+    const billing = getFinanceGlobalRecords().clients[client.id] || {};
+    const button = document.createElement("button");
+    button.className = `client-item${client.id === selectedFinanceClientId ? " active" : ""}`;
+    button.type = "button";
+    button.innerHTML = `
+      <span class="client-name">${escapeHtml(client.name || "Cliente sem nome")}</span>
+      <span class="client-meta">${escapeHtml(client.clientType || "Cliente")} | ${billing.monthlyValue ? `R$ ${escapeHtml(billing.monthlyValue)}` : "Sem mensalidade"}</span>
+    `;
+    button.addEventListener("click", () => selectFinanceClient(client.id));
+    financeClientBillingList.append(button);
+  });
+
+  renderFinanceClientBillingDetails();
 }
 
-function saveFinanceClientBilling(event) {
+function selectFinanceClient(clientId) {
+  selectedFinanceClientId = clientId;
+  editingFinanceClientBilling = false;
+  financePanelMessage.textContent = "";
+  renderFinanceClientBillingList();
+}
+
+function renderFinanceClientBillingDetails() {
+  financeClientBillingDetails.innerHTML = "";
+  const client = clients.find((item) => item.id === selectedFinanceClientId);
+
+  if (!client) {
+    return;
+  }
+
+  const billing = getFinanceGlobalRecords().clients[client.id] || {};
+
+  if (!editingFinanceClientBilling) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "settings-guide compact-summary";
+    wrapper.innerHTML = `
+      <div class="settings-header">
+        <div>
+          <p class="eyebrow">${escapeHtml(client.clientType || "Cliente")}</p>
+          <h3>${escapeHtml(client.name || "Cliente sem nome")}</h3>
+        </div>
+        <button id="editFinanceClientBillingButton" class="subtle" type="button">Editar</button>
+      </div>
+      <div class="service-order-summary">
+        ${createFinanceClientSummaryItem("Mensalidade", billing.monthlyValue ? `R$ ${billing.monthlyValue}` : "Nao informado")}
+        ${createFinanceClientSummaryItem("Vencimento", billing.dueDay ? `Dia ${billing.dueDay}` : "Nao informado")}
+        ${createFinanceClientSummaryItem("Pagamento", billing.paymentMethod || "Nao informado")}
+        ${createFinanceClientSummaryItem("Faturado", billing.billed || "Nao")}
+        ${createFinanceClientSummaryItem("Envio", billing.sendType || "WhatsApp")}
+        ${createFinanceClientSummaryItem("Email", billing.sendType === "Email" ? billing.email || "Nao informado" : "Nao utilizado")}
+        ${createFinanceClientSummaryItem("Boleto", billing.boletoSent || "Nao")}
+      </div>
+    `;
+    financeClientBillingDetails.append(wrapper);
+    const editButton = wrapper.querySelector("#editFinanceClientBillingButton");
+    editButton.disabled = !canModify("finance");
+    editButton.addEventListener("click", () => {
+      editingFinanceClientBilling = true;
+      renderFinanceClientBillingDetails();
+    });
+    return;
+  }
+
+  const formElement = document.createElement("form");
+  formElement.className = "settings-form compact-create-form finance-client-billing-form";
+  formElement.dataset.clientId = client.id;
+  formElement.innerHTML = `
+    <div class="settings-header">
+      <div>
+        <p class="eyebrow">${escapeHtml(client.clientType || "Cliente")}</p>
+        <h3>${escapeHtml(client.name || "Cliente sem nome")}</h3>
+      </div>
+    </div>
+    <div class="form-grid compact-form-grid">
+      <label>
+        <span>Mensalidade</span>
+        <input name="monthlyValue" inputmode="decimal" placeholder="0,00" value="${escapeAttribute(billing.monthlyValue || "")}" />
+      </label>
+      <label>
+        <span>Vencimento</span>
+        <input name="dueDay" type="number" min="1" max="31" placeholder="Dia" value="${escapeAttribute(billing.dueDay || "")}" />
+      </label>
+      <label>
+        <span>Forma de pagamento</span>
+        <select name="paymentMethod">
+          ${createSelectOptions(["", "Pix", "Dinheiro", "Cartao", "Boleto", "Transferencia"], billing.paymentMethod || "", "Nao informado")}
+        </select>
+      </label>
+      <label>
+        <span>Faturado</span>
+        <select name="billed">
+          ${createSelectOptions(["Sim", "Nao"], billing.billed || "Nao")}
+        </select>
+      </label>
+      <label>
+        <span>Tipo de envio</span>
+        <select name="sendType" data-send-type>
+          ${createSelectOptions(["WhatsApp", "Email"], billing.sendType || "WhatsApp")}
+        </select>
+      </label>
+      <label data-email-wrap>
+        <span>Email de envio</span>
+        <input name="email" type="email" placeholder="financeiro@cliente.com.br" value="${escapeAttribute(billing.email || client.email || "")}" />
+      </label>
+      <label>
+        <span>Boleto enviado</span>
+        <select name="boletoSent">
+          ${createSelectOptions(["Sim", "Nao"], billing.boletoSent || "Nao")}
+        </select>
+      </label>
+    </div>
+    <div class="form-actions service-order-form-actions">
+      <button class="danger" type="button" data-cancel-billing>Cancelar</button>
+      <button class="primary" type="submit">Salvar</button>
+    </div>
+  `;
+  formElement.addEventListener("submit", saveFinanceClientBilling);
+  formElement.querySelector("[data-cancel-billing]").addEventListener("click", () => {
+    editingFinanceClientBilling = false;
+    renderFinanceClientBillingDetails();
+  });
+  const sendTypeSelect = formElement.querySelector("[data-send-type]");
+  const emailWrap = formElement.querySelector("[data-email-wrap]");
+  const emailInput = formElement.elements.email;
+  const toggleEmailField = () => {
+    const isEmail = sendTypeSelect.value === "Email";
+    emailWrap.classList.toggle("hidden", !isEmail);
+    emailInput.disabled = !isEmail || !canModify("finance");
+    emailInput.required = isEmail;
+  };
+  sendTypeSelect.addEventListener("change", toggleEmailField);
+  toggleEmailField();
+  financeClientBillingDetails.append(formElement);
+}
+
+function createFinanceClientSummaryItem(label, value) {
+  return `
+    <span class="summary-item">
+      <small>${escapeHtml(label)}</small>
+      <strong>${escapeHtml(value || "Nao informado")}</strong>
+    </span>
+  `;
+}
+
+async function saveFinanceClientBilling(event) {
   event.preventDefault();
 
   if (!requireModify("finance")) {
@@ -5594,7 +5697,7 @@ function saveFinanceClientBilling(event) {
   }
 
   const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-  updateFinanceGlobalRecords((records) => ({
+  const saveResult = await updateFinanceGlobalRecords((records) => ({
     ...records,
     clients: {
       ...records.clients,
@@ -5610,8 +5713,9 @@ function saveFinanceClientBilling(event) {
       }
     }
   }));
-  financePanelMessage.textContent = "Dados do cliente salvos.";
+  financePanelMessage.textContent = getSaveResultMessage(saveResult, "Dados do cliente salvos.");
   logActivity("Faturamento do cliente atualizado", `${client.name || "Cliente sem nome"} atualizado no financeiro.`);
+  editingFinanceClientBilling = false;
   renderFinanceClientBillingList();
   renderPermissions();
 }
@@ -5677,7 +5781,7 @@ function updateFinanceRecords(userId, updater) {
     finance,
     updatedAt: new Date().toISOString()
   });
-  persistCompanyInfo();
+  return persistCompanyInfo();
 }
 
 function updateFinanceGlobalRecords(updater) {
@@ -5687,7 +5791,7 @@ function updateFinanceGlobalRecords(updater) {
     financeGlobal,
     updatedAt: new Date().toISOString()
   });
-  persistCompanyInfo();
+  return persistCompanyInfo();
 }
 
 function getFinanceRecords(userId) {
@@ -5988,7 +6092,7 @@ function getReportFileDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function addCompanyVehicle(event) {
+async function addCompanyVehicle(event) {
   event.preventDefault();
 
   if (!requireModify("company")) {
@@ -6022,10 +6126,10 @@ function addCompanyVehicle(event) {
     stockItems: getCompanyStockItems(),
     updatedAt: new Date().toISOString()
   };
-  persistCompanyInfo();
+  const saveResult = await persistCompanyInfo();
   clearFormDraft(companyVehicleForm);
   closeCompanyVehicleDialog();
-  companyVehicleMessage.textContent = wasEditingVehicle ? "Veiculo atualizado." : "Veiculo adicionado.";
+  companyVehicleMessage.textContent = getSaveResultMessage(saveResult, wasEditingVehicle ? "Veiculo atualizado." : "Veiculo adicionado.");
   logActivity(wasEditingVehicle ? "Veiculo interno atualizado" : "Veiculo interno criado", `${vehicle.type} ${vehicle.model} - ${vehicle.plate}.`);
   renderCompanyVehicles();
 }
@@ -6274,7 +6378,7 @@ function exportCompanyVehicleDocumentPdf(documentType) {
   link.click();
 }
 
-function saveCompanyVehicleDetails(event) {
+async function saveCompanyVehicleDetails(event) {
   event.preventDefault();
 
   if (!requireModify("company") || !editingCompanyVehicleId) {
@@ -6302,10 +6406,10 @@ function saveCompanyVehicleDetails(event) {
     ),
     updatedAt: new Date().toISOString()
   };
-  persistCompanyInfo();
+  const saveResult = await persistCompanyInfo();
   clearFormDraft(companyVehicleDetailsForm);
   closeCompanyVehicleDetailsDialog();
-  companyVehicleMessage.textContent = "Detalhes do veiculo salvos.";
+  companyVehicleMessage.textContent = getSaveResultMessage(saveResult, "Detalhes do veiculo salvos.");
   logActivity("Veiculo interno atualizado", `Detalhes de ${vehicle?.model || "veiculo"} foram atualizados.`);
   renderCompanyVehicles();
 }
@@ -6396,7 +6500,7 @@ function renderCompanyVehicleFineDrafts() {
   });
 }
 
-function deleteEditingCompanyVehicle() {
+async function deleteEditingCompanyVehicle() {
   if (!requireModify("company") || !editingCompanyVehicleId) {
     return;
   }
@@ -6413,9 +6517,9 @@ function deleteEditingCompanyVehicle() {
     vehicles: (companyInfo.vehicles || []).filter((item) => item.id !== editingCompanyVehicleId),
     updatedAt: new Date().toISOString()
   };
-  persistCompanyInfo();
+  const saveResult = await persistCompanyInfo();
   closeCompanyVehicleDialog();
-  companyVehicleMessage.textContent = "Veiculo excluido.";
+  companyVehicleMessage.textContent = getSaveResultMessage(saveResult, "Veiculo excluido.");
   logActivity("Veiculo interno excluido", `${vehicle?.model || "Veiculo"} ${vehicle?.plate || ""} foi removido.`);
   renderCompanyVehicles();
 }
@@ -6491,7 +6595,7 @@ function renderCompanyStockTypes(selectedValue = companyStockType.value) {
   toggleNewCompanyStockTypeField();
 }
 
-function saveCompanyStockType(event) {
+async function saveCompanyStockType(event) {
   event.preventDefault();
 
   if (!requireModify("company")) {
@@ -6570,13 +6674,13 @@ function saveCompanyStockType(event) {
     stockItems: nextStockItems,
     updatedAt: new Date().toISOString()
   };
-  persistCompanyInfo();
+  const saveResult = await persistCompanyInfo();
   clearFormDraft(companyStockForm);
   companyStockForm.reset();
   editingCompanyStockItemId = "";
   renderCompanyStockTypes(cleanType);
   renderCompanyStockItems();
-  companyStockMessage.textContent = editingItem || existingItem ? "Produto atualizado." : "Produto adicionado ao estoque.";
+  companyStockMessage.textContent = getSaveResultMessage(saveResult, editingItem || existingItem ? "Produto atualizado." : "Produto adicionado ao estoque.");
   logActivity("Estoque atualizado", `${cleanType}: ${quantity} unidade(s).`);
   renderPermissions();
 }
@@ -6687,7 +6791,7 @@ function requestCompanyStockDelete(itemId) {
   deleteCompanyStockItem(itemId);
 }
 
-function deleteCompanyStockItem(itemId, askConfirmation = true) {
+async function deleteCompanyStockItem(itemId, askConfirmation = true) {
   const item = getCompanyStockItems().find((stockItem) => stockItem.id === itemId);
 
   if (!item) {
@@ -6704,7 +6808,7 @@ function deleteCompanyStockItem(itemId, askConfirmation = true) {
     stockItems: getCompanyStockItems().filter((stockItem) => stockItem.id !== itemId),
     updatedAt: new Date().toISOString()
   };
-  persistCompanyInfo();
+  const saveResult = await persistCompanyInfo();
 
   if (editingCompanyStockItemId === itemId) {
     editingCompanyStockItemId = "";
@@ -6712,7 +6816,7 @@ function deleteCompanyStockItem(itemId, askConfirmation = true) {
     renderCompanyStockTypes();
   }
 
-  companyStockMessage.textContent = "Produto excluido.";
+  companyStockMessage.textContent = getSaveResultMessage(saveResult, "Produto excluido.");
   logActivity("Estoque atualizado", `${item.type || "Produto"} foi excluido do estoque.`);
   renderCompanyStockItems();
   renderPermissions();

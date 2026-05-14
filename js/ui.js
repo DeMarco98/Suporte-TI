@@ -246,6 +246,8 @@ let editingEquipmentId = "";
 let editingEmailId = "";
 let editingDvrId = "";
 let editingServiceOrderId = "";
+let editingCompanyVehicleId = "";
+let editingCompanyVehicleFineDrafts = [];
 let editingCompanyStockItemId = "";
 let editingPasswordUserId = "";
 let permissionDrafts = {};
@@ -408,6 +410,9 @@ const dvrDialogTitle = document.querySelector("#dvrDialogTitle");
 const closeDvrDialogButton = document.querySelector("#closeDvrDialogButton");
 const deleteDvrButton = document.querySelector("#deleteDvrButton");
 const dvrActionMessage = document.querySelector("#dvrActionMessage");
+const dvrNetworkType = document.querySelector("#dvrNetworkType");
+const dvrIpLabel = document.querySelector("#dvrIpLabel");
+const dvrIpAddress = document.querySelector("#dvrIpAddress");
 const extraEmailType = document.querySelector("#extraEmailType");
 const newEmailTypeLabel = document.querySelector("#newEmailTypeLabel");
 const newEmailType = document.querySelector("#newEmailType");
@@ -453,7 +458,20 @@ const companyNetworkForm = document.querySelector("#companyNetworkForm");
 const companyNetworkMessage = document.querySelector("#companyNetworkMessage");
 const companyVehiclesPanel = document.querySelector("#companyVehiclesPanel");
 const companyStockPanel = document.querySelector("#companyStockPanel");
+const addCompanyVehicleButton = document.querySelector("#addCompanyVehicleButton");
+const companyVehicleDialog = document.querySelector("#companyVehicleDialog");
 const companyVehicleForm = document.querySelector("#companyVehicleForm");
+const companyVehicleDialogTitle = document.querySelector("#companyVehicleDialogTitle");
+const companyVehicleDriver = document.querySelector("#companyVehicleDriver");
+const closeCompanyVehicleDialogButton = document.querySelector("#closeCompanyVehicleDialogButton");
+const deleteCompanyVehicleButton = document.querySelector("#deleteCompanyVehicleButton");
+const companyVehicleDetailsDialog = document.querySelector("#companyVehicleDetailsDialog");
+const companyVehicleDetailsForm = document.querySelector("#companyVehicleDetailsForm");
+const companyVehicleDetailsTitle = document.querySelector("#companyVehicleDetailsTitle");
+const closeCompanyVehicleDetailsDialogButton = document.querySelector("#closeCompanyVehicleDetailsDialogButton");
+const companyVehicleFineDriver = document.querySelector("#companyVehicleFineDriver");
+const addCompanyVehicleFineButton = document.querySelector("#addCompanyVehicleFineButton");
+const companyVehicleFineList = document.querySelector("#companyVehicleFineList");
 const companyVehicleMessage = document.querySelector("#companyVehicleMessage");
 const companyVehicleList = document.querySelector("#companyVehicleList");
 const companyStockForm = document.querySelector("#companyStockForm");
@@ -510,6 +528,12 @@ const clearLocalBackupButton = document.querySelector("#clearLocalBackupButton")
 const backupFileInput = document.querySelector("#backupFileInput");
 const backupLocalInfo = document.querySelector("#backupLocalInfo");
 const backupMessage = document.querySelector("#backupMessage");
+const clientReportForm = document.querySelector("#clientReportForm");
+const clientReportServiceOrderStatuses = document.querySelector("#clientReportServiceOrderStatuses");
+const clientReportAgendaStatuses = document.querySelector("#clientReportAgendaStatuses");
+const stockReportForm = document.querySelector("#stockReportForm");
+const vehicleReportForm = document.querySelector("#vehicleReportForm");
+const reportMessage = document.querySelector("#reportMessage");
 const panels = {
   profile: document.querySelector("#profilePanel"),
   equipment: document.querySelector("#equipmentPanel"),
@@ -575,11 +599,20 @@ restoreBackupFileButton.addEventListener("click", () => backupFileInput.click())
 restoreLocalBackupButton.addEventListener("click", restoreLocalSystemBackup);
 clearLocalBackupButton.addEventListener("click", clearLocalSystemBackup);
 backupFileInput.addEventListener("change", restoreSystemBackupFromFile);
+clientReportForm.addEventListener("submit", generateClientReport);
+stockReportForm.addEventListener("submit", generateStockReport);
+vehicleReportForm.addEventListener("submit", generateVehicleReport);
 settingsViewButtons.forEach((button) => button.addEventListener("click", () => switchSettingsView(button.dataset.settingsView)));
 companyForm.addEventListener("submit", saveCompanyInfo);
 companyNetworkForm.addEventListener("submit", saveCompanyNetworkInfo);
 companyViewButtons.forEach((button) => button.addEventListener("click", () => switchCompanyView(button.dataset.companyView)));
+addCompanyVehicleButton.addEventListener("click", () => openCompanyVehicleDialog());
 companyVehicleForm.addEventListener("submit", addCompanyVehicle);
+closeCompanyVehicleDialogButton.addEventListener("click", closeCompanyVehicleDialog);
+deleteCompanyVehicleButton.addEventListener("click", deleteEditingCompanyVehicle);
+companyVehicleDetailsForm.addEventListener("submit", saveCompanyVehicleDetails);
+closeCompanyVehicleDetailsDialogButton.addEventListener("click", closeCompanyVehicleDetailsDialog);
+addCompanyVehicleFineButton.addEventListener("click", addCompanyVehicleFineDraft);
 companyStockForm.addEventListener("submit", saveCompanyStockType);
 companyStockType.addEventListener("change", toggleNewCompanyStockTypeField);
 agendaForm.addEventListener("submit", addAgendaItem);
@@ -630,6 +663,7 @@ dvrForm.addEventListener("submit", saveDvr);
 addDvrButton.addEventListener("click", openDvrDialog);
 closeDvrDialogButton.addEventListener("click", closeDvrDialog);
 deleteDvrButton.addEventListener("click", deleteEditingDvr);
+dvrNetworkType.addEventListener("change", () => toggleEquipmentIpField(dvrNetworkType, dvrIpLabel, dvrIpAddress));
 networkSettingsForm.addEventListener("submit", saveNetworkSettings);
 emailSettingsForm.addEventListener("submit", saveEmailSettings);
 emailForm.addEventListener("submit", addEmail);
@@ -911,7 +945,7 @@ function applyFormDraft(formElement) {
 }
 
 function restoreVisibleFormDrafts() {
-  [form, agendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyStockForm, userForm].forEach((formElement) => {
+  [form, agendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, userForm].forEach((formElement) => {
     if (!formElement || formElement.offsetParent === null) {
       return;
     }
@@ -925,7 +959,7 @@ function restoreVisibleFormDrafts() {
 }
 
 function setupFormDraftAutosave() {
-  [form, agendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyStockForm, userForm].forEach((formElement) => {
+  [form, agendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, userForm].forEach((formElement) => {
     if (!formElement) {
       return;
     }
@@ -1014,7 +1048,7 @@ function normalizeCompanyInfo(info = {}) {
   return {
     ...emptyCompanyInfo,
     ...info,
-    vehicles: Array.isArray(info.vehicles) ? info.vehicles : [],
+    vehicles: Array.isArray(info.vehicles) ? info.vehicles.map(normalizeCompanyVehicle) : [],
     stockTypes: Array.isArray(info.stockTypes) ? info.stockTypes : defaultCompanyStockTypes,
     stockItems: Array.isArray(info.stockItems) ? info.stockItems : [],
     alertSettings: {
@@ -1025,6 +1059,30 @@ function normalizeCompanyInfo(info = {}) {
       ...emptyThemeSettings,
       ...(info.themeSettings || {})
     }
+  };
+}
+
+function normalizeCompanyVehicle(vehicle = {}) {
+  return {
+    id: vehicle.id || createId("VEI"),
+    type: vehicle.type || "Carro",
+    model: vehicle.model || "",
+    plate: vehicle.plate || "",
+    driverId: vehicle.driverId || "",
+    driverName: vehicle.driverName || "",
+    maintenanceDate: vehicle.maintenanceDate || "",
+    maintenance: vehicle.maintenance || "",
+    fines: Array.isArray(vehicle.fines)
+      ? vehicle.fines.map((fine) => ({
+          id: fine.id || createId("MUL"),
+          type: fine.type || "",
+          date: fine.date || "",
+          driverId: fine.driverId || "",
+          driverName: fine.driverName || ""
+        }))
+      : [],
+    createdAt: vehicle.createdAt || new Date().toISOString(),
+    updatedAt: vehicle.updatedAt || ""
   };
 }
 
@@ -3024,6 +3082,7 @@ function render() {
   renderNotifications();
   renderPermissionList();
   renderSettingsView();
+  renderReportOptions();
   renderForm();
   renderEquipmentCategories();
   renderBrandOptions(equipmentBrand, equipmentModel);
@@ -3712,6 +3771,12 @@ function renderPermissions() {
   [...companyVehicleForm.elements].forEach((element) => {
     element.disabled = !canModifyCompany;
   });
+  [...companyVehicleDetailsForm.elements].forEach((element) => {
+    element.disabled = !canModifyCompany;
+  });
+  addCompanyVehicleButton.disabled = !canModifyCompany;
+  addCompanyVehicleFineButton.disabled = !canModifyCompany;
+  deleteCompanyVehicleButton.disabled = !canModifyCompany;
   [...companyStockForm.elements].forEach((element) => {
     element.disabled = !canModifyCompany;
   });
@@ -4331,6 +4396,235 @@ function getNextCounterFromItems(items) {
   return maxNumber + 1 || 1;
 }
 
+function renderReportOptions() {
+  renderReportStatusChecks(clientReportServiceOrderStatuses, serviceOrderStatuses, "report-os-status");
+  renderReportStatusChecks(clientReportAgendaStatuses, agendaStatuses, "report-ag-status");
+}
+
+function renderReportStatusChecks(container, statuses, name) {
+  if (!container || container.children.length > 0) {
+    return;
+  }
+
+  statuses.forEach((status) => {
+    const label = document.createElement("label");
+    label.className = "compact-check-option";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.name = name;
+    checkbox.value = status;
+    checkbox.checked = true;
+
+    const span = document.createElement("span");
+    span.textContent = getReportStatusLabel(status);
+
+    label.append(checkbox, span);
+    container.append(label);
+  });
+}
+
+function generateClientReport(event) {
+  event.preventDefault();
+  reportMessage.textContent = "";
+
+  const data = Object.fromEntries(new FormData(clientReportForm).entries());
+  const selectedOrderStatuses = getCheckedReportValues(clientReportServiceOrderStatuses);
+  const selectedAgendaStatuses = getCheckedReportValues(clientReportAgendaStatuses);
+  const filteredOrders = serviceOrders.filter(
+    (order) => isDateInReportRange(order.openedAt, data.startDate, data.endDate) && selectedOrderStatuses.includes(normalizeServiceOrderStatus(order.status))
+  );
+  const filteredAgenda = agendaItems.filter(
+    (item) => isDateInReportRange(item.date, data.startDate, data.endDate) && selectedAgendaStatuses.includes(normalizeAgendaStatus(item.status))
+  );
+
+  const pdf = createReportPdf("Relatorio de Clientes");
+  addPdfSection(pdf, "Periodo", [`De: ${formatSimpleDate(data.startDate)}`, `Ate: ${formatSimpleDate(data.endDate)}`]);
+  addPdfSection(pdf, "Resumo", [
+    `OS encontradas: ${filteredOrders.length}`,
+    `Agendamentos encontrados: ${filteredAgenda.length}`,
+    `Status OS: ${selectedOrderStatuses.map(getServiceOrderStatusLabel).join(", ") || "Nenhum"}`,
+    `Status Agendamentos: ${selectedAgendaStatuses.map(getAgendaStatusLabel).join(", ") || "Nenhum"}`
+  ]);
+
+  const clientIds = new Set([...filteredOrders.map((order) => order.clientId), ...filteredAgenda.map((item) => item.clientId)].filter(Boolean));
+  const reportClients = [...clientIds].map((clientId) => clients.find((client) => client.id === clientId)).filter(Boolean);
+
+  if (reportClients.length === 0 && (filteredOrders.length > 0 || filteredAgenda.length > 0)) {
+    addPdfSection(pdf, "Clientes", ["Existem registros no periodo, mas o cliente original nao foi localizado no cadastro."]);
+  }
+
+  reportClients.forEach((client) => {
+    const clientOrders = filteredOrders.filter((order) => order.clientId === client.id);
+    const clientAgenda = filteredAgenda.filter((item) => item.clientId === client.id);
+    const lines = [
+      `Documento: ${client.document || "Nao informado"}`,
+      `Telefone: ${client.phone || "Nao informado"}`,
+      `E-mail: ${client.email || "Nao informado"}`,
+      `Cidade: ${client.city || "Nao informado"}`
+    ];
+
+    if (clientOrders.length > 0) {
+      lines.push("Ordens de Servico:");
+      clientOrders.forEach((order) => {
+        lines.push(`- ${formatServiceOrderNumber(order)} | ${formatSimpleDate(order.openedAt)} | ${getServiceOrderStatusLabel(order.status)} | ${order.equipmentType || "Equipamento"} | ${order.defect || "Sem defeito informado"}`);
+      });
+    }
+
+    if (clientAgenda.length > 0) {
+      lines.push("Agendamentos:");
+      clientAgenda.forEach((item) => {
+        lines.push(`- ${formatAgendaNumber(item)} | ${formatSimpleDate(item.date)} | ${getAgendaStatusLabel(item.status)} | ${item.occurrence || "Sem ocorrencia informada"}`);
+      });
+    }
+
+    addPdfSection(pdf, client.name || "Cliente sem nome", lines);
+  });
+
+  if (reportClients.length === 0 && filteredOrders.length === 0 && filteredAgenda.length === 0) {
+    addPdfSection(pdf, "Resultado", ["Nenhum registro encontrado para os filtros selecionados."]);
+  }
+
+  saveReportPdf(pdf, `relatorio-clientes-${getReportFileDate()}.pdf`);
+  reportMessage.textContent = "Relatorio de clientes gerado.";
+  logActivity("Relatorio gerado", "Relatorio de clientes em PDF foi gerado.");
+}
+
+function generateStockReport(event) {
+  event.preventDefault();
+  reportMessage.textContent = "";
+
+  const pdf = createReportPdf("Relatorio de Estoque");
+  const stockItems = getCompanyStockItems().sort((first, second) => first.type.localeCompare(second.type));
+  addPdfSection(pdf, "Resumo", [`Itens cadastrados: ${stockItems.length}`, `Quantidade total: ${stockItems.reduce((total, item) => total + Number(item.quantity || 0), 0)}`]);
+
+  if (stockItems.length === 0) {
+    addPdfSection(pdf, "Estoque", ["Nenhum produto cadastrado no estoque."]);
+  } else {
+    addPdfSection(
+      pdf,
+      "Itens",
+      stockItems.map((item) => `${item.type || "Produto"} | Quantidade: ${Number(item.quantity || 0)}`)
+    );
+  }
+
+  saveReportPdf(pdf, `relatorio-estoque-${getReportFileDate()}.pdf`);
+  reportMessage.textContent = "Relatorio de estoque gerado.";
+  logActivity("Relatorio gerado", "Relatorio de estoque em PDF foi gerado.");
+}
+
+function generateVehicleReport(event) {
+  event.preventDefault();
+  reportMessage.textContent = "";
+
+  const pdf = createReportPdf("Relatorio de Veiculos");
+  const vehicles = Array.isArray(companyInfo.vehicles) ? companyInfo.vehicles : [];
+  addPdfSection(pdf, "Resumo", [`Veiculos cadastrados: ${vehicles.length}`, `Multas registradas: ${vehicles.reduce((total, vehicle) => total + (vehicle.fines?.length || 0), 0)}`]);
+
+  if (vehicles.length === 0) {
+    addPdfSection(pdf, "Veiculos", ["Nenhum veiculo cadastrado."]);
+  }
+
+  vehicles.forEach((vehicle) => {
+    const lines = [
+      `Tipo: ${vehicle.type || "Nao informado"}`,
+      `Modelo: ${vehicle.model || "Nao informado"}`,
+      `Placa: ${vehicle.plate || "Nao informado"}`,
+      `Condutor: ${getCompanyVehicleDriverName(vehicle)}`,
+      `Ultima manutencao: ${formatSimpleDate(vehicle.maintenanceDate)}`,
+      `Manutencao feita: ${vehicle.maintenance || "Nao informado"}`
+    ];
+
+    if (vehicle.fines?.length) {
+      lines.push("Multas:");
+      vehicle.fines.forEach((fine) => {
+        lines.push(`- ${fine.type || "Multa"} | ${formatSimpleDate(fine.date)} | Condutor: ${fine.driverName || "Nao informado"}`);
+      });
+    } else {
+      lines.push("Multas: nenhuma registrada");
+    }
+
+    addPdfSection(pdf, [vehicle.model, vehicle.plate].filter(Boolean).join(" - ") || "Veiculo", lines);
+  });
+
+  saveReportPdf(pdf, `relatorio-veiculos-${getReportFileDate()}.pdf`);
+  reportMessage.textContent = "Relatorio de veiculos gerado.";
+  logActivity("Relatorio gerado", "Relatorio de veiculos em PDF foi gerado.");
+}
+
+function createReportPdf(title) {
+  const PdfConstructor = window.jspdf?.jsPDF;
+
+  if (!PdfConstructor) {
+    reportMessage.textContent = "Nao foi possivel carregar o gerador de PDF. Verifique a conexao com a internet.";
+    throw new Error("jsPDF indisponivel");
+  }
+
+  const pdf = new PdfConstructor({ unit: "mm", format: "a4" });
+  pdf.setProperties({ title });
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(15);
+  pdf.text(title, 14, 18);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+  pdf.text(`Gerado em ${new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date())}`, 14, 25);
+  pdf.lastY = 34;
+  return pdf;
+}
+
+function addPdfSection(pdf, title, lines) {
+  ensurePdfSpace(pdf, 18);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(11);
+  pdf.text(String(title), 14, pdf.lastY);
+  pdf.lastY += 6;
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+
+  lines.forEach((line) => {
+    const wrappedLines = pdf.splitTextToSize(String(line || "Nao informado"), 180);
+    ensurePdfSpace(pdf, wrappedLines.length * 5 + 2);
+    pdf.text(wrappedLines, 16, pdf.lastY);
+    pdf.lastY += wrappedLines.length * 5;
+  });
+
+  pdf.lastY += 4;
+}
+
+function ensurePdfSpace(pdf, neededHeight) {
+  if (pdf.lastY + neededHeight <= 285) {
+    return;
+  }
+
+  pdf.addPage();
+  pdf.lastY = 18;
+}
+
+function saveReportPdf(pdf, filename) {
+  pdf.save(filename);
+}
+
+function getCheckedReportValues(container) {
+  return [...container.querySelectorAll("input[type='checkbox']:checked")].map((checkbox) => checkbox.value);
+}
+
+function isDateInReportRange(value, startDate, endDate) {
+  if (!value) {
+    return false;
+  }
+
+  const dateValue = String(value).slice(0, 10);
+  return (!startDate || dateValue >= startDate) && (!endDate || dateValue <= endDate);
+}
+
+function getReportStatusLabel(status) {
+  return status || "Nao informado";
+}
+
+function getReportFileDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function addCompanyVehicle(event) {
   event.preventDefault();
 
@@ -4339,28 +4633,37 @@ function addCompanyVehicle(event) {
   }
 
   const data = Object.fromEntries(new FormData(companyVehicleForm).entries());
-  const vehicle = {
-    id: createId("VEI"),
+  const driver = getCompanyVehicleDriver(data.driverId);
+  const wasEditingVehicle = Boolean(editingCompanyVehicleId);
+  const vehicle = normalizeCompanyVehicle({
+    id: editingCompanyVehicleId || createId("VEI"),
+    ...(getCompanyVehicleById(editingCompanyVehicleId) || {}),
     type: data.type,
     model: data.model.trim(),
     plate: data.plate.trim().toUpperCase(),
-    maintenanceDate: data.maintenanceDate,
-    maintenance: data.maintenance.trim(),
+    driverId: data.driverId || "",
+    driverName: driver?.name || "",
+    updatedAt: new Date().toISOString(),
     createdAt: new Date().toISOString()
-  };
+  });
+
+  const vehicles = Array.isArray(companyInfo.vehicles) ? companyInfo.vehicles : [];
+  const nextVehicles = editingCompanyVehicleId
+    ? vehicles.map((item) => (item.id === editingCompanyVehicleId ? { ...item, ...vehicle, createdAt: item.createdAt || vehicle.createdAt } : item))
+    : [vehicle, ...vehicles];
 
   companyInfo = {
     ...emptyCompanyInfo,
     ...companyInfo,
-    vehicles: [vehicle, ...(companyInfo.vehicles || [])],
+    vehicles: nextVehicles,
     stockItems: getCompanyStockItems(),
     updatedAt: new Date().toISOString()
   };
   persistCompanyInfo();
   clearFormDraft(companyVehicleForm);
-  companyVehicleForm.reset();
-  companyVehicleMessage.textContent = "Veiculo adicionado.";
-  logActivity("Veiculo interno criado", `${vehicle.type} ${vehicle.model} - ${vehicle.plate}.`);
+  closeCompanyVehicleDialog();
+  companyVehicleMessage.textContent = wasEditingVehicle ? "Veiculo atualizado." : "Veiculo adicionado.";
+  logActivity(wasEditingVehicle ? "Veiculo interno atualizado" : "Veiculo interno criado", `${vehicle.type} ${vehicle.model} - ${vehicle.plate}.`);
   renderCompanyVehicles();
 }
 
@@ -4378,7 +4681,9 @@ function renderCompanyVehicles() {
 
   vehicles.forEach((vehicle) => {
     const card = document.createElement("article");
-    card.className = "record-card";
+    card.className = "record-card clickable";
+    card.tabIndex = 0;
+    card.title = "Abrir detalhes do veiculo";
 
     const content = document.createElement("div");
     content.className = "record-content";
@@ -4391,12 +4696,273 @@ function renderCompanyVehicles() {
     title.textContent = [vehicle.model, vehicle.plate].filter(Boolean).join(" - ") || "Veiculo sem identificacao";
 
     const details = document.createElement("span");
-    details.textContent = `Ultima manutencao: ${formatSimpleDate(vehicle.maintenanceDate)}${vehicle.maintenance ? ` | ${vehicle.maintenance}` : ""}`;
+    const maintenance = vehicle.maintenanceDate ? formatSimpleDate(vehicle.maintenanceDate) : "Nao informado";
+    details.textContent = `Condutor: ${getCompanyVehicleDriverName(vehicle)} | Ultima manutencao: ${maintenance} | Multas: ${vehicle.fines?.length || 0}`;
+
+    const actions = document.createElement("div");
+    actions.className = "record-actions";
+
+    const editButton = document.createElement("button");
+    editButton.className = "ghost symbol-button";
+    editButton.type = "button";
+    editButton.textContent = "✎";
+    editButton.title = "Editar veiculo";
+    editButton.setAttribute("aria-label", "Editar veiculo");
+    editButton.disabled = !canModify("company");
+    editButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openCompanyVehicleDialog(vehicle.id);
+    });
+
+    actions.append(editButton);
+    card.addEventListener("click", () => openCompanyVehicleDetailsDialog(vehicle.id));
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openCompanyVehicleDetailsDialog(vehicle.id);
+      }
+    });
 
     content.append(tag, title, details);
-    card.append(content);
+    card.append(content, actions);
     companyVehicleList.append(card);
   });
+}
+
+function openCompanyVehicleDialog(vehicleId = "") {
+  if (!requireModify("company")) {
+    return;
+  }
+
+  const vehicle = getCompanyVehicleById(vehicleId);
+  editingCompanyVehicleId = vehicle?.id || "";
+  companyVehicleDialogTitle.textContent = editingCompanyVehicleId ? "Editar veiculo" : "Adicionar veiculo";
+  companyVehicleForm.reset();
+  renderCompanyVehicleDriverOptions(companyVehicleDriver, vehicle?.driverId || "");
+  deleteCompanyVehicleButton.classList.toggle("hidden", !editingCompanyVehicleId);
+
+  if (vehicle) {
+    companyVehicleForm.elements.type.value = vehicle.type || "Carro";
+    companyVehicleForm.elements.model.value = vehicle.model || "";
+    companyVehicleForm.elements.plate.value = vehicle.plate || "";
+    companyVehicleForm.elements.driverId.value = vehicle.driverId || "";
+  }
+
+  companyVehicleDialog.showModal();
+}
+
+function closeCompanyVehicleDialog() {
+  editingCompanyVehicleId = "";
+  companyVehicleForm.reset();
+
+  if (companyVehicleDialog.open) {
+    companyVehicleDialog.close();
+  }
+}
+
+function openCompanyVehicleDetailsDialog(vehicleId) {
+  const vehicle = getCompanyVehicleById(vehicleId);
+
+  if (!vehicle) {
+    return;
+  }
+
+  editingCompanyVehicleId = vehicle.id;
+  editingCompanyVehicleFineDrafts = Array.isArray(vehicle.fines) ? vehicle.fines.map((fine) => ({ ...fine })) : [];
+  companyVehicleDetailsTitle.textContent = [vehicle.model, vehicle.plate].filter(Boolean).join(" - ") || "Detalhes do veiculo";
+  companyVehicleDetailsForm.reset();
+  companyVehicleDetailsForm.elements.maintenanceDate.value = vehicle.maintenanceDate || "";
+  companyVehicleDetailsForm.elements.maintenance.value = vehicle.maintenance || "";
+  renderCompanyVehicleDriverOptions(companyVehicleFineDriver);
+  renderCompanyVehicleFineDrafts();
+  companyVehicleDetailsDialog.showModal();
+}
+
+function closeCompanyVehicleDetailsDialog() {
+  editingCompanyVehicleFineDrafts = [];
+  companyVehicleDetailsForm.reset();
+
+  if (companyVehicleDetailsDialog.open) {
+    companyVehicleDetailsDialog.close();
+  }
+}
+
+function saveCompanyVehicleDetails(event) {
+  event.preventDefault();
+
+  if (!requireModify("company") || !editingCompanyVehicleId) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(companyVehicleDetailsForm).entries());
+  const vehicle = getCompanyVehicleById(editingCompanyVehicleId);
+
+  companyInfo = {
+    ...emptyCompanyInfo,
+    ...companyInfo,
+    vehicles: (companyInfo.vehicles || []).map((item) =>
+      item.id === editingCompanyVehicleId
+        ? normalizeCompanyVehicle({
+            ...item,
+            maintenanceDate: data.maintenanceDate || "",
+            maintenance: data.maintenance.trim(),
+            fines: editingCompanyVehicleFineDrafts,
+            updatedAt: new Date().toISOString()
+          })
+        : item
+    ),
+    updatedAt: new Date().toISOString()
+  };
+  persistCompanyInfo();
+  clearFormDraft(companyVehicleDetailsForm);
+  closeCompanyVehicleDetailsDialog();
+  companyVehicleMessage.textContent = "Detalhes do veiculo salvos.";
+  logActivity("Veiculo interno atualizado", `Detalhes de ${vehicle?.model || "veiculo"} foram atualizados.`);
+  renderCompanyVehicles();
+}
+
+function addCompanyVehicleFineDraft() {
+  if (!requireModify("company")) {
+    return;
+  }
+
+  const typeInput = companyVehicleDetailsForm.elements.fineType;
+  const dateInput = companyVehicleDetailsForm.elements.fineDate;
+  const driverInput = companyVehicleDetailsForm.elements.fineDriverId;
+  const type = typeInput.value.trim();
+
+  if (!type) {
+    typeInput.focus();
+    return;
+  }
+
+  const driver = getCompanyVehicleDriver(driverInput.value);
+  editingCompanyVehicleFineDrafts = [
+    {
+      id: createId("MUL"),
+      type,
+      date: dateInput.value || "",
+      driverId: driverInput.value || "",
+      driverName: driver?.name || ""
+    },
+    ...editingCompanyVehicleFineDrafts
+  ];
+  typeInput.value = "";
+  dateInput.value = "";
+  driverInput.value = "";
+  renderCompanyVehicleFineDrafts();
+}
+
+function renderCompanyVehicleFineDrafts() {
+  companyVehicleFineList.innerHTML = "";
+
+  if (editingCompanyVehicleFineDrafts.length === 0) {
+    const emptyState = emptyRecordsTemplate.content.cloneNode(true);
+    emptyState.querySelector("strong").textContent = "Nenhuma multa cadastrada";
+    emptyState.querySelector("span").textContent = "Adicione multas quando houver registros para este veiculo.";
+    companyVehicleFineList.append(emptyState);
+    return;
+  }
+
+  editingCompanyVehicleFineDrafts.forEach((fine) => {
+    const card = document.createElement("article");
+    card.className = "record-card compact-record-card";
+
+    const content = document.createElement("div");
+    content.className = "record-content";
+
+    const title = document.createElement("strong");
+    title.textContent = fine.type || "Multa";
+
+    const details = document.createElement("span");
+    details.textContent = `Data: ${formatSimpleDate(fine.date)} | Condutor: ${fine.driverName || "Nao informado"}`;
+
+    const removeButton = document.createElement("button");
+    removeButton.className = "icon-danger";
+    removeButton.type = "button";
+    removeButton.textContent = "Excluir";
+    removeButton.addEventListener("click", () => {
+      editingCompanyVehicleFineDrafts = editingCompanyVehicleFineDrafts.filter((item) => item.id !== fine.id);
+      renderCompanyVehicleFineDrafts();
+    });
+
+    content.append(title, details);
+    card.append(content, removeButton);
+    companyVehicleFineList.append(card);
+  });
+}
+
+function deleteEditingCompanyVehicle() {
+  if (!requireModify("company") || !editingCompanyVehicleId) {
+    return;
+  }
+
+  const vehicle = getCompanyVehicleById(editingCompanyVehicleId);
+
+  if (!window.confirm(`Excluir o veiculo ${vehicle?.model || ""} ${vehicle?.plate || ""}?`)) {
+    return;
+  }
+
+  companyInfo = {
+    ...emptyCompanyInfo,
+    ...companyInfo,
+    vehicles: (companyInfo.vehicles || []).filter((item) => item.id !== editingCompanyVehicleId),
+    updatedAt: new Date().toISOString()
+  };
+  persistCompanyInfo();
+  closeCompanyVehicleDialog();
+  companyVehicleMessage.textContent = "Veiculo excluido.";
+  logActivity("Veiculo interno excluido", `${vehicle?.model || "Veiculo"} ${vehicle?.plate || ""} foi removido.`);
+  renderCompanyVehicles();
+}
+
+function getCompanyVehicleById(vehicleId) {
+  return (companyInfo.vehicles || []).find((vehicle) => vehicle.id === vehicleId);
+}
+
+function renderCompanyVehicleDriverOptions(select, selectedValue = "") {
+  select.innerHTML = "";
+
+  const emptyOption = document.createElement("option");
+  emptyOption.value = "";
+  emptyOption.textContent = "Sem condutor";
+  select.append(emptyOption);
+
+  getCompanyVehicleDrivers().forEach((driver) => {
+    const option = document.createElement("option");
+    option.value = driver.id;
+    option.textContent = driver.name;
+    select.append(option);
+  });
+
+  select.value = [...select.options].some((option) => option.value === selectedValue) ? selectedValue : "";
+}
+
+function getCompanyVehicleDrivers() {
+  const storedUsers = users
+    .filter((user) => user.active !== false)
+    .map((user) => ({ id: user.id || user.uid || normalize(user.login), name: user.name || user.login || user.email || "Usuario" }));
+
+  if (currentUser && !storedUsers.some((user) => user.id === currentUser.id || user.id === currentUser.uid)) {
+    storedUsers.unshift({
+      id: currentUser.id || currentUser.uid || normalize(currentUser.login),
+      name: currentUser.name || currentUser.login || currentUser.email || "Usuario atual"
+    });
+  }
+
+  return storedUsers;
+}
+
+function getCompanyVehicleDriver(driverId) {
+  return getCompanyVehicleDrivers().find((driver) => driver.id === driverId);
+}
+
+function getCompanyVehicleDriverName(vehicle) {
+  if (vehicle.driverName) {
+    return vehicle.driverName;
+  }
+
+  return getCompanyVehicleDriver(vehicle.driverId)?.name || "Nao informado";
 }
 
 function renderCompanyStockTypes(selectedValue = companyStockType.value) {
@@ -5948,7 +6514,8 @@ function renderDvrs(dvrs) {
     title.textContent = item.brandModel || "DVR sem marca/modelo";
 
     const details = document.createElement("span");
-    details.textContent = [`Serial: ${item.serial || "Nao informado"}`, `TCP: ${item.servicePort || "Nao informado"}`, `Usuario: ${item.user || "Nao informado"}`].join(" | ");
+    const network = item.networkType === "Estatico" ? `Estatico: ${item.ipAddress || "sem IP"}` : "DHCP";
+    details.textContent = [`Serial: ${item.serial || "Nao informado"}`, `TCP: ${item.servicePort || "Nao informado"}`, `Rede: ${network}`, `Usuario: ${item.user || "Nao informado"}`].join(" | ");
 
     const passwordRow = document.createElement("span");
     passwordRow.className = "email-password-row";
@@ -6187,10 +6754,13 @@ function openDvrDialog(dvrId = "") {
     dvrForm.elements.brandModel.value = dvr.brandModel || "";
     dvrForm.elements.serial.value = dvr.serial || "";
     dvrForm.elements.servicePort.value = dvr.servicePort || "";
+    dvrForm.elements.networkType.value = dvr.networkType || "DHCP";
+    dvrForm.elements.ipAddress.value = dvr.networkType === "Estatico" ? dvr.ipAddress || "" : "";
     dvrForm.elements.user.value = dvr.user || "";
     dvrForm.elements.password.value = dvr.password || "";
   }
 
+  toggleEquipmentIpField(dvrNetworkType, dvrIpLabel, dvrIpAddress);
   dvrDialog.showModal();
 }
 
@@ -6198,6 +6768,7 @@ function closeDvrDialog() {
   editingDvrId = "";
   dvrActionMessage.textContent = "";
   dvrForm.reset();
+  toggleEquipmentIpField(dvrNetworkType, dvrIpLabel, dvrIpAddress);
 
   if (dvrDialog.open) {
     dvrDialog.close();
@@ -6217,6 +6788,8 @@ function saveDvr(event) {
     brandModel: data.brandModel.trim(),
     serial: data.serial.trim(),
     servicePort: data.servicePort.trim(),
+    networkType: data.networkType || "DHCP",
+    ipAddress: data.networkType === "Estatico" ? data.ipAddress.trim() : "",
     user: data.user.trim(),
     password: data.password,
     updatedAt: new Date().toISOString()

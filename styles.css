@@ -1461,6 +1461,89 @@ body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
   grid-column: 1 / -2;
 }
 
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.compact-subheader {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.compact-record-list {
+  margin-top: 8px;
+  gap: 6px;
+}
+
+.compact-record-card {
+  padding: 8px;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.8fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.report-card {
+  margin: 0;
+  padding: 14px;
+}
+
+.report-card:first-child {
+  grid-row: span 2;
+}
+
+.report-status-groups {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.report-status-groups fieldset {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.report-status-groups legend {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.compact-check-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.compact-check-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  font-size: 0.76rem;
+}
+
+.compact-check-option input {
+  width: 13px;
+  height: 13px;
+}
+
+.muted-text {
+  margin: 4px 0 12px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .password-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 34px;
@@ -2194,6 +2277,14 @@ button:disabled {
 
   .settings-log-actions {
     grid-template-columns: 1fr;
+  }
+
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-card:first-child {
+    grid-row: auto;
   }
 
   .inline-form button,

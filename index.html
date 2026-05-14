@@ -974,39 +974,8 @@
               <p class="eyebrow">Veiculos</p>
               <h3>Cadastro de veiculos</h3>
             </div>
+            <button id="addCompanyVehicleButton" class="primary" type="button">Adicionar veiculo</button>
           </div>
-
-          <form id="companyVehicleForm" class="inline-form company-vehicle-form compact-company-inline-form">
-            <label>
-              <span>Tipo</span>
-              <select id="companyVehicleType" name="type" required>
-                <option value="Carro">Carro</option>
-                <option value="Moto">Moto</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Modelo</span>
-              <input id="companyVehicleModel" name="model" required />
-            </label>
-
-            <label>
-              <span>Placa</span>
-              <input id="companyVehiclePlate" name="plate" required />
-            </label>
-
-            <label>
-              <span>Data da manutencao</span>
-              <input id="companyVehicleMaintenanceDate" name="maintenanceDate" type="date" />
-            </label>
-
-            <label class="company-vehicle-maintenance">
-              <span>Manutencao</span>
-              <textarea id="companyVehicleMaintenance" name="maintenance" rows="3" placeholder="Descreva o que foi feito"></textarea>
-            </label>
-
-            <button id="companyVehicleSubmitButton" class="primary" type="submit" title="Adicionar veiculo" aria-label="Adicionar veiculo">Adicionar</button>
-          </form>
 
           <p id="companyVehicleMessage" class="action-message" aria-live="polite"></p>
           <div id="companyVehicleList" class="record-list"></div>
@@ -1047,9 +1016,70 @@
       <section id="reportsDashboardPanel" class="dashboard-panel">
         <div class="panel-hero">
           <p class="eyebrow">Relatorios</p>
-          <h2>Area reservada</h2>
-          <p>Este espaco esta pronto para receber indicadores, filtros e exportacoes futuramente.</p>
+          <h2>Relatorios em PDF</h2>
+          <p>Gere arquivos de consulta com clientes, estoque e veiculos da empresa.</p>
         </div>
+
+        <div class="report-grid">
+          <form id="clientReportForm" class="settings-form report-card">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Clientes</p>
+                <h3>OS e Agendamentos</h3>
+              </div>
+            </div>
+
+            <div class="form-grid compact-form-grid">
+              <label>
+                <span>Data inicial</span>
+                <input id="clientReportStartDate" name="startDate" type="date" />
+              </label>
+
+              <label>
+                <span>Data final</span>
+                <input id="clientReportEndDate" name="endDate" type="date" />
+              </label>
+            </div>
+
+            <div class="report-status-groups">
+              <fieldset>
+                <legend>Status das OS</legend>
+                <div id="clientReportServiceOrderStatuses" class="compact-check-list"></div>
+              </fieldset>
+
+              <fieldset>
+                <legend>Status dos Agendamentos</legend>
+                <div id="clientReportAgendaStatuses" class="compact-check-list"></div>
+              </fieldset>
+            </div>
+
+            <button class="primary" type="submit">Gerar PDF</button>
+          </form>
+
+          <form id="stockReportForm" class="settings-form report-card">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Estoque</p>
+                <h3>Produtos por item</h3>
+              </div>
+            </div>
+            <p class="muted-text">Lista todos os produtos cadastrados no estoque interno com suas quantidades.</p>
+            <button class="primary" type="submit">Gerar PDF</button>
+          </form>
+
+          <form id="vehicleReportForm" class="settings-form report-card">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Veiculos</p>
+                <h3>Manutencoes e multas</h3>
+              </div>
+            </div>
+            <p class="muted-text">Inclui condutor, ultima manutencao e multas registradas para cada veiculo.</p>
+            <button class="primary" type="submit">Gerar PDF</button>
+          </form>
+        </div>
+
+        <p id="reportMessage" class="action-message" aria-live="polite"></p>
       </section>
 
       <section id="logsDashboardPanel" class="dashboard-panel">
@@ -1509,6 +1539,19 @@
           </label>
 
           <label>
+            <span>Rede</span>
+            <select id="dvrNetworkType" name="networkType">
+              <option value="DHCP">DHCP</option>
+              <option value="Estatico">Estatico</option>
+            </select>
+          </label>
+
+          <label id="dvrIpLabel" class="hidden">
+            <span>IP do DVR</span>
+            <input id="dvrIpAddress" name="ipAddress" inputmode="decimal" placeholder="Ex: 192.168.0.100" />
+          </label>
+
+          <label>
             <span>Usuario</span>
             <input id="dvrUser" name="user" autocomplete="off" />
           </label>
@@ -1531,6 +1574,105 @@
       </form>
     </dialog>
 
+
+    <dialog id="companyVehicleDialog" class="modal">
+      <form id="companyVehicleForm" class="modal-content">
+        <div class="settings-header">
+          <div>
+            <p class="eyebrow">Veiculo</p>
+            <h3 id="companyVehicleDialogTitle">Adicionar veiculo</h3>
+          </div>
+          <button id="closeCompanyVehicleDialogButton" class="subtle" type="button" title="Fechar" aria-label="Fechar">Fechar</button>
+        </div>
+
+        <div class="form-grid compact-form-grid">
+          <label>
+            <span>Tipo</span>
+            <select id="companyVehicleType" name="type" required>
+              <option value="Carro">Carro</option>
+              <option value="Moto">Moto</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Modelo</span>
+            <input id="companyVehicleModel" name="model" required />
+          </label>
+
+          <label>
+            <span>Placa</span>
+            <input id="companyVehiclePlate" name="plate" required />
+          </label>
+
+          <label>
+            <span>Condutor</span>
+            <select id="companyVehicleDriver" name="driverId"></select>
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button id="deleteCompanyVehicleButton" class="danger" type="button">Excluir</button>
+          <button class="primary" type="submit">Salvar veiculo</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="companyVehicleDetailsDialog" class="modal">
+      <form id="companyVehicleDetailsForm" class="modal-content">
+        <div class="settings-header">
+          <div>
+            <p class="eyebrow">Veiculo</p>
+            <h3 id="companyVehicleDetailsTitle">Detalhes do veiculo</h3>
+          </div>
+          <button id="closeCompanyVehicleDetailsDialogButton" class="subtle" type="button" title="Fechar" aria-label="Fechar">Fechar</button>
+        </div>
+
+        <div class="form-grid compact-form-grid">
+          <label>
+            <span>Data da ultima manutencao</span>
+            <input id="companyVehicleMaintenanceDate" name="maintenanceDate" type="date" />
+          </label>
+
+          <label class="full-width">
+            <span>Manutencao feita</span>
+            <textarea id="companyVehicleMaintenance" name="maintenance" rows="3" placeholder="Descreva o que foi feito"></textarea>
+          </label>
+        </div>
+
+        <div class="settings-header compact-subheader">
+          <div>
+            <p class="eyebrow">Multas</p>
+            <h3>Registro de multas</h3>
+          </div>
+        </div>
+
+        <div class="form-grid compact-form-grid">
+          <label>
+            <span>Tipo da multa</span>
+            <input id="companyVehicleFineType" name="fineType" placeholder="Ex.: Velocidade" />
+          </label>
+
+          <label>
+            <span>Data da multa</span>
+            <input id="companyVehicleFineDate" name="fineDate" type="date" />
+          </label>
+
+          <label>
+            <span>Condutor</span>
+            <select id="companyVehicleFineDriver" name="fineDriverId"></select>
+          </label>
+
+          <button id="addCompanyVehicleFineButton" class="subtle" type="button">Adicionar multa</button>
+        </div>
+
+        <div id="companyVehicleFineList" class="record-list compact-record-list"></div>
+
+        <div class="modal-actions">
+          <span></span>
+          <button class="primary" type="submit">Salvar detalhes</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog id="passwordDialog" class="modal">
       <form id="passwordForm" class="modal-content">
@@ -1606,6 +1748,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-functions-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
       document.write('<script src="firebase-config.js?v=' + window.suporteTiBuildVersion + '"><\/script>');
     </script>

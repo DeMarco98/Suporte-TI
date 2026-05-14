@@ -6,6 +6,8 @@ const LOG_STORAGE_KEY = "cadastros-logs";
 const COMPANY_STORAGE_KEY = "cadastros-minha-empresa";
 const AGENDA_STORAGE_KEY = "cadastros-agenda";
 const AGENDA_COUNTER_STORAGE_KEY = "cadastros-agenda-contador";
+const INFRASTRUCTURE_AGENDA_STORAGE_KEY = "cadastros-agenda-infraestrutura";
+const INFRASTRUCTURE_AGENDA_COUNTER_STORAGE_KEY = "cadastros-agenda-infraestrutura-contador";
 const SERVICE_ORDER_STORAGE_KEY = "cadastros-ordens-servico";
 const SERVICE_ORDER_COUNTER_STORAGE_KEY = "cadastros-ordens-servico-contador";
 const SERVICE_ORDER_EQUIPMENT_TYPE_STORAGE_KEY = "cadastros-tipos-equipamento-os";
@@ -117,6 +119,8 @@ const cloudStorageKeys = [
   COMPANY_STORAGE_KEY,
   AGENDA_STORAGE_KEY,
   AGENDA_COUNTER_STORAGE_KEY,
+  INFRASTRUCTURE_AGENDA_STORAGE_KEY,
+  INFRASTRUCTURE_AGENDA_COUNTER_STORAGE_KEY,
   SERVICE_ORDER_STORAGE_KEY,
   SERVICE_ORDER_COUNTER_STORAGE_KEY,
   SERVICE_ORDER_EQUIPMENT_TYPE_STORAGE_KEY,
@@ -127,13 +131,15 @@ const cloudStorageKeys = [
 const dashboardSections = [
   { id: "overview", label: "Dashboard" },
   { id: "clients", label: "Clientes" },
-  { id: "agenda", label: "Agendamento" },
+  { id: "agenda", label: "Agendamentos" },
+  { id: "infrastructureAgenda", label: "Agendamentos Infraestrutura" },
   { id: "serviceOrders", label: "Ordem de Servico" },
   { id: "company", label: "Minha Empresa" },
   { id: "users", label: "Usuarios" },
   { id: "logs", label: "Logs" },
   { id: "permissions", label: "Permissoes" },
   { id: "reports", label: "Relatorios" },
+  { id: "finance", label: "Financeiro" },
   { id: "settings", label: "Configuracoes" }
 ];
 const defaultEquipmentCategories = ["Computadores", "Redes", "Impressoras", "Telefonia", "Perifericos"];
@@ -192,6 +198,7 @@ const emptyCompanyInfo = {
   vehicles: [],
   stockTypes: defaultCompanyStockTypes,
   stockItems: [],
+  finance: {},
   alertSettings: emptyAlertSettings,
   themeSettings: emptyThemeSettings,
   updatedAt: ""
@@ -199,6 +206,7 @@ const emptyCompanyInfo = {
 
 const emptyClient = {
   id: "",
+  clientType: "Mensalista",
   name: "",
   document: "",
   phone: "",
@@ -225,6 +233,10 @@ let agendaItems = loadAgendaItems();
 let agendaCounter = loadAgendaCounter();
 agendaItems = ensureAgendaNumbers(agendaItems);
 agendaCounter = loadAgendaCounter();
+let infrastructureAgendaItems = loadInfrastructureAgendaItems();
+let infrastructureAgendaCounter = loadInfrastructureAgendaCounter();
+infrastructureAgendaItems = ensureAgendaNumbers(infrastructureAgendaItems);
+infrastructureAgendaCounter = loadInfrastructureAgendaCounter();
 let serviceOrders = loadServiceOrders();
 let serviceOrderCounter = loadServiceOrderCounter();
 let serviceOrderEquipmentTypes = loadServiceOrderEquipmentTypes();
@@ -237,11 +249,13 @@ let activeTab = "profile";
 let activeDashboardTab = "overview";
 let activeServiceOrderView = "list";
 let activeAgendaView = "list";
+let activeInfrastructureAgendaView = "list";
 let activeCompanyView = "profile";
 let activeSettingsView = "theme";
 let editingEmailSettings = false;
 let editingNetworkSettings = false;
 let editingAgendaId = "";
+let editingInfrastructureAgendaId = "";
 let editingEquipmentId = "";
 let editingEmailId = "";
 let editingDvrId = "";
@@ -250,6 +264,7 @@ let editingCompanyVehicleId = "";
 let editingCompanyVehicleFineDrafts = [];
 let editingCompanyVehicleDocumentationDraft = createEmptyVehicleDocumentation();
 let editingCompanyStockItemId = "";
+let editingFinanceUserId = "";
 let editingPasswordUserId = "";
 let permissionDrafts = {};
 let currentUser = loadSessionUser();
@@ -284,6 +299,12 @@ const appState = {
   },
   set agendaItems(value) {
     agendaItems = value;
+  },
+  get infrastructureAgendaItems() {
+    return infrastructureAgendaItems;
+  },
+  set infrastructureAgendaItems(value) {
+    infrastructureAgendaItems = value;
   },
   get logs() {
     return logs;
@@ -342,9 +363,21 @@ const agendaSubmitButton = document.querySelector("#agendaSubmitButton");
 const agendaList = document.querySelector("#agendaList");
 const agendaSearchInput = document.querySelector("#agendaSearchInput");
 const agendaStatusFilter = document.querySelector("#agendaStatusFilter");
-const agendaViewButtons = document.querySelectorAll(".agenda-tab");
+const agendaViewButtons = document.querySelectorAll("[data-agenda-view]");
 const agendaListPanel = document.querySelector("#agendaListPanel");
 const cancelAgendaButton = document.querySelector("#cancelAgendaButton");
+const infrastructureAgendaActionMessage = document.querySelector("#infrastructureAgendaActionMessage");
+const infrastructureAgendaForm = document.querySelector("#infrastructureAgendaForm");
+const infrastructureAgendaDialogTitle = document.querySelector("#infrastructureAgendaDialogTitle");
+const infrastructureAgendaClient = document.querySelector("#infrastructureAgendaClient");
+const infrastructureAgendaDialogMessage = document.querySelector("#infrastructureAgendaDialogMessage");
+const infrastructureAgendaSubmitButton = document.querySelector("#infrastructureAgendaSubmitButton");
+const infrastructureAgendaList = document.querySelector("#infrastructureAgendaList");
+const infrastructureAgendaSearchInput = document.querySelector("#infrastructureAgendaSearchInput");
+const infrastructureAgendaStatusFilter = document.querySelector("#infrastructureAgendaStatusFilter");
+const infrastructureAgendaViewButtons = document.querySelectorAll("[data-infrastructure-agenda-view]");
+const infrastructureAgendaListPanel = document.querySelector("#infrastructureAgendaListPanel");
+const cancelInfrastructureAgendaButton = document.querySelector("#cancelInfrastructureAgendaButton");
 const serviceOrderForm = document.querySelector("#serviceOrderForm");
 const serviceOrderFormTitle = document.querySelector("#serviceOrderFormTitle");
 const serviceOrderSubmitButton = document.querySelector("#serviceOrderSubmitButton");
@@ -505,12 +538,14 @@ const dashboardPanels = {
   overview: document.querySelector("#overviewDashboardPanel"),
   clients: document.querySelector("#clientsDashboardPanel"),
   agenda: document.querySelector("#agendaDashboardPanel"),
+  infrastructureAgenda: document.querySelector("#infrastructureAgendaDashboardPanel"),
   serviceOrders: document.querySelector("#serviceOrdersDashboardPanel"),
   company: document.querySelector("#companyDashboardPanel"),
   users: document.querySelector("#usersDashboardPanel"),
   logs: document.querySelector("#logsDashboardPanel"),
   permissions: document.querySelector("#permissionsDashboardPanel"),
   reports: document.querySelector("#reportsDashboardPanel"),
+  finance: document.querySelector("#financeDashboardPanel"),
   settings: document.querySelector("#settingsDashboardPanel")
 };
 const settingsViewButtons = document.querySelectorAll(".settings-tab");
@@ -551,6 +586,41 @@ const clientReportAgendaStatuses = document.querySelector("#clientReportAgendaSt
 const stockReportForm = document.querySelector("#stockReportForm");
 const vehicleReportForm = document.querySelector("#vehicleReportForm");
 const reportMessage = document.querySelector("#reportMessage");
+const financeUserList = document.querySelector("#financeUserList");
+const financeDialog = document.querySelector("#financeDialog");
+const financeDialogTitle = document.querySelector("#financeDialogTitle");
+const closeFinanceDialogButton = document.querySelector("#closeFinanceDialogButton");
+const financeTabs = document.querySelectorAll(".finance-tab");
+const financePanels = {
+  advances: document.querySelector("#financeAdvancesPanel"),
+  commissions: document.querySelector("#financeCommissionsPanel"),
+  expenses: document.querySelector("#financeExpensesPanel"),
+  monthly: document.querySelector("#financeMonthlyPanel"),
+  sporadic: document.querySelector("#financeSporadicPanel")
+};
+const financeAdvanceForm = document.querySelector("#financeAdvanceForm");
+const financeAdvanceList = document.querySelector("#financeAdvanceList");
+const financeCommissionForm = document.querySelector("#financeCommissionForm");
+const financeCommissionClient = document.querySelector("#financeCommissionClient");
+const addTemporaryFinanceClientButton = document.querySelector("#addTemporaryFinanceClientButton");
+const temporaryFinanceClientLabel = document.querySelector("#temporaryFinanceClientLabel");
+const temporaryFinanceClientName = document.querySelector("#temporaryFinanceClientName");
+const financeCommissionList = document.querySelector("#financeCommissionList");
+const financeExpenseForm = document.querySelector("#financeExpenseForm");
+const financeExpenseList = document.querySelector("#financeExpenseList");
+const financeMonthlyForm = document.querySelector("#financeMonthlyForm");
+const financeMonthlyClient = document.querySelector("#financeMonthlyClient");
+const addTemporaryMonthlyClientButton = document.querySelector("#addTemporaryMonthlyClientButton");
+const temporaryMonthlyClientLabel = document.querySelector("#temporaryMonthlyClientLabel");
+const temporaryMonthlyClientName = document.querySelector("#temporaryMonthlyClientName");
+const financeMonthlyList = document.querySelector("#financeMonthlyList");
+const financeSporadicForm = document.querySelector("#financeSporadicForm");
+const financeSporadicClient = document.querySelector("#financeSporadicClient");
+const addTemporarySporadicClientButton = document.querySelector("#addTemporarySporadicClientButton");
+const temporarySporadicClientLabel = document.querySelector("#temporarySporadicClientLabel");
+const temporarySporadicClientName = document.querySelector("#temporarySporadicClientName");
+const financeSporadicList = document.querySelector("#financeSporadicList");
+const financeMessage = document.querySelector("#financeMessage");
 const panels = {
   profile: document.querySelector("#profilePanel"),
   equipment: document.querySelector("#equipmentPanel"),
@@ -560,6 +630,7 @@ const panels = {
 };
 
 const fields = {
+  clientType: document.querySelector("#clientType"),
   name: document.querySelector("#name"),
   document: document.querySelector("#document"),
   phone: document.querySelector("#phone"),
@@ -619,6 +690,16 @@ backupFileInput.addEventListener("change", restoreSystemBackupFromFile);
 clientReportForm.addEventListener("submit", generateClientReport);
 stockReportForm.addEventListener("submit", generateStockReport);
 vehicleReportForm.addEventListener("submit", generateVehicleReport);
+closeFinanceDialogButton.addEventListener("click", closeFinanceDialog);
+financeTabs.forEach((tab) => tab.addEventListener("click", () => switchFinanceView(tab.dataset.financeView)));
+financeAdvanceForm.addEventListener("submit", addFinanceAdvance);
+financeCommissionForm.addEventListener("submit", addFinanceCommission);
+financeExpenseForm.addEventListener("submit", addFinanceExpense);
+financeMonthlyForm.addEventListener("submit", addFinanceMonthly);
+financeSporadicForm.addEventListener("submit", addFinanceSporadic);
+addTemporaryFinanceClientButton.addEventListener("click", showTemporaryFinanceClientField);
+addTemporaryMonthlyClientButton.addEventListener("click", showTemporaryMonthlyClientField);
+addTemporarySporadicClientButton.addEventListener("click", showTemporarySporadicClientField);
 settingsViewButtons.forEach((button) => button.addEventListener("click", () => switchSettingsView(button.dataset.settingsView)));
 companyForm.addEventListener("submit", saveCompanyInfo);
 companyNetworkForm.addEventListener("submit", saveCompanyNetworkInfo);
@@ -655,6 +736,24 @@ agendaViewButtons.forEach((button) => {
     }
 
     switchAgendaView("list");
+  });
+});
+infrastructureAgendaForm.addEventListener("submit", addInfrastructureAgendaItem);
+cancelInfrastructureAgendaButton.addEventListener("click", resetInfrastructureAgendaForm);
+infrastructureAgendaSearchInput.addEventListener("input", renderInfrastructureAgendaItems);
+infrastructureAgendaSearchInput.addEventListener("input", saveWorkspaceState);
+infrastructureAgendaStatusFilter.addEventListener("change", () => {
+  saveWorkspaceState();
+  renderInfrastructureAgendaItems();
+});
+infrastructureAgendaViewButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    if (button.dataset.infrastructureAgendaView === "create") {
+      startNewInfrastructureAgendaItem();
+      return;
+    }
+
+    switchInfrastructureAgendaView("list");
   });
 });
 serviceOrderForm.addEventListener("submit", addServiceOrder);
@@ -780,12 +879,15 @@ function saveWorkspaceState() {
     activeDashboardTab,
     activeServiceOrderView,
     activeAgendaView,
+    activeInfrastructureAgendaView,
     activeCompanyView,
     activeSettingsView,
     search: searchInput?.value || "",
     equipmentFilter: equipmentFilter?.value || "",
     agendaSearch: agendaSearchInput?.value || "",
     agendaStatus: agendaStatusFilter?.value || "all",
+    infrastructureAgendaSearch: infrastructureAgendaSearchInput?.value || "",
+    infrastructureAgendaStatus: infrastructureAgendaStatusFilter?.value || "all",
     serviceOrderSearch: serviceOrderSearchInput?.value || "",
     serviceOrderStatus: serviceOrderStatusFilter?.value || "all",
     updatedAt: new Date().toISOString()
@@ -817,6 +919,10 @@ function restoreWorkspaceState({ applyFields = true } = {}) {
     activeAgendaView = state.activeAgendaView;
   }
 
+  if (["list", "create"].includes(state.activeInfrastructureAgendaView)) {
+    activeInfrastructureAgendaView = state.activeInfrastructureAgendaView;
+  }
+
   if (["profile", "network", "vehicles", "stock"].includes(state.activeCompanyView)) {
     activeCompanyView = state.activeCompanyView;
   }
@@ -845,6 +951,14 @@ function restoreWorkspaceState({ applyFields = true } = {}) {
     agendaStatusFilter.value = state.agendaStatus || "all";
   }
 
+  if (infrastructureAgendaSearchInput) {
+    infrastructureAgendaSearchInput.value = state.infrastructureAgendaSearch || "";
+  }
+
+  if (infrastructureAgendaStatusFilter) {
+    infrastructureAgendaStatusFilter.value = state.infrastructureAgendaStatus || "all";
+  }
+
   if (serviceOrderSearchInput) {
     serviceOrderSearchInput.value = state.serviceOrderSearch || "";
   }
@@ -863,6 +977,10 @@ function getFormDraftKey(formElement) {
 
   if (formElement === agendaForm) {
     return `${formId}:${editingAgendaId || "novo"}`;
+  }
+
+  if (formElement === infrastructureAgendaForm) {
+    return `${formId}:${editingInfrastructureAgendaId || "novo"}`;
   }
 
   if (formElement === serviceOrderForm) {
@@ -969,7 +1087,7 @@ function applyFormDraft(formElement) {
 }
 
 function restoreVisibleFormDrafts() {
-  [form, agendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, userForm].forEach((formElement) => {
+  [form, agendaForm, infrastructureAgendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, financeAdvanceForm, financeCommissionForm, financeExpenseForm, financeMonthlyForm, financeSporadicForm, userForm].forEach((formElement) => {
     if (!formElement || formElement.offsetParent === null) {
       return;
     }
@@ -983,7 +1101,7 @@ function restoreVisibleFormDrafts() {
 }
 
 function setupFormDraftAutosave() {
-  [form, agendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, userForm].forEach((formElement) => {
+  [form, agendaForm, infrastructureAgendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, financeAdvanceForm, financeCommissionForm, financeExpenseForm, financeMonthlyForm, financeSporadicForm, userForm].forEach((formElement) => {
     if (!formElement) {
       return;
     }
@@ -1075,6 +1193,7 @@ function normalizeCompanyInfo(info = {}) {
     vehicles: Array.isArray(info.vehicles) ? info.vehicles.map(normalizeCompanyVehicle) : [],
     stockTypes: Array.isArray(info.stockTypes) ? info.stockTypes : defaultCompanyStockTypes,
     stockItems: Array.isArray(info.stockItems) ? info.stockItems : [],
+    finance: normalizeFinanceInfo(info.finance),
     alertSettings: {
       ...emptyAlertSettings,
       ...(info.alertSettings || {})
@@ -1084,6 +1203,78 @@ function normalizeCompanyInfo(info = {}) {
       ...(info.themeSettings || {})
     }
   };
+}
+
+function normalizeFinanceInfo(finance = {}) {
+  return Object.entries(finance && typeof finance === "object" ? finance : {}).reduce((records, [userId, value]) => {
+    records[userId] = {
+      advances: Array.isArray(value?.advances)
+        ? value.advances.map((item) => ({
+            id: item.id || createId("VAL"),
+            date: item.date || "",
+            value: item.value || "",
+            description: item.description || "",
+            createdAt: item.createdAt || new Date().toISOString()
+          }))
+        : [],
+      commissions: Array.isArray(value?.commissions)
+        ? value.commissions.map((item) => ({
+            id: item.id || createId("COM"),
+            date: item.date || "",
+            clientId: item.clientId || "",
+            clientName: item.clientName || "",
+            value: item.value || "",
+            description: item.description || "",
+            temporary: Boolean(item.temporary),
+            createdAt: item.createdAt || new Date().toISOString()
+          }))
+        : [],
+      sporadic: Array.isArray(value?.sporadic)
+        ? value.sporadic.map((item) => ({
+            id: item.id || createId("ESP"),
+            clientId: item.clientId || "",
+            clientName: item.clientName || "",
+            service: item.service || "",
+            date: item.date || "",
+            value: item.value || "",
+            payment: item.payment || "",
+            status: item.status || "Pendente",
+            description: item.description || "",
+            temporary: Boolean(item.temporary),
+            createdAt: item.createdAt || new Date().toISOString()
+          }))
+        : [],
+      expenses: Array.isArray(value?.expenses)
+        ? value.expenses.map((item) => ({
+            id: item.id || createId("DES"),
+            date: item.date || "",
+            dueDate: item.dueDate || "",
+            category: item.category || "",
+            value: item.value || "",
+            payment: item.payment || "",
+            status: item.status || "Pendente",
+            description: item.description || "",
+            createdAt: item.createdAt || new Date().toISOString()
+          }))
+        : [],
+      monthly: Array.isArray(value?.monthly)
+        ? value.monthly.map((item) => ({
+            id: item.id || createId("MEN"),
+            clientId: item.clientId || "",
+            clientName: item.clientName || "",
+            service: item.service || "",
+            value: item.value || "",
+            dueDay: item.dueDay || "",
+            frequency: item.frequency || "Mensal",
+            status: item.status || "Ativo",
+            description: item.description || "",
+            temporary: Boolean(item.temporary),
+            createdAt: item.createdAt || new Date().toISOString()
+          }))
+        : []
+    };
+    return records;
+  }, {});
 }
 
 function normalizeCompanyVehicle(vehicle = {}) {
@@ -1282,6 +1473,21 @@ function loadAgendaCounter() {
   return highestExistingNumber + 1;
 }
 
+function loadInfrastructureAgendaCounter() {
+  const storedCounter = Number(localStorage.getItem(INFRASTRUCTURE_AGENDA_COUNTER_STORAGE_KEY));
+
+  if (Number.isInteger(storedCounter) && storedCounter > 0) {
+    return storedCounter;
+  }
+
+  const highestExistingNumber = infrastructureAgendaItems.reduce((highest, item) => {
+    const agendaNumber = Number(item.number);
+    return Number.isInteger(agendaNumber) && agendaNumber > highest ? agendaNumber : highest;
+  }, 0);
+
+  return highestExistingNumber + 1;
+}
+
 function ensureAgendaNumbers(items) {
   let nextNumber = items.reduce((highest, item) => {
     const agendaNumber = Number(item.number);
@@ -1361,6 +1567,21 @@ function loadAgendaItems() {
   }
 }
 
+function loadInfrastructureAgendaItems() {
+  const stored = localStorage.getItem(INFRASTRUCTURE_AGENDA_STORAGE_KEY);
+
+  if (!stored) {
+    return [];
+  }
+
+  try {
+    const parsedItems = JSON.parse(stored);
+    return Array.isArray(parsedItems) ? parsedItems : [];
+  } catch {
+    return [];
+  }
+}
+
 function loadAuthorizationRequests() {
   const stored = localStorage.getItem(AUTHORIZATION_STORAGE_KEY);
 
@@ -1413,6 +1634,7 @@ function normalizeClient(client) {
   return {
     ...emptyClient,
     ...client,
+    clientType: client.clientType || "Mensalista",
     equipment: Array.isArray(client.equipment) ? client.equipment : [],
     emails: Array.isArray(client.emails) ? client.emails : [],
     cftv: Array.isArray(client.cftv) ? client.cftv : [],
@@ -1497,7 +1719,9 @@ function getFirestoreCollectionName(key) {
     [EXTERNAL_REPAIR_LOCATION_STORAGE_KEY]: "externalRepairLocations",
     [EMAIL_TYPE_STORAGE_KEY]: "emailTypes",
     [SERVICE_ORDER_COUNTER_STORAGE_KEY]: "counters",
-    [AGENDA_COUNTER_STORAGE_KEY]: "counters"
+    [AGENDA_COUNTER_STORAGE_KEY]: "counters",
+    [INFRASTRUCTURE_AGENDA_STORAGE_KEY]: "infrastructureAgenda",
+    [INFRASTRUCTURE_AGENDA_COUNTER_STORAGE_KEY]: "counters"
   };
 
   return collectionByKey[key] || "";
@@ -1911,11 +2135,19 @@ function syncStateToFirebase(key, value, options = {}) {
 }
 
 function isCounterStorageKey(key) {
-  return key === SERVICE_ORDER_COUNTER_STORAGE_KEY || key === AGENDA_COUNTER_STORAGE_KEY;
+  return key === SERVICE_ORDER_COUNTER_STORAGE_KEY || key === AGENDA_COUNTER_STORAGE_KEY || key === INFRASTRUCTURE_AGENDA_COUNTER_STORAGE_KEY;
 }
 
 function getCounterDocumentId(key) {
-  return key === AGENDA_COUNTER_STORAGE_KEY ? "agenda" : "serviceOrders";
+  if (key === AGENDA_COUNTER_STORAGE_KEY) {
+    return "agenda";
+  }
+
+  if (key === INFRASTRUCTURE_AGENDA_COUNTER_STORAGE_KEY) {
+    return "infrastructureAgenda";
+  }
+
+  return "serviceOrders";
 }
 
 async function syncCollection(collectionName, items) {
@@ -1949,6 +2181,8 @@ function reloadStateFromLocalStorage() {
   logs = loadLogs();
   agendaItems = ensureAgendaNumbers(loadAgendaItems());
   agendaCounter = loadAgendaCounter();
+  infrastructureAgendaItems = ensureAgendaNumbers(loadInfrastructureAgendaItems());
+  infrastructureAgendaCounter = loadInfrastructureAgendaCounter();
   serviceOrders = loadServiceOrders();
   serviceOrderCounter = loadServiceOrderCounter();
   serviceOrderEquipmentTypes = loadServiceOrderEquipmentTypes();
@@ -2004,6 +2238,14 @@ function persistAgendaItems() {
 
 function persistAgendaCounter() {
   persistState(AGENDA_COUNTER_STORAGE_KEY, agendaCounter);
+}
+
+function persistInfrastructureAgendaItems() {
+  persistState(INFRASTRUCTURE_AGENDA_STORAGE_KEY, infrastructureAgendaItems);
+}
+
+function persistInfrastructureAgendaCounter() {
+  persistState(INFRASTRUCTURE_AGENDA_COUNTER_STORAGE_KEY, infrastructureAgendaCounter);
 }
 
 function persistServiceOrders() {
@@ -2340,6 +2582,36 @@ function requestAgendaAuthorization(payload) {
   return true;
 }
 
+function requestInfrastructureAgendaAuthorization(payload) {
+  if (!currentUser) {
+    return false;
+  }
+
+  if (hasPendingInfrastructureAgendaAuthorization(payload)) {
+    return false;
+  }
+
+  authorizationRequests = [
+    {
+      id: createId("AUT"),
+      type: "create-infrastructure-agenda",
+      title: "Solicitar agendamento infraestrutura",
+      details: `${payload.clientName}: ${payload.occurrence}`,
+      payload,
+      status: "Pendente",
+      requesterName: currentUser.name,
+      requesterLogin: currentUser.login,
+      createdAt: new Date().toISOString()
+    },
+    ...authorizationRequests
+  ];
+
+  persistAuthorizationRequests();
+  logActivity("Agendamento infraestrutura solicitado", `${payload.clientName} por ${currentUser.login}.`);
+  renderNotifications();
+  return true;
+}
+
 function hasPendingDeleteAuthorization(type, payload) {
   return authorizationRequests.some((request) => {
     if (request.status !== "Pendente" || request.type !== type) {
@@ -2367,6 +2639,19 @@ function hasPendingAgendaAuthorization(payload) {
     return (
       request.status === "Pendente" &&
       request.type === "create-agenda" &&
+      request.requesterLogin === currentUser.login &&
+      request.payload.clientId === payload.clientId &&
+      request.payload.date === payload.date &&
+      normalize(request.payload.occurrence) === normalize(payload.occurrence)
+    );
+  });
+}
+
+function hasPendingInfrastructureAgendaAuthorization(payload) {
+  return authorizationRequests.some((request) => {
+    return (
+      request.status === "Pendente" &&
+      request.type === "create-infrastructure-agenda" &&
       request.requesterLogin === currentUser.login &&
       request.payload.clientId === payload.clientId &&
       request.payload.date === payload.date &&
@@ -2677,6 +2962,130 @@ function resetAgendaForm() {
 
   if (agendaForm.elements.status) {
     agendaForm.elements.status.value = "Aberto";
+  }
+}
+
+function addInfrastructureAgendaItem(event) {
+  event.preventDefault();
+
+  if (!canAccess("infrastructureAgenda")) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(infrastructureAgendaForm).entries());
+  const client = clients.find((item) => item.id === data.clientId);
+
+  if (!client) {
+    return;
+  }
+
+  const editingAgenda = infrastructureAgendaItems.find((item) => item.id === editingInfrastructureAgendaId);
+  const payload = {
+    clientId: data.clientId,
+    clientName: client.name || "Cliente sem nome",
+    occurrence: data.occurrence.trim(),
+    requester: data.requester.trim(),
+    date: data.date,
+    status: data.status,
+    openedByName: editingAgenda?.openedByName || currentUser?.name || "Usuario nao identificado",
+    openedByLogin: editingAgenda?.openedByLogin || currentUser?.login || "",
+    updatedAt: new Date().toISOString()
+  };
+
+  if (!canModify("infrastructureAgenda") && !editingAgenda) {
+    const sent = requestInfrastructureAgendaAuthorization(payload);
+    infrastructureAgendaDialogMessage.textContent = sent ? "solicitação de agendamento enviada" : "solicitação de agendamento já enviada";
+
+    if (sent) {
+      resetInfrastructureAgendaForm();
+      infrastructureAgendaActionMessage.textContent = "solicitação de agendamento enviada";
+    }
+
+    return;
+  }
+
+  if (!canModify("infrastructureAgenda")) {
+    return;
+  }
+
+  if (editingAgenda) {
+    updateInfrastructureAgendaFromPayload(editingAgenda.id, payload);
+  } else {
+    createInfrastructureAgendaFromPayload(payload);
+  }
+
+  const wasEditing = Boolean(editingAgenda);
+  editingInfrastructureAgendaId = "";
+  resetInfrastructureAgendaForm();
+  infrastructureAgendaActionMessage.textContent = wasEditing ? "Agendamento atualizado." : "Agendamento adicionado.";
+  switchInfrastructureAgendaView("list");
+}
+
+function createInfrastructureAgendaFromPayload(payload) {
+  const item = {
+    id: createId("AINF"),
+    number: getNextInfrastructureAgendaNumber(),
+    ...payload,
+    createdAt: new Date().toISOString()
+  };
+  infrastructureAgendaItems = [item, ...infrastructureAgendaItems];
+  persistInfrastructureAgendaItems();
+  logActivity("Agendamento infraestrutura criado", `${payload.clientName || "Cliente sem nome"}: ${payload.occurrence}`);
+  renderInfrastructureAgendaItems();
+  updateDashboardTotals();
+}
+
+function updateInfrastructureAgendaFromPayload(itemId, payload) {
+  const previousItem = infrastructureAgendaItems.find((item) => item.id === itemId);
+  infrastructureAgendaItems = infrastructureAgendaItems.map((item) =>
+    item.id === itemId
+      ? {
+          ...item,
+          ...payload,
+          number: item.number,
+          openedByName: item.openedByName,
+          openedByLogin: item.openedByLogin,
+          createdAt: item.createdAt
+        }
+      : item
+  );
+  persistInfrastructureAgendaItems();
+  logActivity("Agendamento infraestrutura editado", `${formatInfrastructureAgendaNumber(previousItem || {})} - ${payload.clientName || "Cliente sem nome"}.`);
+  clearFormDraft(infrastructureAgendaForm);
+  renderInfrastructureAgendaItems();
+}
+
+function getNextInfrastructureAgendaNumber() {
+  const nextNumber = infrastructureAgendaCounter;
+  infrastructureAgendaCounter += 1;
+  persistInfrastructureAgendaCounter();
+  return nextNumber;
+}
+
+function startNewInfrastructureAgendaItem() {
+  if (!canAccess("infrastructureAgenda")) {
+    return;
+  }
+
+  resetInfrastructureAgendaForm();
+  switchInfrastructureAgendaView("create");
+}
+
+function resetInfrastructureAgendaForm() {
+  editingInfrastructureAgendaId = "";
+  infrastructureAgendaDialogMessage.textContent = "";
+  infrastructureAgendaActionMessage.textContent = "";
+  infrastructureAgendaDialogTitle.textContent = "Novo agendamento";
+  infrastructureAgendaSubmitButton.textContent = "Adicionar";
+  infrastructureAgendaSubmitButton.title = "Adicionar agendamento infraestrutura";
+  infrastructureAgendaSubmitButton.setAttribute("aria-label", "Adicionar agendamento infraestrutura");
+  infrastructureAgendaSubmitButton.disabled = clients.length === 0;
+  infrastructureAgendaForm.reset();
+  clearFormDraft(infrastructureAgendaForm);
+  renderInfrastructureAgendaClientOptions();
+
+  if (infrastructureAgendaForm.elements.status) {
+    infrastructureAgendaForm.elements.status.value = "Aberto";
   }
 }
 
@@ -3134,6 +3543,9 @@ function render() {
   renderAgendaClientOptions();
   renderAgendaItems();
   renderAgendaView();
+  renderInfrastructureAgendaClientOptions();
+  renderInfrastructureAgendaItems();
+  renderInfrastructureAgendaView();
   renderServiceOrderClientOptions();
   renderExternalRepairLocationOptions();
   renderEmailTypeOptions();
@@ -3148,6 +3560,7 @@ function render() {
   renderPermissionList();
   renderSettingsView();
   renderReportOptions();
+  renderFinanceUsers();
   renderForm();
   renderEquipmentCategories();
   renderBrandOptions(equipmentBrand, equipmentModel);
@@ -3172,6 +3585,13 @@ function switchAgendaView(viewName) {
   agendaActionMessage.textContent = "";
   saveWorkspaceState();
   renderAgendaView();
+}
+
+function switchInfrastructureAgendaView(viewName) {
+  activeInfrastructureAgendaView = viewName === "create" ? "create" : "list";
+  infrastructureAgendaActionMessage.textContent = "";
+  saveWorkspaceState();
+  renderInfrastructureAgendaView();
 }
 
 function switchSettingsView(viewName) {
@@ -3357,6 +3777,17 @@ function renderAgendaView() {
 
   agendaListPanel.classList.toggle("active", activeAgendaView === "list");
   agendaForm.classList.toggle("active", activeAgendaView === "create");
+}
+
+function renderInfrastructureAgendaView() {
+  infrastructureAgendaViewButtons.forEach((button) => {
+    const isActive = button.dataset.infrastructureAgendaView === activeInfrastructureAgendaView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  infrastructureAgendaListPanel.classList.toggle("active", activeInfrastructureAgendaView === "list");
+  infrastructureAgendaForm.classList.toggle("active", activeInfrastructureAgendaView === "create");
 }
 
 function renderServiceOrderView() {
@@ -3686,7 +4117,7 @@ function closeFloatingPanelsOnOutsideClick(event) {
 }
 
 function updateDashboardTotals() {
-  const openAgenda = agendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Aberto").length;
+  const openAgenda = [...agendaItems, ...infrastructureAgendaItems].filter((item) => normalizeAgendaStatus(item.status) === "Aberto").length;
   const openOrders = serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "open").length;
   const pendingAuthorizations = getVisibleAuthorizationRequests().filter((item) => item.status === "Pendente").length;
   const alerts = getSystemAlerts().length;
@@ -3695,7 +4126,7 @@ function updateDashboardTotals() {
   dashboardActiveClientTotal.textContent = `${clients.filter((client) => client.status !== "Inativo").length} ativos`;
   dashboardUserTotal.textContent = String(users.length);
   dashboardActiveUserTotal.textContent = `${users.filter((user) => user.active).length} ativos`;
-  dashboardAgendaTotal.textContent = String(agendaItems.length);
+  dashboardAgendaTotal.textContent = String(agendaItems.length + infrastructureAgendaItems.length);
   dashboardOpenAgendaTotal.textContent = `${openAgenda} em aberto`;
   dashboardServiceOrderTotal.textContent = String(serviceOrders.length);
   dashboardOpenServiceOrderTotal.textContent = `${openOrders} em aberto`;
@@ -3710,8 +4141,9 @@ function renderDashboardStatusList() {
   dashboardStatusList.innerHTML = "";
   const items = [
     ["Agenda aberta", agendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Aberto").length],
-    ["Agenda em análise", agendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Em analise").length],
-    ["Agenda concluída", agendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Concluido").length],
+    ["Infra aberta", infrastructureAgendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Aberto").length],
+    ["Agenda em análise", [...agendaItems, ...infrastructureAgendaItems].filter((item) => normalizeAgendaStatus(item.status) === "Em analise").length],
+    ["Agenda concluída", [...agendaItems, ...infrastructureAgendaItems].filter((item) => normalizeAgendaStatus(item.status) === "Concluido").length],
     ["OS abertas", serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "open").length],
     ["OS em andamento", serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "inProgress").length],
     ["OS fechadas", serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "closed").length]
@@ -3775,9 +4207,12 @@ function createDashboardMiniItem(title, details) {
 function renderPermissions() {
   const canModifyClients = canModify("clients");
   const canAccessAgenda = canAccess("agenda");
+  const canAccessInfrastructureAgenda = canAccess("infrastructureAgenda");
   const canModifyAgenda = canModify("agenda");
+  const canModifyInfrastructureAgenda = canModify("infrastructureAgenda");
   const canModifyServiceOrders = canModify("serviceOrders");
   const canModifyCompany = canModify("company");
+  const canModifyFinance = canModify("finance");
   const canModifySettings = canModify("settings");
   const canModifyTheme = canModifyGlobalTheme();
   const canModifyLocalTheme = Boolean(currentUser);
@@ -3823,6 +4258,17 @@ function renderPermissions() {
   agendaSubmitButton.title = editingAgendaId ? "Salvar agendamento" : "Adicionar agendamento";
   agendaSubmitButton.setAttribute("aria-label", agendaSubmitButton.title);
   agendaSubmitButton.disabled = !canAccessAgenda || clients.length === 0;
+
+  [...infrastructureAgendaForm.elements].forEach((element) => {
+    element.disabled = !canAccessInfrastructureAgenda;
+  });
+  infrastructureAgendaViewButtons.forEach((button) => {
+    button.disabled = !canAccessInfrastructureAgenda;
+  });
+  infrastructureAgendaSubmitButton.textContent = editingInfrastructureAgendaId ? "Salvar" : "Adicionar";
+  infrastructureAgendaSubmitButton.title = editingInfrastructureAgendaId ? "Salvar agendamento" : "Adicionar agendamento";
+  infrastructureAgendaSubmitButton.setAttribute("aria-label", infrastructureAgendaSubmitButton.title);
+  infrastructureAgendaSubmitButton.disabled = !canAccessInfrastructureAgenda || clients.length === 0 || (!canModifyInfrastructureAgenda && Boolean(editingInfrastructureAgendaId));
 
   [...serviceOrderForm.elements].forEach((element) => {
     element.disabled = !canModifyServiceOrders;
@@ -3872,6 +4318,12 @@ function renderPermissions() {
   });
   restoreLocalBackupButton.disabled = !canBackup || !hasLocalBackup;
   clearLocalBackupButton.disabled = !canBackup || !hasLocalBackup;
+  [...financeAdvanceForm.elements, ...financeCommissionForm.elements, ...financeExpenseForm.elements, ...financeMonthlyForm.elements, ...financeSporadicForm.elements].forEach((element) => {
+    element.disabled = !canModifyFinance;
+  });
+  addTemporaryFinanceClientButton.disabled = !canModifyFinance;
+  addTemporaryMonthlyClientButton.disabled = !canModifyFinance;
+  addTemporarySporadicClientButton.disabled = !canModifyFinance;
   companyStockSubmitButton.textContent = editingCompanyStockItemId ? "Salvar" : "Adicionar";
   companyStockSubmitButton.title = editingCompanyStockItemId ? "Salvar produto" : "Adicionar produto";
   companyStockSubmitButton.setAttribute("aria-label", companyStockSubmitButton.title);
@@ -4270,6 +4722,8 @@ function createSystemBackup() {
       logs,
       agendaItems,
       agendaCounter,
+      infrastructureAgendaItems,
+      infrastructureAgendaCounter,
       serviceOrders,
       serviceOrderCounter,
       serviceOrderEquipmentTypes,
@@ -4409,6 +4863,8 @@ function applySystemBackupData(data) {
   logs = Array.isArray(data.logs) ? data.logs : logs;
   agendaItems = Array.isArray(data.agendaItems) ? ensureAgendaNumbers(data.agendaItems) : agendaItems;
   agendaCounter = Number(data.agendaCounter || getNextCounterFromItems(agendaItems));
+  infrastructureAgendaItems = Array.isArray(data.infrastructureAgendaItems) ? ensureAgendaNumbers(data.infrastructureAgendaItems) : infrastructureAgendaItems;
+  infrastructureAgendaCounter = Number(data.infrastructureAgendaCounter || getNextCounterFromItems(infrastructureAgendaItems));
   serviceOrders = Array.isArray(data.serviceOrders) ? data.serviceOrders : serviceOrders;
   serviceOrderCounter = Number(data.serviceOrderCounter || getNextCounterFromItems(serviceOrders));
   serviceOrderEquipmentTypes = Array.isArray(data.serviceOrderEquipmentTypes) ? uniqueTextOptions(data.serviceOrderEquipmentTypes) : serviceOrderEquipmentTypes;
@@ -4429,6 +4885,8 @@ function persistAllSystemBackupData() {
   persistLogs();
   persistAgendaItems();
   persistAgendaCounter();
+  persistInfrastructureAgendaItems();
+  persistInfrastructureAgendaCounter();
   persistServiceOrders();
   persistServiceOrderCounter();
   persistServiceOrderEquipmentTypes();
@@ -4487,6 +4945,500 @@ function renderReportStatusChecks(container, statuses, name) {
     label.append(checkbox, span);
     container.append(label);
   });
+}
+
+function renderFinanceUsers() {
+  financeUserList.innerHTML = "";
+  const visibleUsers = users.filter((user) => user.active !== false || canApproveAuthorizationRequests());
+
+  if (visibleUsers.length === 0) {
+    const emptyState = emptyRecordsTemplate.content.cloneNode(true);
+    emptyState.querySelector("strong").textContent = "Nenhum usuario cadastrado";
+    emptyState.querySelector("span").textContent = "Crie usuarios para controlar vales e comissoes.";
+    financeUserList.append(emptyState);
+    return;
+  }
+
+  visibleUsers.forEach((user) => {
+    const records = getFinanceRecords(user.id);
+    const card = document.createElement("article");
+    card.className = "record-card clickable";
+    card.tabIndex = 0;
+
+    const content = document.createElement("div");
+    content.className = "record-content";
+
+    const tag = document.createElement("span");
+    tag.className = "record-tag";
+    tag.textContent = user.active === false ? "Inativo" : "Usuario";
+
+    const title = document.createElement("strong");
+    title.textContent = user.name || user.login || "Usuario";
+
+    const details = document.createElement("span");
+    details.textContent = `Vales: ${records.advances.length} | Comissoes: ${records.commissions.length} | Despesas: ${records.expenses.length} | Mensalistas: ${records.monthly.length} | Esporadicos: ${records.sporadic.length}`;
+
+    card.addEventListener("click", () => openFinanceDialog(user.id));
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openFinanceDialog(user.id);
+      }
+    });
+
+    content.append(tag, title, details);
+    card.append(content);
+    financeUserList.append(card);
+  });
+}
+
+function openFinanceDialog(userId) {
+  if (!canAccess("finance")) {
+    return;
+  }
+
+  const user = users.find((item) => item.id === userId);
+
+  if (!user) {
+    return;
+  }
+
+  editingFinanceUserId = user.id;
+  financeDialogTitle.textContent = user.name || user.login || "Usuario";
+  financeMessage.textContent = "";
+  financeAdvanceForm.reset();
+  financeCommissionForm.reset();
+  financeExpenseForm.reset();
+  financeMonthlyForm.reset();
+  financeSporadicForm.reset();
+  renderFinanceClientOptions();
+  renderFinanceMonthlyClientOptions();
+  renderFinanceSporadicClientOptions();
+  hideTemporaryFinanceClientField();
+  hideTemporaryMonthlyClientField();
+  hideTemporarySporadicClientField();
+  renderFinanceRecords();
+  switchFinanceView("advances");
+  financeDialog.showModal();
+  renderPermissions();
+}
+
+function closeFinanceDialog() {
+  editingFinanceUserId = "";
+  financeAdvanceForm.reset();
+  financeCommissionForm.reset();
+  financeExpenseForm.reset();
+  financeMonthlyForm.reset();
+  financeSporadicForm.reset();
+  hideTemporaryFinanceClientField();
+  hideTemporaryMonthlyClientField();
+  hideTemporarySporadicClientField();
+
+  if (financeDialog.open) {
+    financeDialog.close();
+  }
+}
+
+function switchFinanceView(viewName) {
+  const activeView = financePanels[viewName] ? viewName : "advances";
+  financeTabs.forEach((tab) => {
+    const isActive = tab.dataset.financeView === activeView;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  });
+  Object.entries(financePanels).forEach(([name, panel]) => {
+    panel.classList.toggle("active", name === activeView);
+  });
+}
+
+function renderFinanceClientOptions() {
+  fillFinanceClientSelect(financeCommissionClient);
+
+  if (clients.length === 0) {
+    showTemporaryFinanceClientField();
+  }
+}
+
+function renderFinanceMonthlyClientOptions() {
+  fillFinanceClientSelect(financeMonthlyClient);
+
+  if (clients.length === 0) {
+    showTemporaryMonthlyClientField();
+  }
+}
+
+function renderFinanceSporadicClientOptions() {
+  fillFinanceClientSelect(financeSporadicClient, "Esporadico");
+
+  if (clients.filter((client) => client.clientType === "Esporadico").length === 0) {
+    showTemporarySporadicClientField();
+  }
+}
+
+function fillFinanceClientSelect(select, clientType = "") {
+  select.innerHTML = "";
+  const sourceClients = clientType ? clients.filter((client) => client.clientType === clientType) : clients;
+  sourceClients
+    .slice()
+    .sort((first, second) => (first.name || "").localeCompare(second.name || ""))
+    .forEach((client) => {
+      const option = document.createElement("option");
+      option.value = client.id;
+      option.textContent = client.name || "Cliente sem nome";
+      select.append(option);
+    });
+}
+
+function showTemporaryFinanceClientField() {
+  temporaryFinanceClientLabel.classList.remove("hidden");
+  temporaryFinanceClientName.required = true;
+  financeCommissionClient.required = clients.length > 0 && temporaryFinanceClientName.value.trim() === "";
+}
+
+function hideTemporaryFinanceClientField() {
+  temporaryFinanceClientLabel.classList.add("hidden");
+  temporaryFinanceClientName.required = false;
+  temporaryFinanceClientName.value = "";
+  financeCommissionClient.required = clients.length > 0;
+}
+
+function showTemporaryMonthlyClientField() {
+  temporaryMonthlyClientLabel.classList.remove("hidden");
+  temporaryMonthlyClientName.required = true;
+  financeMonthlyClient.required = clients.length > 0 && temporaryMonthlyClientName.value.trim() === "";
+}
+
+function hideTemporaryMonthlyClientField() {
+  temporaryMonthlyClientLabel.classList.add("hidden");
+  temporaryMonthlyClientName.required = false;
+  temporaryMonthlyClientName.value = "";
+  financeMonthlyClient.required = clients.length > 0;
+}
+
+function showTemporarySporadicClientField() {
+  temporarySporadicClientLabel.classList.remove("hidden");
+  temporarySporadicClientName.required = true;
+  financeSporadicClient.required = clients.filter((client) => client.clientType === "Esporadico").length > 0 && temporarySporadicClientName.value.trim() === "";
+}
+
+function hideTemporarySporadicClientField() {
+  temporarySporadicClientLabel.classList.add("hidden");
+  temporarySporadicClientName.required = false;
+  temporarySporadicClientName.value = "";
+  financeSporadicClient.required = clients.filter((client) => client.clientType === "Esporadico").length > 0;
+}
+
+function addFinanceAdvance(event) {
+  event.preventDefault();
+
+  if (!requireModify("finance") || !editingFinanceUserId) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(financeAdvanceForm).entries());
+  updateFinanceRecords(editingFinanceUserId, (records) => ({
+    ...records,
+    advances: [
+      {
+        id: createId("VAL"),
+        date: data.date,
+        value: data.value.trim(),
+        description: data.description.trim(),
+        createdAt: new Date().toISOString()
+      },
+      ...records.advances
+    ]
+  }));
+  financeAdvanceForm.reset();
+  financeMessage.textContent = "Vale adicionado.";
+  logActivity("Vale financeiro adicionado", `${getFinanceUserName(editingFinanceUserId)} recebeu um vale de ${data.value}.`);
+  renderFinanceRecords();
+  renderFinanceUsers();
+}
+
+function addFinanceCommission(event) {
+  event.preventDefault();
+
+  if (!requireModify("finance") || !editingFinanceUserId) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(financeCommissionForm).entries());
+  const temporaryClientName = data.temporaryClientName?.trim() || "";
+  const client = clients.find((item) => item.id === data.clientId);
+  const clientName = temporaryClientName || client?.name || "";
+
+  if (!clientName) {
+    temporaryFinanceClientName.focus();
+    return;
+  }
+
+  updateFinanceRecords(editingFinanceUserId, (records) => ({
+    ...records,
+    commissions: [
+      {
+        id: createId("COM"),
+        date: data.date,
+        clientId: temporaryClientName ? "" : data.clientId,
+        clientName,
+        value: data.value.trim(),
+        description: data.description.trim(),
+        temporary: Boolean(temporaryClientName),
+        createdAt: new Date().toISOString()
+      },
+      ...records.commissions
+    ]
+  }));
+  financeCommissionForm.reset();
+  renderFinanceClientOptions();
+  hideTemporaryFinanceClientField();
+  financeMessage.textContent = "Comissão adicionada.";
+  logActivity("Comissão financeira adicionada", `${getFinanceUserName(editingFinanceUserId)} recebeu comissão de ${data.value}.`);
+  renderFinanceRecords();
+  renderFinanceUsers();
+}
+
+function addFinanceExpense(event) {
+  event.preventDefault();
+
+  if (!requireModify("finance") || !editingFinanceUserId) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(financeExpenseForm).entries());
+  updateFinanceRecords(editingFinanceUserId, (records) => ({
+    ...records,
+    expenses: [
+      {
+        id: createId("DES"),
+        date: data.date,
+        dueDate: data.dueDate || "",
+        category: data.category,
+        value: data.value.trim(),
+        payment: data.payment || "",
+        status: data.status || "Pendente",
+        description: data.description.trim(),
+        createdAt: new Date().toISOString()
+      },
+      ...records.expenses
+    ]
+  }));
+  financeExpenseForm.reset();
+  financeMessage.textContent = "Despesa adicionada.";
+  logActivity("Despesa financeira adicionada", `${getFinanceUserName(editingFinanceUserId)} registrou despesa de ${data.value}.`);
+  renderFinanceRecords();
+  renderFinanceUsers();
+}
+
+function addFinanceMonthly(event) {
+  event.preventDefault();
+
+  if (!requireModify("finance") || !editingFinanceUserId) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(financeMonthlyForm).entries());
+  const temporaryClientName = data.temporaryClientName?.trim() || "";
+  const client = clients.find((item) => item.id === data.clientId);
+  const clientName = temporaryClientName || client?.name || "";
+
+  if (!clientName) {
+    temporaryMonthlyClientName.focus();
+    return;
+  }
+
+  updateFinanceRecords(editingFinanceUserId, (records) => ({
+    ...records,
+    monthly: [
+      {
+        id: createId("MEN"),
+        clientId: temporaryClientName ? "" : data.clientId,
+        clientName,
+        service: data.service.trim(),
+        value: data.value.trim(),
+        dueDay: data.dueDay || "",
+        frequency: data.frequency || "Mensal",
+        status: data.status || "Ativo",
+        description: data.description.trim(),
+        temporary: Boolean(temporaryClientName),
+        createdAt: new Date().toISOString()
+      },
+      ...records.monthly
+    ]
+  }));
+  financeMonthlyForm.reset();
+  renderFinanceMonthlyClientOptions();
+  hideTemporaryMonthlyClientField();
+  financeMessage.textContent = "Mensalista adicionado.";
+  logActivity("Mensalista financeiro adicionado", `${clientName} foi vinculado a ${getFinanceUserName(editingFinanceUserId)}.`);
+  renderFinanceRecords();
+  renderFinanceUsers();
+}
+
+function addFinanceSporadic(event) {
+  event.preventDefault();
+
+  if (!requireModify("finance") || !editingFinanceUserId) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(financeSporadicForm).entries());
+  const temporaryClientName = data.temporaryClientName?.trim() || "";
+  const client = clients.find((item) => item.id === data.clientId);
+  const clientName = temporaryClientName || client?.name || "";
+
+  if (!clientName) {
+    temporarySporadicClientName.focus();
+    return;
+  }
+
+  updateFinanceRecords(editingFinanceUserId, (records) => ({
+    ...records,
+    sporadic: [
+      {
+        id: createId("ESP"),
+        clientId: temporaryClientName ? "" : data.clientId,
+        clientName,
+        service: data.service.trim(),
+        date: data.date,
+        value: data.value.trim(),
+        payment: data.payment || "",
+        status: data.status || "Pendente",
+        description: data.description.trim(),
+        temporary: Boolean(temporaryClientName),
+        createdAt: new Date().toISOString()
+      },
+      ...records.sporadic
+    ]
+  }));
+  financeSporadicForm.reset();
+  renderFinanceSporadicClientOptions();
+  hideTemporarySporadicClientField();
+  financeMessage.textContent = "Cliente esporadico adicionado.";
+  logActivity("Cliente esporadico financeiro adicionado", `${clientName} foi vinculado a ${getFinanceUserName(editingFinanceUserId)}.`);
+  renderFinanceRecords();
+  renderFinanceUsers();
+}
+
+function renderFinanceRecords() {
+  const records = getFinanceRecords(editingFinanceUserId);
+  renderFinanceRecordList(financeAdvanceList, records.advances, "Vale");
+  renderFinanceRecordList(financeCommissionList, records.commissions, "Comissão");
+  renderFinanceRecordList(financeExpenseList, records.expenses, "Despesa");
+  renderFinanceRecordList(financeMonthlyList, records.monthly, "Mensalista");
+  renderFinanceRecordList(financeSporadicList, records.sporadic, "Esporadico");
+}
+
+function renderFinanceRecordList(container, items, type) {
+  container.innerHTML = "";
+
+  if (items.length === 0) {
+    const emptyState = emptyRecordsTemplate.content.cloneNode(true);
+    emptyState.querySelector("strong").textContent = `Nenhum registro de ${type.toLowerCase()}`;
+    emptyState.querySelector("span").textContent = "Os lançamentos aparecerão aqui.";
+    container.append(emptyState);
+    return;
+  }
+
+  items.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "record-card compact-record-card";
+
+    const content = document.createElement("div");
+    content.className = "record-content";
+
+    const title = document.createElement("strong");
+    title.textContent = getFinanceRecordTitle(item, type);
+
+    const details = document.createElement("span");
+    details.textContent = getFinanceRecordDetails(item, type);
+
+    content.append(title, details);
+    card.append(content);
+    container.append(card);
+  });
+}
+
+function updateFinanceRecords(userId, updater) {
+  const finance = normalizeFinanceInfo(companyInfo.finance);
+  finance[userId] = updater(getFinanceRecords(userId));
+  companyInfo = normalizeCompanyInfo({
+    ...companyInfo,
+    finance,
+    updatedAt: new Date().toISOString()
+  });
+  persistCompanyInfo();
+}
+
+function getFinanceRecords(userId) {
+  return normalizeFinanceInfo(companyInfo.finance)[userId] || { advances: [], commissions: [], sporadic: [], expenses: [], monthly: [] };
+}
+
+function getFinanceRecordTitle(item, type) {
+  if (type === "Comissão") {
+    return `${item.clientName || "Cliente"} - ${item.value || "0,00"}`;
+  }
+
+  if (type === "Despesa") {
+    return `${item.category || "Despesa"} - ${item.value || "0,00"}`;
+  }
+
+  if (type === "Mensalista") {
+    return `${item.clientName || "Cliente"} - ${item.value || "0,00"}`;
+  }
+
+  if (type === "Esporadico") {
+    return `${item.clientName || "Cliente"} - ${item.value || "0,00"}`;
+  }
+
+  return item.value || "0,00";
+}
+
+function getFinanceRecordDetails(item, type) {
+  if (type === "Despesa") {
+    return [
+      `Data: ${formatSimpleDate(item.date)}`,
+      item.dueDate ? `Vencimento: ${formatSimpleDate(item.dueDate)}` : "",
+      item.payment ? `Pagamento: ${item.payment}` : "",
+      `Status: ${item.status || "Pendente"}`,
+      item.description
+    ]
+      .filter(Boolean)
+      .join(" | ");
+  }
+
+  if (type === "Mensalista") {
+    return [
+      item.service,
+      item.dueDay ? `Vencimento dia ${item.dueDay}` : "",
+      item.frequency || "Mensal",
+      `Status: ${item.status || "Ativo"}`,
+      item.temporary ? "cliente momentaneo" : "",
+      item.description
+    ]
+      .filter(Boolean)
+      .join(" | ");
+  }
+
+  if (type === "Esporadico") {
+    return [
+      item.service,
+      `Data: ${formatSimpleDate(item.date)}`,
+      item.payment ? `Pagamento: ${item.payment}` : "",
+      `Status: ${item.status || "Pendente"}`,
+      item.temporary ? "cliente momentaneo" : "",
+      item.description
+    ]
+      .filter(Boolean)
+      .join(" | ");
+  }
+
+  return [formatSimpleDate(item.date), item.description, item.temporary ? "cliente momentaneo" : ""].filter(Boolean).join(" | ");
+}
+
+function getFinanceUserName(userId) {
+  const user = users.find((item) => item.id === userId);
+  return user?.name || user?.login || "Usuario";
 }
 
 function generateClientReport(event) {
@@ -6067,6 +7019,207 @@ function deleteAgendaItem(itemId) {
   updateDashboardTotals();
 }
 
+function renderInfrastructureAgendaClientOptions() {
+  const selectedValue = infrastructureAgendaClient.value || selectedId;
+  infrastructureAgendaClient.innerHTML = "";
+
+  if (clients.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Nenhum cliente cadastrado";
+    infrastructureAgendaClient.append(option);
+    return;
+  }
+
+  clients.forEach((client) => {
+    const option = document.createElement("option");
+    option.value = client.id;
+    option.textContent = client.name || "Cliente sem nome";
+    infrastructureAgendaClient.append(option);
+  });
+
+  if ([...infrastructureAgendaClient.options].some((option) => option.value === selectedValue)) {
+    infrastructureAgendaClient.value = selectedValue;
+  }
+}
+
+function renderInfrastructureAgendaItems() {
+  infrastructureAgendaList.innerHTML = "";
+  const visibleItems = infrastructureAgendaItems.filter((item) => matchesAgendaFilter(item, infrastructureAgendaStatusFilter.value) && matchesInfrastructureAgendaSearch(item));
+
+  if (visibleItems.length === 0) {
+    const emptyState = emptyRecordsTemplate.content.cloneNode(true);
+    emptyState.querySelector("strong").textContent =
+      infrastructureAgendaItems.length === 0 ? "Nenhuma ocorrencia de infraestrutura" : "Nenhum agendamento encontrado";
+    emptyState.querySelector("span").textContent =
+      infrastructureAgendaItems.length === 0 ? "Registre uma solicitacao para a equipe de infraestrutura." : "Altere a busca para encontrar outros chamados.";
+    infrastructureAgendaList.append(emptyState);
+    return;
+  }
+
+  visibleItems.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = `record-card service-order-card ${getAgendaStatusClass(item.status)}`;
+
+    const content = document.createElement("div");
+    content.className = "record-content";
+
+    const titleRow = document.createElement("div");
+    titleRow.className = "service-order-title-row";
+
+    const titleWrap = document.createElement("div");
+    titleWrap.className = "record-content";
+
+    const statusButton = createInfrastructureAgendaStatusSelect(item);
+
+    const title = document.createElement("strong");
+    title.textContent = formatInfrastructureAgendaNumber(item);
+
+    const clientName = document.createElement("span");
+    clientName.textContent = item.clientName || "Cliente nao encontrado";
+
+    const actions = document.createElement("div");
+    actions.className = "service-order-card-actions";
+    actions.append(statusButton);
+
+    if (canModify("infrastructureAgenda")) {
+      const editButton = document.createElement("button");
+      editButton.className = "ghost symbol-button";
+      editButton.type = "button";
+      editButton.textContent = "✎";
+      editButton.title = "Editar agendamento infraestrutura";
+      editButton.setAttribute("aria-label", "Editar agendamento infraestrutura");
+      editButton.addEventListener("click", () => editInfrastructureAgendaItem(item.id));
+      actions.append(editButton);
+    }
+
+    if (canApproveAuthorizationRequests()) {
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "icon-danger";
+      deleteButton.type = "button";
+      deleteButton.textContent = "Excluir";
+      deleteButton.title = "Excluir agendamento infraestrutura";
+      deleteButton.setAttribute("aria-label", "Excluir agendamento infraestrutura");
+      deleteButton.addEventListener("click", () => deleteInfrastructureAgendaItem(item.id));
+      actions.append(deleteButton);
+    }
+
+    titleWrap.append(title, clientName);
+    titleRow.append(titleWrap, actions);
+
+    const summary = document.createElement("div");
+    summary.className = "service-order-summary";
+    summary.append(
+      createServiceOrderSummaryItem("Data", formatSimpleDate(item.date)),
+      createServiceOrderSummaryItem("Solicitante", item.requester || "Nao informado"),
+      createServiceOrderSummaryItem("Aberto por", item.openedByName || "Nao informado")
+    );
+
+    const occurrence = document.createElement("span");
+    occurrence.className = "service-order-defect";
+    occurrence.textContent = item.occurrence;
+
+    content.append(titleRow, summary, occurrence);
+    card.append(content);
+    infrastructureAgendaList.append(card);
+  });
+}
+
+function createInfrastructureAgendaStatusSelect(item) {
+  const select = document.createElement("select");
+  select.className = `service-order-status status-select ${getAgendaStatusClass(item.status)}`;
+  select.title = canModify("infrastructureAgenda") ? "Selecionar status do agendamento" : "Status do agendamento";
+  select.disabled = !canModify("infrastructureAgenda");
+
+  agendaStatuses.forEach((status) => {
+    const option = document.createElement("option");
+    option.value = status;
+    option.textContent = getAgendaStatusLabel(status);
+    select.append(option);
+  });
+
+  select.value = normalizeAgendaStatus(item.status);
+  select.addEventListener("change", () => updateInfrastructureAgendaStatus(item.id, select.value));
+  return select;
+}
+
+function updateInfrastructureAgendaStatus(itemId, nextStatus) {
+  if (!requireModify("infrastructureAgenda")) {
+    return;
+  }
+
+  const item = infrastructureAgendaItems.find((agendaItem) => agendaItem.id === itemId);
+
+  if (!item) {
+    return;
+  }
+
+  nextStatus = normalizeAgendaStatus(nextStatus);
+
+  if (normalizeAgendaStatus(item.status) === nextStatus) {
+    return;
+  }
+
+  infrastructureAgendaItems = infrastructureAgendaItems.map((agendaItem) =>
+    agendaItem.id === itemId ? { ...agendaItem, status: nextStatus, updatedAt: new Date().toISOString() } : agendaItem
+  );
+  persistInfrastructureAgendaItems();
+  logActivity("Status da infraestrutura alterado", `${item.clientName || "Cliente"} alterado para ${nextStatus}.`);
+  renderInfrastructureAgendaItems();
+  renderSystemAlerts();
+  renderNotifications();
+}
+
+function editInfrastructureAgendaItem(itemId) {
+  if (!requireModify("infrastructureAgenda")) {
+    return;
+  }
+
+  const item = infrastructureAgendaItems.find((agendaItem) => agendaItem.id === itemId);
+
+  if (!item) {
+    return;
+  }
+
+  editingInfrastructureAgendaId = itemId;
+  infrastructureAgendaDialogMessage.textContent = "";
+  infrastructureAgendaActionMessage.textContent = "";
+  infrastructureAgendaDialogTitle.textContent = `Editar ${formatInfrastructureAgendaNumber(item)}`;
+  infrastructureAgendaSubmitButton.textContent = "✓";
+  infrastructureAgendaSubmitButton.title = "Salvar agendamento";
+  infrastructureAgendaSubmitButton.setAttribute("aria-label", "Salvar agendamento");
+  infrastructureAgendaSubmitButton.disabled = false;
+  renderInfrastructureAgendaClientOptions();
+  infrastructureAgendaForm.elements.clientId.value = item.clientId || "";
+  infrastructureAgendaForm.elements.requester.value = item.requester || "";
+  infrastructureAgendaForm.elements.date.value = item.date || "";
+  infrastructureAgendaForm.elements.status.value = normalizeAgendaStatus(item.status);
+  infrastructureAgendaForm.elements.occurrence.value = item.occurrence || "";
+  switchInfrastructureAgendaView("create");
+}
+
+function deleteInfrastructureAgendaItem(itemId) {
+  if (!canApproveAuthorizationRequests()) {
+    return;
+  }
+
+  const item = infrastructureAgendaItems.find((agendaItem) => agendaItem.id === itemId);
+
+  if (!item) {
+    return;
+  }
+
+  if (!window.confirm(`Excluir ${formatInfrastructureAgendaNumber(item)}?`)) {
+    return;
+  }
+
+  infrastructureAgendaItems = infrastructureAgendaItems.filter((agendaItem) => agendaItem.id !== itemId);
+  persistInfrastructureAgendaItems();
+  logActivity("Agendamento infraestrutura excluido", `${formatInfrastructureAgendaNumber(item)} - ${item.clientName || "Cliente sem nome"}.`);
+  renderInfrastructureAgendaItems();
+  updateDashboardTotals();
+}
+
 function matchesAgendaFilter(item, filter) {
   const status = normalizeAgendaStatus(item.status);
 
@@ -6099,6 +7252,32 @@ function matchesAgendaSearch(item) {
   const haystack = normalize(
     [
       formatAgendaNumber(item),
+      item.number,
+      item.clientName,
+      item.requester,
+      item.openedByName,
+      item.date,
+      formatSimpleDate(item.date),
+      item.occurrence,
+      item.status
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  return haystack.includes(search);
+}
+
+function matchesInfrastructureAgendaSearch(item) {
+  const search = normalize(infrastructureAgendaSearchInput.value);
+
+  if (!search) {
+    return true;
+  }
+
+  const haystack = normalize(
+    [
+      formatInfrastructureAgendaNumber(item),
       item.number,
       item.clientName,
       item.requester,
@@ -6162,6 +7341,10 @@ function normalizeAgendaStatus(status) {
 
 function formatAgendaNumber(item) {
   return item.number ? `AG #${String(item.number).padStart(4, "0")}` : "AG sem numero";
+}
+
+function formatInfrastructureAgendaNumber(item) {
+  return item.number ? `AGI #${String(item.number).padStart(4, "0")}` : "AGI sem numero";
 }
 
 function renderServiceOrderClientOptions() {
@@ -7365,6 +8548,7 @@ function startNewClient() {
   emailForm.reset();
   equipmentFilter.value = "";
   toggleNewBrandModelFields(newEquipmentBrandModel, newEquipmentBrand, newEquipmentModel, equipmentBrand, equipmentModel);
+  fields.clientType.value = "Mensalista";
   fields.status.value = "Ativo";
   clearFormDraft(form);
   saveWorkspaceState();
@@ -7415,6 +8599,11 @@ function executeAuthorizedRequest(request) {
     return;
   }
 
+  if (request.type === "create-infrastructure-agenda") {
+    createInfrastructureAgendaFromPayload(request.payload);
+    return;
+  }
+
   if (request.type === "delete-client") {
     deleteClientById(request.payload.clientId, false);
     return;
@@ -7458,6 +8647,7 @@ function switchDashboardTab(tabName) {
   }
 
   editingAgendaId = "";
+  editingInfrastructureAgendaId = "";
   activeDashboardTab = tabName;
   saveWorkspaceState();
   renderDashboardTabs();

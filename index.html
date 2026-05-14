@@ -52,13 +52,15 @@
         <nav class="dashboard-tabs" aria-label="Areas do painel">
           <button class="dashboard-tab active" type="button" data-dashboard-tab="overview">Dashboard</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="clients">Clientes</button>
-          <button class="dashboard-tab" type="button" data-dashboard-tab="agenda">Agendamento</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="agenda">Agendamentos</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="infrastructureAgenda">Agendamentos Infraestrutura</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="serviceOrders">Ordem de Servico</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="company">Minha Empresa</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="users">Usuarios</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="logs">Logs</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="permissions">Permissoes</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="reports">Relatorios</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="finance">Financeiro</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="settings">Configuracoes</button>
         </nav>
 
@@ -220,6 +222,14 @@
 
         <section id="profilePanel" class="tab-panel active" aria-label="Perfil do cliente">
           <form id="clientForm" class="client-form">
+            <label class="client-type-toggle">
+              <span>Tipo do cliente</span>
+              <select id="clientType" name="clientType">
+                <option value="Mensalista">Mensalista</option>
+                <option value="Esporadico">Esporadico</option>
+              </select>
+            </label>
+
             <div class="form-grid">
               <label>
                 <span>Nome completo</span>
@@ -583,6 +593,89 @@
           <div class="form-actions service-order-form-actions">
             <button id="cancelAgendaButton" class="danger" type="button" title="Cancelar" aria-label="Cancelar">Cancelar</button>
             <button id="agendaSubmitButton" class="primary" type="submit">Adicionar</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="infrastructureAgendaDashboardPanel" class="dashboard-panel">
+        <div class="panel-hero">
+          <p class="eyebrow">Infraestrutura</p>
+          <h2>Agendamentos Infraestrutura</h2>
+          <p>Registre ocorrencias da equipe de infraestrutura separadas dos agendamentos de atendimento.</p>
+        </div>
+
+        <div class="service-order-tabs" aria-label="Opcoes de agendamentos infraestrutura">
+          <button class="agenda-tab infrastructure-agenda-tab active" type="button" data-infrastructure-agenda-view="list">Agendamentos</button>
+          <button class="agenda-tab infrastructure-agenda-tab" type="button" data-infrastructure-agenda-view="create">Adicionar Agendamento</button>
+        </div>
+
+        <section id="infrastructureAgendaListPanel" class="service-order-view active">
+        <div class="settings-form list-filter">
+          <label>
+            <span>Pesquisar infraestrutura</span>
+            <input id="infrastructureAgendaSearchInput" type="search" placeholder="Nome, numero ou data" />
+          </label>
+          <label>
+            <span>Filtrar infraestrutura</span>
+            <select id="infrastructureAgendaStatusFilter">
+              <option value="all">Todas</option>
+              <option value="open">Em aberto</option>
+              <option value="analysis">Em analise</option>
+              <option value="done">Concluidas</option>
+              <option value="canceled">Canceladas</option>
+            </select>
+          </label>
+        </div>
+
+        <p id="infrastructureAgendaActionMessage" class="action-message" aria-live="polite"></p>
+        <div id="infrastructureAgendaList" class="record-list"></div>
+        </section>
+
+        <form id="infrastructureAgendaForm" class="settings-form service-order-view compact-create-form">
+          <div class="settings-header">
+            <div>
+              <p class="eyebrow">Infraestrutura</p>
+              <h3 id="infrastructureAgendaDialogTitle">Novo agendamento</h3>
+            </div>
+          </div>
+
+          <div class="form-grid compact-form-grid">
+            <label>
+              <span>Cliente</span>
+              <select id="infrastructureAgendaClient" name="clientId" required></select>
+            </label>
+
+            <label>
+              <span>Quem solicitou</span>
+              <input id="infrastructureAgendaRequester" name="requester" required />
+            </label>
+
+            <label>
+              <span>Data</span>
+              <input id="infrastructureAgendaDate" name="date" type="date" required />
+            </label>
+
+            <label>
+              <span>Status</span>
+              <select id="infrastructureAgendaStatus" name="status">
+                <option value="Aberto">Aberto</option>
+                <option value="Em analise">Em analise</option>
+                <option value="Concluido">Concluido</option>
+                <option value="Cancelado">Cancelado</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            <span>Ocorrencia solicitada</span>
+            <textarea id="infrastructureAgendaOccurrence" name="occurrence" rows="5" required></textarea>
+          </label>
+
+          <p id="infrastructureAgendaDialogMessage" class="action-message" aria-live="polite"></p>
+
+          <div class="form-actions service-order-form-actions">
+            <button id="cancelInfrastructureAgendaButton" class="danger" type="button" title="Cancelar" aria-label="Cancelar">Cancelar</button>
+            <button id="infrastructureAgendaSubmitButton" class="primary" type="submit">Adicionar</button>
           </div>
         </form>
       </section>
@@ -1116,6 +1209,16 @@
         <div id="permissionList" class="permission-list"></div>
       </section>
 
+      <section id="financeDashboardPanel" class="dashboard-panel">
+        <div class="panel-hero">
+          <p class="eyebrow">Financeiro</p>
+          <h2>Financeiro dos usuarios</h2>
+          <p>Acompanhe vales e comissoes vinculados aos usuarios do sistema.</p>
+        </div>
+
+        <div id="financeUserList" class="record-list"></div>
+      </section>
+
       <section id="settingsDashboardPanel" class="dashboard-panel">
         <div class="panel-hero">
           <p class="eyebrow">Configuracoes</p>
@@ -1574,6 +1677,239 @@
       </form>
     </dialog>
 
+
+    <dialog id="financeDialog" class="modal">
+      <div class="modal-content">
+        <div class="settings-header">
+          <div>
+            <p class="eyebrow">Financeiro</p>
+            <h3 id="financeDialogTitle">Usuario</h3>
+          </div>
+          <button id="closeFinanceDialogButton" class="subtle" type="button" title="Fechar" aria-label="Fechar">Fechar</button>
+        </div>
+
+        <div class="vehicle-detail-tabs" aria-label="Opcoes financeiras">
+          <button class="finance-tab active" type="button" data-finance-view="advances">Vale</button>
+          <button class="finance-tab" type="button" data-finance-view="commissions">Comissão</button>
+          <button class="finance-tab" type="button" data-finance-view="expenses">Despesas</button>
+          <button class="finance-tab" type="button" data-finance-view="monthly">Mensalistas</button>
+          <button class="finance-tab" type="button" data-finance-view="sporadic">Clientes Esporadicos</button>
+        </div>
+
+        <section id="financeAdvancesPanel" class="vehicle-detail-panel active">
+          <form id="financeAdvanceForm" class="settings-form compact-create-form">
+            <div class="form-grid compact-form-grid">
+              <label>
+                <span>Data</span>
+                <input id="financeAdvanceDate" name="date" type="date" required />
+              </label>
+              <label>
+                <span>Valor</span>
+                <input id="financeAdvanceValue" name="value" inputmode="decimal" required placeholder="0,00" />
+              </label>
+              <label class="full-width">
+                <span>Descrição</span>
+                <textarea id="financeAdvanceDescription" name="description" rows="2" required></textarea>
+              </label>
+            </div>
+            <button class="primary" type="submit">Adicionar vale</button>
+          </form>
+          <div id="financeAdvanceList" class="record-list compact-record-list"></div>
+        </section>
+
+        <section id="financeCommissionsPanel" class="vehicle-detail-panel">
+          <form id="financeCommissionForm" class="settings-form compact-create-form">
+            <div class="form-grid compact-form-grid">
+              <label>
+                <span>Cliente</span>
+                <select id="financeCommissionClient" name="clientId" required></select>
+              </label>
+              <button id="addTemporaryFinanceClientButton" class="subtle" type="button">Adicionar cliente</button>
+              <label id="temporaryFinanceClientLabel" class="hidden full-width">
+                <span>Cliente momentaneo</span>
+                <input id="temporaryFinanceClientName" name="temporaryClientName" placeholder="Nome do cliente" />
+              </label>
+              <label>
+                <span>Valor da comissão</span>
+                <input id="financeCommissionValue" name="value" inputmode="decimal" required placeholder="0,00" />
+              </label>
+              <label>
+                <span>Data</span>
+                <input id="financeCommissionDate" name="date" type="date" required />
+              </label>
+              <label class="full-width">
+                <span>Descrição</span>
+                <textarea id="financeCommissionDescription" name="description" rows="2"></textarea>
+              </label>
+            </div>
+            <button class="primary" type="submit">Adicionar comissão</button>
+          </form>
+          <div id="financeCommissionList" class="record-list compact-record-list"></div>
+        </section>
+
+        <section id="financeExpensesPanel" class="vehicle-detail-panel">
+          <form id="financeExpenseForm" class="settings-form compact-create-form">
+            <div class="form-grid compact-form-grid">
+              <label>
+                <span>Data</span>
+                <input id="financeExpenseDate" name="date" type="date" required />
+              </label>
+              <label>
+                <span>Vencimento</span>
+                <input id="financeExpenseDueDate" name="dueDate" type="date" />
+              </label>
+              <label>
+                <span>Categoria</span>
+                <select id="financeExpenseCategory" name="category" required>
+                  <option value="Combustivel">Combustivel</option>
+                  <option value="Manutencao">Manutencao</option>
+                  <option value="Ferramentas">Ferramentas</option>
+                  <option value="Fornecedor">Fornecedor</option>
+                  <option value="Impostos">Impostos</option>
+                  <option value="Outros">Outros</option>
+                </select>
+              </label>
+              <label>
+                <span>Valor</span>
+                <input id="financeExpenseValue" name="value" inputmode="decimal" required placeholder="0,00" />
+              </label>
+              <label>
+                <span>Forma de pagamento</span>
+                <select id="financeExpensePayment" name="payment">
+                  <option value="">Nao informado</option>
+                  <option value="Pix">Pix</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Cartao">Cartao</option>
+                  <option value="Boleto">Boleto</option>
+                  <option value="Transferencia">Transferencia</option>
+                </select>
+              </label>
+              <label>
+                <span>Status</span>
+                <select id="financeExpenseStatus" name="status">
+                  <option value="Pendente">Pendente</option>
+                  <option value="Pago">Pago</option>
+                  <option value="Cancelado">Cancelado</option>
+                </select>
+              </label>
+              <label class="full-width">
+                <span>Descrição</span>
+                <textarea id="financeExpenseDescription" name="description" rows="2" required></textarea>
+              </label>
+            </div>
+            <button class="primary" type="submit">Adicionar despesa</button>
+          </form>
+          <div id="financeExpenseList" class="record-list compact-record-list"></div>
+        </section>
+
+        <section id="financeMonthlyPanel" class="vehicle-detail-panel">
+          <form id="financeMonthlyForm" class="settings-form compact-create-form">
+            <div class="form-grid compact-form-grid">
+              <label>
+                <span>Cliente</span>
+                <select id="financeMonthlyClient" name="clientId" required></select>
+              </label>
+              <button id="addTemporaryMonthlyClientButton" class="subtle" type="button">Adicionar cliente</button>
+              <label id="temporaryMonthlyClientLabel" class="hidden full-width">
+                <span>Cliente momentaneo</span>
+                <input id="temporaryMonthlyClientName" name="temporaryClientName" placeholder="Nome do cliente" />
+              </label>
+              <label>
+                <span>Serviço contratado</span>
+                <input id="financeMonthlyService" name="service" required placeholder="Ex.: Suporte mensal" />
+              </label>
+              <label>
+                <span>Valor mensal</span>
+                <input id="financeMonthlyValue" name="value" inputmode="decimal" required placeholder="0,00" />
+              </label>
+              <label>
+                <span>Vencimento</span>
+                <input id="financeMonthlyDueDay" name="dueDay" type="number" min="1" max="31" placeholder="Dia" />
+              </label>
+              <label>
+                <span>Recorrência</span>
+                <select id="financeMonthlyFrequency" name="frequency">
+                  <option value="Mensal">Mensal</option>
+                  <option value="Bimestral">Bimestral</option>
+                  <option value="Trimestral">Trimestral</option>
+                  <option value="Semestral">Semestral</option>
+                  <option value="Anual">Anual</option>
+                </select>
+              </label>
+              <label>
+                <span>Status</span>
+                <select id="financeMonthlyStatus" name="status">
+                  <option value="Ativo">Ativo</option>
+                  <option value="Pausado">Pausado</option>
+                  <option value="Cancelado">Cancelado</option>
+                </select>
+              </label>
+              <label class="full-width">
+                <span>Observações</span>
+                <textarea id="financeMonthlyDescription" name="description" rows="2"></textarea>
+              </label>
+            </div>
+            <button class="primary" type="submit">Adicionar mensalista</button>
+          </form>
+          <div id="financeMonthlyList" class="record-list compact-record-list"></div>
+        </section>
+
+        <section id="financeSporadicPanel" class="vehicle-detail-panel">
+          <form id="financeSporadicForm" class="settings-form compact-create-form">
+            <div class="form-grid compact-form-grid">
+              <label>
+                <span>Cliente</span>
+                <select id="financeSporadicClient" name="clientId" required></select>
+              </label>
+              <button id="addTemporarySporadicClientButton" class="subtle" type="button">Adicionar cliente</button>
+              <label id="temporarySporadicClientLabel" class="hidden full-width">
+                <span>Cliente momentaneo</span>
+                <input id="temporarySporadicClientName" name="temporaryClientName" placeholder="Nome do cliente" />
+              </label>
+              <label>
+                <span>Serviço realizado</span>
+                <input id="financeSporadicService" name="service" required placeholder="Ex.: Atendimento avulso" />
+              </label>
+              <label>
+                <span>Data</span>
+                <input id="financeSporadicDate" name="date" type="date" required />
+              </label>
+              <label>
+                <span>Valor</span>
+                <input id="financeSporadicValue" name="value" inputmode="decimal" required placeholder="0,00" />
+              </label>
+              <label>
+                <span>Forma de pagamento</span>
+                <select id="financeSporadicPayment" name="payment">
+                  <option value="">Nao informado</option>
+                  <option value="Pix">Pix</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Cartao">Cartao</option>
+                  <option value="Boleto">Boleto</option>
+                  <option value="Transferencia">Transferencia</option>
+                </select>
+              </label>
+              <label>
+                <span>Status</span>
+                <select id="financeSporadicStatus" name="status">
+                  <option value="Pendente">Pendente</option>
+                  <option value="Pago">Pago</option>
+                  <option value="Cancelado">Cancelado</option>
+                </select>
+              </label>
+              <label class="full-width">
+                <span>Observações</span>
+                <textarea id="financeSporadicDescription" name="description" rows="2"></textarea>
+              </label>
+            </div>
+            <button class="primary" type="submit">Adicionar atendimento</button>
+          </form>
+          <div id="financeSporadicList" class="record-list compact-record-list"></div>
+        </section>
+
+        <p id="financeMessage" class="action-message" aria-live="polite"></p>
+      </div>
+    </dialog>
 
     <dialog id="companyVehicleDialog" class="modal">
       <form id="companyVehicleForm" class="modal-content">

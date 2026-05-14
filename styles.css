@@ -1488,7 +1488,8 @@ body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
   border-bottom: 1px solid var(--line);
 }
 
-.vehicle-detail-tab {
+.vehicle-detail-tab,
+.finance-tab {
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
@@ -1499,7 +1500,8 @@ body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
   cursor: pointer;
 }
 
-.vehicle-detail-tab.active {
+.vehicle-detail-tab.active,
+.finance-tab.active {
   border-color: var(--accent);
   color: var(--accent);
 }

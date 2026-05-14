@@ -1,18 +1,18 @@
 const admin = require("firebase-admin");
-const functions = require("firebase-functions");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 
 admin.initializeApp();
 
 const db = admin.firestore();
 const MASTER_ADMIN_EMAIL = "eduarddo.black@gmail.com";
 
-async function assertCanManageUsers(context) {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Faça login novamente.");
+async function assertCanManageUsers(request) {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Faça login novamente.");
   }
 
-  const requesterUid = context.auth.uid;
-  const requesterEmail = context.auth.token.email || "";
+  const requesterUid = request.auth.uid;
+  const requesterEmail = request.auth.token.email || "";
   const configuredAdminEmail = process.env.BOOTSTRAP_ADMIN_EMAIL || MASTER_ADMIN_EMAIL;
 
   if (configuredAdminEmail && requesterEmail.toLowerCase() === configuredAdminEmail.toLowerCase()) {
@@ -22,20 +22,20 @@ async function assertCanManageUsers(context) {
   const requesterDoc = await db.collection("users").doc(requesterUid).get();
 
   if (!requesterDoc.exists) {
-    throw new functions.https.HttpsError("permission-denied", "Usuario sem permissao administrativa.");
+    throw new HttpsError("permission-denied", "Usuario sem permissao administrativa.");
   }
 
   const requester = requesterDoc.data() || {};
   const isAllowed = requester.active !== false && (requester.role === "admin" || requester.fullControl === true);
 
   if (!isAllowed) {
-    throw new functions.https.HttpsError("permission-denied", "Somente administrador ou Controle Total pode executar esta acao.");
+    throw new HttpsError("permission-denied", "Somente administrador ou Controle Total pode executar esta acao.");
   }
 }
 
 function validatePassword(password) {
   if (typeof password !== "string" || password.length < 6) {
-    throw new functions.https.HttpsError("invalid-argument", "A senha precisa ter pelo menos 6 caracteres.");
+    throw new HttpsError("invalid-argument", "A senha precisa ter pelo menos 6 caracteres.");
   }
 }
 
@@ -49,20 +49,21 @@ async function resolveUid(data) {
   const email = String(data.email || "").trim();
 
   if (!email) {
-    throw new functions.https.HttpsError("invalid-argument", "Informe uid ou email do usuario.");
+    throw new HttpsError("invalid-argument", "Informe uid ou email do usuario.");
   }
 
   try {
     const user = await admin.auth().getUserByEmail(email);
     return user.uid;
   } catch (error) {
-    throw new functions.https.HttpsError("not-found", "Usuario nao encontrado no Firebase Authentication.");
+    throw new HttpsError("not-found", "Usuario nao encontrado no Firebase Authentication.");
   }
 }
 
-exports.updateUserPassword = functions.https.onCall(async (data, context) => {
+exports.updateUserPassword = onCall(async (request) => {
   try {
-    await assertCanManageUsers(context);
+    const data = request.data || {};
+    await assertCanManageUsers(request);
     validatePassword(data.password);
 
     const uid = await resolveUid(data);
@@ -81,17 +82,18 @@ exports.updateUserPassword = functions.https.onCall(async (data, context) => {
   } catch (error) {
     console.error("updateUserPassword failed", error);
 
-    if (error instanceof functions.https.HttpsError) {
+    if (error instanceof HttpsError) {
       throw error;
     }
 
-    throw new functions.https.HttpsError("internal", error.message || "Erro interno ao alterar senha.");
+    throw new HttpsError("internal", error.message || "Erro interno ao alterar senha.");
   }
 });
 
-exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
+exports.deleteUserAccount = onCall(async (request) => {
   try {
-    await assertCanManageUsers(context);
+    const data = request.data || {};
+    await assertCanManageUsers(request);
 
     const uid = await resolveUid(data);
     await admin.auth().deleteUser(uid);
@@ -100,10 +102,10 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
   } catch (error) {
     console.error("deleteUserAccount failed", error);
 
-    if (error instanceof functions.https.HttpsError) {
+    if (error instanceof HttpsError) {
       throw error;
     }
 
-    throw new functions.https.HttpsError("internal", error.message || "Erro interno ao excluir usuario.");
+    throw new HttpsError("internal", error.message || "Erro interno ao excluir usuario.");
   }
 });

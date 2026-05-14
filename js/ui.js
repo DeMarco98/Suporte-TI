@@ -1896,8 +1896,20 @@ async function hydrateCollectionToLocalState(key) {
 
   if (collectionName === "companyInfo") {
     const companyDoc = await firebaseDb.collection(collectionName).doc("main").get();
-    writeLocalState(key, companyDoc.exists ? normalizeCompanyInfo(companyDoc.data()) : normalizeCompanyInfo());
-    firebaseCollectionDocIds[getFirebaseListenerId(key)] = new Set(companyDoc.exists ? [companyDoc.id] : []);
+    if (companyDoc.exists) {
+      writeLocalState(key, normalizeCompanyInfo(companyDoc.data()));
+      firebaseCollectionDocIds[getFirebaseListenerId(key)] = new Set([companyDoc.id]);
+      return;
+    }
+
+    const legacyCompanyInfo = await getLegacyCompanyInfo();
+    const nextCompanyInfo = legacyCompanyInfo ? normalizeCompanyInfo(legacyCompanyInfo) : normalizeCompanyInfo();
+    writeLocalState(key, nextCompanyInfo);
+    firebaseCollectionDocIds[getFirebaseListenerId(key)] = new Set(legacyCompanyInfo ? ["main"] : []);
+
+    if (legacyCompanyInfo) {
+      await syncStateToFirebase(COMPANY_STORAGE_KEY, nextCompanyInfo, { force: true });
+    }
     return;
   }
 
@@ -2049,13 +2061,58 @@ async function migrateLegacyAppState() {
   const legacyState = legacySnapshot.data() || {};
   await Promise.all(
     cloudStorageKeys.map((key) => {
-      if (!Object.prototype.hasOwnProperty.call(legacyState, key)) {
+      const legacyValue = getLegacyStateValue(legacyState, key);
+
+      if (legacyValue === undefined) {
         return Promise.resolve();
       }
-      return syncStateToFirebase(key, legacyState[key], { force: true });
+
+      return syncStateToFirebase(key, legacyValue, { force: true });
     })
   );
   await migratedRef.set({ collectionsMigrated: true, migratedAt: new Date().toISOString() }, { merge: true });
+}
+
+async function getLegacyCompanyInfo() {
+  try {
+    const legacySnapshot = await firebaseDb.collection("appState").doc("main").get();
+
+    if (!legacySnapshot.exists) {
+      return null;
+    }
+
+    return getLegacyStateValue(legacySnapshot.data() || {}, COMPANY_STORAGE_KEY) || null;
+  } catch (error) {
+    console.warn("Nao foi possivel verificar companyInfo legado.", error);
+    return null;
+  }
+}
+
+function getLegacyStateValue(legacyState, key) {
+  if (Object.prototype.hasOwnProperty.call(legacyState, key)) {
+    return legacyState[key];
+  }
+
+  const legacyNameByKey = {
+    [STORAGE_KEY]: "clients",
+    [CATEGORY_STORAGE_KEY]: "equipmentCategories",
+    [BRAND_MODEL_STORAGE_KEY]: "equipmentBrandModels",
+    [USER_STORAGE_KEY]: "users",
+    [LOG_STORAGE_KEY]: "logs",
+    [COMPANY_STORAGE_KEY]: "companyInfo",
+    [AGENDA_STORAGE_KEY]: "agendaItems",
+    [AGENDA_COUNTER_STORAGE_KEY]: "agendaCounter",
+    [INFRASTRUCTURE_AGENDA_STORAGE_KEY]: "infrastructureAgendaItems",
+    [INFRASTRUCTURE_AGENDA_COUNTER_STORAGE_KEY]: "infrastructureAgendaCounter",
+    [SERVICE_ORDER_STORAGE_KEY]: "serviceOrders",
+    [SERVICE_ORDER_COUNTER_STORAGE_KEY]: "serviceOrderCounter",
+    [SERVICE_ORDER_EQUIPMENT_TYPE_STORAGE_KEY]: "serviceOrderEquipmentTypes",
+    [EXTERNAL_REPAIR_LOCATION_STORAGE_KEY]: "externalRepairLocations",
+    [EMAIL_TYPE_STORAGE_KEY]: "emailTypes",
+    [AUTHORIZATION_STORAGE_KEY]: "authorizationRequests"
+  };
+  const legacyName = legacyNameByKey[key];
+  return legacyName && Object.prototype.hasOwnProperty.call(legacyState, legacyName) ? legacyState[legacyName] : undefined;
 }
 
 function getFirebaseLoginEmail(login) {
@@ -2194,7 +2251,7 @@ function syncStateToFirebase(key, value, options = {}) {
     return firebaseDb
       .collection(collectionName)
       .doc("main")
-      .set(normalizeCompanyInfo(value), { merge: false })
+      .set(normalizeCompanyInfo(value), { merge: true })
       .then(() => {
         updateSyncStatus("synced", "Online");
         return { saved: true };
@@ -3765,7 +3822,8 @@ function getSaveResultMessage(result, successMessage) {
     return `${successMessage} Atenção: ficou apenas neste navegador porque o Firebase nao esta conectado.`;
   }
 
-  return `${successMessage} Atenção: nao foi possivel confirmar a sincronizacao com o Firebase.`;
+  const code = result?.error?.code || result?.error?.message || "";
+  return `${successMessage} Atenção: nao foi possivel confirmar a sincronizacao com o Firebase${code ? ` (${code})` : ""}.`;
 }
 
 function getLocalThemeSettings() {

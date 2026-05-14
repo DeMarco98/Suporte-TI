@@ -2248,13 +2248,15 @@ function syncStateToFirebase(key, value, options = {}) {
   }
 
   if (collectionName === "companyInfo") {
+    const normalizedCompanyInfo = normalizeCompanyInfo(value);
     return firebaseDb
       .collection(collectionName)
       .doc("main")
-      .set(normalizeCompanyInfo(value), { merge: true })
-      .then(() => {
+      .set(normalizedCompanyInfo, { merge: true })
+      .then(() => verifyCompanyInfoSaved(normalizedCompanyInfo.updatedAt))
+      .then((verified) => {
         updateSyncStatus("synced", "Online");
-        return { saved: true };
+        return { saved: true, verified };
       })
       .catch((error) => {
         console.warn("Nao foi possivel salvar companyInfo no Firebase.", error);
@@ -2271,6 +2273,24 @@ function syncStateToFirebase(key, value, options = {}) {
       updateSyncStatus("offline", "Offline");
       return { saved: false, error };
     });
+}
+
+async function verifyCompanyInfoSaved(expectedUpdatedAt) {
+  const companyDoc = await firebaseDb.collection("companyInfo").doc("main").get({ source: "server" });
+
+  if (!companyDoc.exists) {
+    const error = new Error("companyInfo/main nao foi encontrado no servidor.");
+    error.code = "companyInfo/not-found";
+    throw error;
+  }
+
+  if (expectedUpdatedAt && companyDoc.data()?.updatedAt !== expectedUpdatedAt) {
+    const error = new Error("companyInfo/main nao retornou a ultima alteracao no servidor.");
+    error.code = "companyInfo/server-mismatch";
+    throw error;
+  }
+
+  return true;
 }
 
 function isCounterStorageKey(key) {
@@ -3815,7 +3835,7 @@ function getGlobalThemeSettings() {
 
 function getSaveResultMessage(result, successMessage) {
   if (result?.saved) {
-    return `${successMessage} Sincronizado no Firebase.`;
+    return `${successMessage} Sincronizado e validado no Firebase.`;
   }
 
   if (result?.localOnly) {

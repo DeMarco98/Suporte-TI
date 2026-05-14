@@ -13,6 +13,7 @@
   --status-analysis: #9b7200;
   --status-budget: #b86b00;
   --status-repair: #8a7800;
+  --status-external-repair: #6d5bd0;
   --status-closed: #a33a3a;
   --status-done: #1f7a4d;
   --status-canceled: #777777;
@@ -1623,6 +1624,10 @@ body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
   border-left-color: var(--status-repair);
 }
 
+.service-order-card.status-external-repair {
+  border-left-color: var(--status-external-repair);
+}
+
 .service-order-card.status-closed {
   border-left-color: var(--status-closed);
 }
@@ -1731,6 +1736,11 @@ body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
 .service-order-status.status-repair {
   color: var(--status-repair);
   background: color-mix(in srgb, var(--status-repair) 10%, transparent);
+}
+
+.service-order-status.status-external-repair {
+  color: var(--status-external-repair);
+  background: color-mix(in srgb, var(--status-external-repair) 10%, transparent);
 }
 
 .service-order-status.status-done {

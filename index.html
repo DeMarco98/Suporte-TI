@@ -215,6 +215,7 @@
           <button class="tab" type="button" data-tab="equipment" role="tab" aria-selected="false">Equipamentos</button>
           <button class="tab" type="button" data-tab="network" role="tab" aria-selected="false">Rede</button>
           <button class="tab" type="button" data-tab="emails" role="tab" aria-selected="false">E-mails cadastrados</button>
+          <button class="tab" type="button" data-tab="cftv" role="tab" aria-selected="false">CFTV</button>
         </div>
 
         <section id="profilePanel" class="tab-panel active" aria-label="Perfil do cliente">
@@ -486,6 +487,20 @@
           <div id="emailList" class="record-list"></div>
         </section>
 
+        <section id="cftvPanel" class="tab-panel" aria-label="CFTV do cliente">
+          <div class="settings-form compact-create-form">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">CFTV</p>
+                <h3>DVRs cadastrados</h3>
+              </div>
+              <button id="addDvrButton" class="primary" type="button">Adicionar DVR</button>
+            </div>
+          </div>
+
+          <div id="dvrList" class="record-list"></div>
+        </section>
+
       </section>
       </section>
 
@@ -646,6 +661,7 @@
                 <option value="Em analise">Em analise</option>
                 <option value="Aguardando orcamento">Aguardando orcamento</option>
                 <option value="Em conserto">Em conserto</option>
+                <option value="Conserto Externo">Conserto Externo</option>
                 <option value="Fechada">Fechada</option>
                 <option value="Concluida">Concluida</option>
                 <option value="Cancelada">Cancelada</option>
@@ -1176,6 +1192,10 @@
                     <span>Conserto</span>
                   </label>
                   <label>
+                    <input id="themeStatusExternalRepairColor" name="statusExternalRepairColor" type="color" />
+                    <span>Externo</span>
+                  </label>
+                  <label>
                     <input id="themeStatusClosedColor" name="statusClosedColor" type="color" />
                     <span>Fechado</span>
                   </label>
@@ -1459,6 +1479,55 @@
           <button class="primary" type="submit">Salvar alteracoes</button>
         </div>
         <p id="equipmentActionMessage" class="action-message" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog id="dvrDialog" class="modal">
+      <form id="dvrForm" class="modal-content">
+        <div class="settings-header">
+          <div>
+            <p class="eyebrow">CFTV</p>
+            <h3 id="dvrDialogTitle">Adicionar DVR</h3>
+          </div>
+          <button id="closeDvrDialogButton" class="subtle" type="button" title="Fechar" aria-label="Fechar">Fechar</button>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            <span>Marca/Modelo do DVR</span>
+            <input id="dvrBrandModel" name="brandModel" required />
+          </label>
+
+          <label>
+            <span>Serial</span>
+            <input id="dvrSerial" name="serial" />
+          </label>
+
+          <label>
+            <span>Porta de Serviço (TCP)</span>
+            <input id="dvrServicePort" name="servicePort" inputmode="numeric" />
+          </label>
+
+          <label>
+            <span>Usuario</span>
+            <input id="dvrUser" name="user" autocomplete="off" />
+          </label>
+
+          <label>
+            <span>Senha</span>
+            <span class="password-field">
+              <input id="dvrPassword" name="password" type="password" autocomplete="new-password" />
+              <button class="password-toggle" type="button" data-toggle-password="dvrPassword" title="Mostrar senha" aria-label="Mostrar senha">👁</button>
+            </span>
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button id="deleteDvrButton" class="danger" type="button">Excluir</button>
+          <button class="primary" type="submit">Salvar DVR</button>
+        </div>
+
+        <p id="dvrActionMessage" class="action-message" aria-live="polite"></p>
       </form>
     </dialog>
 

@@ -25,7 +25,7 @@ const NEW_BRAND_MODEL_VALUE = "__new_brand_model__";
 const NEW_SERVICE_ORDER_EQUIPMENT_TYPE_VALUE = "__new_service_order_equipment_type__";
 const NEW_EMAIL_TYPE_VALUE = "__new_email_type__";
 const NEW_COMPANY_STOCK_TYPE_VALUE = "__new_company_stock_type__";
-const serviceOrderStatuses = ["Aberta", "Em analise", "Aguardando orcamento", "Em conserto", "Fechada", "Concluida", "Cancelada"];
+const serviceOrderStatuses = ["Aberta", "Em analise", "Aguardando orcamento", "Em conserto", "Conserto Externo", "Fechada", "Concluida", "Cancelada"];
 const agendaStatuses = ["Aberto", "Em analise", "Concluido", "Cancelado"];
 const defaultServiceOrderEquipmentTypes = ["Notebook", "Computador", "All-In-One", "Impressora"];
 const defaultEmailTypes = ["Comercial", "Financeiro", "Suporte", "Pessoal"];
@@ -171,6 +171,7 @@ const emptyThemeSettings = {
   statusAnalysisColor: "#9b7200",
   statusBudgetColor: "#b86b00",
   statusRepairColor: "#8a7800",
+  statusExternalRepairColor: "#6d5bd0",
   statusClosedColor: "#a33a3a",
   statusDoneColor: "#1f7a4d",
   statusCanceledColor: "#777777"
@@ -208,6 +209,7 @@ const emptyClient = {
   notes: "",
   equipment: [],
   emails: [],
+  cftv: [],
   emailSettings: emptyEmailSettings,
   networkSettings: emptyNetworkSettings,
   updatedAt: ""
@@ -242,6 +244,7 @@ let editingNetworkSettings = false;
 let editingAgendaId = "";
 let editingEquipmentId = "";
 let editingEmailId = "";
+let editingDvrId = "";
 let editingServiceOrderId = "";
 let editingCompanyStockItemId = "";
 let editingPasswordUserId = "";
@@ -397,6 +400,14 @@ const emptyStateTemplate = document.querySelector("#emptyStateTemplate");
 const emptyRecordsTemplate = document.querySelector("#emptyRecordsTemplate");
 const equipmentList = document.querySelector("#equipmentList");
 const emailList = document.querySelector("#emailList");
+const addDvrButton = document.querySelector("#addDvrButton");
+const dvrList = document.querySelector("#dvrList");
+const dvrDialog = document.querySelector("#dvrDialog");
+const dvrForm = document.querySelector("#dvrForm");
+const dvrDialogTitle = document.querySelector("#dvrDialogTitle");
+const closeDvrDialogButton = document.querySelector("#closeDvrDialogButton");
+const deleteDvrButton = document.querySelector("#deleteDvrButton");
+const dvrActionMessage = document.querySelector("#dvrActionMessage");
 const extraEmailType = document.querySelector("#extraEmailType");
 const newEmailTypeLabel = document.querySelector("#newEmailTypeLabel");
 const newEmailType = document.querySelector("#newEmailType");
@@ -503,7 +514,8 @@ const panels = {
   profile: document.querySelector("#profilePanel"),
   equipment: document.querySelector("#equipmentPanel"),
   network: document.querySelector("#networkPanel"),
-  emails: document.querySelector("#emailsPanel")
+  emails: document.querySelector("#emailsPanel"),
+  cftv: document.querySelector("#cftvPanel")
 };
 
 const fields = {
@@ -614,6 +626,10 @@ cancelExternalRepairLocationButton.addEventListener("click", cancelExternalRepai
 form.addEventListener("submit", saveClient);
 equipmentForm.addEventListener("submit", addEquipment);
 editEquipmentForm.addEventListener("submit", saveEditedEquipment);
+dvrForm.addEventListener("submit", saveDvr);
+addDvrButton.addEventListener("click", openDvrDialog);
+closeDvrDialogButton.addEventListener("click", closeDvrDialog);
+deleteDvrButton.addEventListener("click", deleteEditingDvr);
 networkSettingsForm.addEventListener("submit", saveNetworkSettings);
 emailSettingsForm.addEventListener("submit", saveEmailSettings);
 emailForm.addEventListener("submit", addEmail);
@@ -727,7 +743,7 @@ function restoreWorkspaceState({ applyFields = true } = {}) {
     selectedId = state.selectedId;
   }
 
-  if (["profile", "equipment", "network", "emails"].includes(state.activeTab)) {
+  if (["profile", "equipment", "network", "emails", "cftv"].includes(state.activeTab)) {
     activeTab = state.activeTab;
   }
 
@@ -1276,6 +1292,7 @@ function normalizeClient(client) {
     ...client,
     equipment: Array.isArray(client.equipment) ? client.equipment : [],
     emails: Array.isArray(client.emails) ? client.emails : [],
+    cftv: Array.isArray(client.cftv) ? client.cftv : [],
     emailSettings: {
       ...emptyEmailSettings,
       ...(client.emailSettings ?? {})
@@ -2827,6 +2844,10 @@ function getServiceOrderStatusClass(status) {
     return "status-repair";
   }
 
+  if (status === "Conserto Externo") {
+    return "status-external-repair";
+  }
+
   if (status === "Fechada") {
     return "status-closed";
   }
@@ -3193,6 +3214,7 @@ function applyThemeSettings(settings = getThemeSettings()) {
   document.documentElement.style.setProperty("--status-analysis", theme.statusAnalysisColor);
   document.documentElement.style.setProperty("--status-budget", theme.statusBudgetColor);
   document.documentElement.style.setProperty("--status-repair", theme.statusRepairColor);
+  document.documentElement.style.setProperty("--status-external-repair", theme.statusExternalRepairColor);
   document.documentElement.style.setProperty("--status-closed", theme.statusClosedColor);
   document.documentElement.style.setProperty("--status-done", theme.statusDoneColor);
   document.documentElement.style.setProperty("--status-canceled", theme.statusCanceledColor);
@@ -3645,6 +3667,9 @@ function renderPermissions() {
     ...emailSettingsForm.elements,
     ...emailForm.elements,
     ...editEquipmentForm.elements,
+    ...dvrForm.elements,
+    addDvrButton,
+    deleteDvrButton,
     newClientButton,
     deleteClientButton,
     editNetworkSettingsButton,
@@ -5767,6 +5792,7 @@ function renderRelatedRecords() {
   const selectedClient = getSelectedClient();
   renderEquipment(selectedClient.equipment);
   renderEmails(selectedClient.emails);
+  renderDvrs(selectedClient.cftv);
 }
 
 function renderEquipment(equipment) {
@@ -5896,6 +5922,81 @@ function renderEmails(emails) {
     content.append(title, details, passwordRow);
     card.append(content, actions);
     emailList.append(card);
+  });
+}
+
+function renderDvrs(dvrs) {
+  dvrList.innerHTML = "";
+
+  if (!selectedId || !Array.isArray(dvrs) || dvrs.length === 0) {
+    dvrList.append(emptyRecordsTemplate.content.cloneNode(true));
+    return;
+  }
+
+  dvrs.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "record-card";
+
+    const content = document.createElement("div");
+    content.className = "record-content";
+
+    const tag = document.createElement("span");
+    tag.className = "record-tag";
+    tag.textContent = "DVR";
+
+    const title = document.createElement("strong");
+    title.textContent = item.brandModel || "DVR sem marca/modelo";
+
+    const details = document.createElement("span");
+    details.textContent = [`Serial: ${item.serial || "Nao informado"}`, `TCP: ${item.servicePort || "Nao informado"}`, `Usuario: ${item.user || "Nao informado"}`].join(" | ");
+
+    const passwordRow = document.createElement("span");
+    passwordRow.className = "email-password-row";
+
+    const passwordValue = document.createElement("code");
+    passwordValue.textContent = item.password ? "••••••••" : "Sem senha";
+
+    const togglePasswordButton = document.createElement("button");
+    togglePasswordButton.className = "password-toggle inline";
+    togglePasswordButton.type = "button";
+    togglePasswordButton.textContent = "👁";
+    togglePasswordButton.title = "Mostrar senha";
+    togglePasswordButton.setAttribute("aria-label", "Mostrar senha");
+    togglePasswordButton.disabled = !item.password;
+    togglePasswordButton.addEventListener("click", () => {
+      const isHidden = passwordValue.dataset.visible !== "true";
+      passwordValue.dataset.visible = isHidden ? "true" : "false";
+      passwordValue.textContent = isHidden ? item.password : "••••••••";
+      togglePasswordButton.title = isHidden ? "Ocultar senha" : "Mostrar senha";
+      togglePasswordButton.setAttribute("aria-label", togglePasswordButton.title);
+    });
+
+    passwordRow.append("Senha: ", passwordValue, togglePasswordButton);
+
+    const actions = document.createElement("div");
+    actions.className = "record-actions";
+
+    const editButton = document.createElement("button");
+    editButton.className = "ghost symbol-button";
+    editButton.type = "button";
+    editButton.textContent = "✎";
+    editButton.title = "Editar DVR";
+    editButton.setAttribute("aria-label", "Editar DVR");
+    editButton.disabled = !canModify("clients");
+    editButton.addEventListener("click", () => openDvrDialog(item.id));
+
+    const removeButton = document.createElement("button");
+    removeButton.className = "icon-danger";
+    removeButton.type = "button";
+    removeButton.textContent = "Excluir";
+    removeButton.title = "Excluir DVR";
+    removeButton.setAttribute("aria-label", "Excluir DVR");
+    removeButton.addEventListener("click", () => removeRelatedRecord("cftv", item.id));
+
+    actions.append(editButton, removeButton);
+    content.append(tag, title, details, passwordRow);
+    card.append(content, actions);
+    dvrList.append(card);
   });
 }
 
@@ -6067,6 +6168,83 @@ function saveEditedEquipment(event) {
 
   closeEquipmentDialog();
   logActivity("Equipamento atualizado", `${brandModel.brand} ${brandModel.model} em ${getSelectedClient().name || "cliente sem nome"}.`);
+}
+
+function openDvrDialog(dvrId = "") {
+  if (!requireModify("clients")) {
+    return;
+  }
+
+  const selectedClient = getSelectedClient();
+  const dvr = selectedClient.cftv.find((item) => item.id === dvrId);
+  editingDvrId = dvr?.id || "";
+  dvrDialogTitle.textContent = editingDvrId ? "Editar DVR" : "Adicionar DVR";
+  dvrActionMessage.textContent = "";
+  dvrForm.reset();
+  deleteDvrButton.classList.toggle("hidden", !editingDvrId);
+
+  if (dvr) {
+    dvrForm.elements.brandModel.value = dvr.brandModel || "";
+    dvrForm.elements.serial.value = dvr.serial || "";
+    dvrForm.elements.servicePort.value = dvr.servicePort || "";
+    dvrForm.elements.user.value = dvr.user || "";
+    dvrForm.elements.password.value = dvr.password || "";
+  }
+
+  dvrDialog.showModal();
+}
+
+function closeDvrDialog() {
+  editingDvrId = "";
+  dvrActionMessage.textContent = "";
+  dvrForm.reset();
+
+  if (dvrDialog.open) {
+    dvrDialog.close();
+  }
+}
+
+function saveDvr(event) {
+  event.preventDefault();
+
+  if (!requireModify("clients") || !selectedId) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(dvrForm).entries());
+  const dvr = {
+    id: editingDvrId || createId("DVR"),
+    brandModel: data.brandModel.trim(),
+    serial: data.serial.trim(),
+    servicePort: data.servicePort.trim(),
+    user: data.user.trim(),
+    password: data.password,
+    updatedAt: new Date().toISOString()
+  };
+
+  updateSelectedClient((client) => {
+    const currentDvrs = Array.isArray(client.cftv) ? client.cftv : [];
+    const nextDvrs = editingDvrId
+      ? currentDvrs.map((item) => (item.id === editingDvrId ? { ...item, ...dvr, createdAt: item.createdAt || new Date().toISOString() } : item))
+      : [{ ...dvr, createdAt: new Date().toISOString() }, ...currentDvrs];
+
+    return {
+      ...client,
+      cftv: nextDvrs,
+      updatedAt: new Date().toISOString()
+    };
+  });
+  logActivity(editingDvrId ? "DVR atualizado" : "DVR adicionado", `${dvr.brandModel || "DVR"} em ${getSelectedClient().name || "cliente sem nome"}.`);
+  closeDvrDialog();
+}
+
+function deleteEditingDvr() {
+  if (!editingDvrId) {
+    return;
+  }
+
+  removeRelatedRecord("cftv", editingDvrId);
+  closeDvrDialog();
 }
 
 function deleteEditingEquipment() {
@@ -6303,7 +6481,7 @@ function removeRelatedRecord(collection, itemId) {
     const sent = requestDeleteAuthorization(
       collection === "emails" ? "delete-email" : "delete-equipment",
       collection === "emails" ? "Excluir e-mail" : "Excluir equipamento",
-      `${collection === "emails" ? item?.email : getEquipmentModel(item || {})} de ${selectedClient.name || "cliente sem nome"}`,
+      `${getRelatedRecordDeleteLabel(collection, item)} de ${selectedClient.name || "cliente sem nome"}`,
       { clientId: selectedClient.id, collection, itemId }
     );
     equipmentActionMessage.textContent = sent ? "solicitação de exclusão enviada" : "solicitação de exclusão já enviada";
@@ -6328,8 +6506,32 @@ function deleteRelatedRecord(clientId, collection, itemId) {
     });
   });
   persistClients();
-  logActivity("Registro excluido", `${collection === "emails" ? "E-mail" : "Equipamento"} removido de ${clientBeforeDelete?.name || "cliente sem nome"}.`);
+  logActivity("Registro excluido", `${getRelatedRecordTypeLabel(collection)} removido de ${clientBeforeDelete?.name || "cliente sem nome"}.`);
   render();
+}
+
+function getRelatedRecordDeleteLabel(collection, item) {
+  if (collection === "emails") {
+    return item?.email || "E-mail";
+  }
+
+  if (collection === "cftv") {
+    return item?.brandModel || "DVR";
+  }
+
+  return getEquipmentModel(item || {});
+}
+
+function getRelatedRecordTypeLabel(collection) {
+  if (collection === "emails") {
+    return "E-mail";
+  }
+
+  if (collection === "cftv") {
+    return "DVR";
+  }
+
+  return "Equipamento";
 }
 
 function updateSelectedClient(updater) {
@@ -6519,9 +6721,10 @@ function renderTabs() {
 }
 
 function setRelatedFormsDisabled(disabled) {
-  [...equipmentForm.elements, ...networkSettingsForm.elements, ...emailSettingsForm.elements, ...emailForm.elements].forEach((element) => {
+  [...equipmentForm.elements, ...networkSettingsForm.elements, ...emailSettingsForm.elements, ...emailForm.elements, ...dvrForm.elements].forEach((element) => {
     element.disabled = disabled;
   });
+  addDvrButton.disabled = disabled;
 }
 
 function readNetworkSettings() {

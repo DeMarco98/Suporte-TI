@@ -1212,11 +1212,117 @@
       <section id="financeDashboardPanel" class="dashboard-panel">
         <div class="panel-hero">
           <p class="eyebrow">Financeiro</p>
-          <h2>Financeiro dos usuarios</h2>
-          <p>Acompanhe vales e comissoes vinculados aos usuarios do sistema.</p>
+          <h2>Financeiro</h2>
+          <p>Acompanhe funcionarios, despesas, pagamentos e dados de faturamento dos clientes.</p>
         </div>
 
-        <div id="financeUserList" class="record-list"></div>
+        <div class="service-order-tabs" aria-label="Opcoes financeiras">
+          <button class="settings-tab finance-main-tab active" type="button" data-finance-main-view="employees">Funcionarios</button>
+          <button class="settings-tab finance-main-tab" type="button" data-finance-main-view="expenses">Despesas</button>
+          <button class="settings-tab finance-main-tab" type="button" data-finance-main-view="payments">Pagamentos</button>
+          <button class="settings-tab finance-main-tab" type="button" data-finance-main-view="clients">Clientes</button>
+        </div>
+
+        <section id="financeEmployeesPanel" class="service-order-view active">
+          <div id="financeUserList" class="record-list"></div>
+        </section>
+
+        <section id="financeGlobalExpensesPanel" class="service-order-view">
+          <form id="financeGlobalExpenseForm" class="settings-form compact-create-form">
+            <div class="form-grid compact-form-grid">
+              <label>
+                <span>Data</span>
+                <input name="date" type="date" required />
+              </label>
+              <label>
+                <span>Vencimento</span>
+                <input name="dueDate" type="date" />
+              </label>
+              <label>
+                <span>Categoria</span>
+                <input name="category" required placeholder="Ex.: Internet, aluguel, fornecedor" />
+              </label>
+              <label>
+                <span>Valor</span>
+                <input name="value" inputmode="decimal" required placeholder="0,00" />
+              </label>
+              <label>
+                <span>Forma de pagamento</span>
+                <select name="payment">
+                  <option value="">Nao informado</option>
+                  <option value="Pix">Pix</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Cartao">Cartao</option>
+                  <option value="Boleto">Boleto</option>
+                  <option value="Transferencia">Transferencia</option>
+                </select>
+              </label>
+              <label>
+                <span>Status</span>
+                <select name="status">
+                  <option value="Pendente">Pendente</option>
+                  <option value="Pago">Pago</option>
+                  <option value="Cancelado">Cancelado</option>
+                </select>
+              </label>
+              <label class="full-width">
+                <span>Descricao</span>
+                <textarea name="description" rows="2"></textarea>
+              </label>
+            </div>
+            <button class="primary" type="submit">Adicionar despesa</button>
+          </form>
+          <div id="financeGlobalExpenseList" class="record-list compact-record-list"></div>
+        </section>
+
+        <section id="financePaymentsPanel" class="service-order-view">
+          <form id="financePaymentForm" class="settings-form compact-create-form">
+            <div class="form-grid compact-form-grid">
+              <label>
+                <span>Data</span>
+                <input name="date" type="date" required />
+              </label>
+              <label>
+                <span>Cliente</span>
+                <select id="financePaymentClient" name="clientId" required></select>
+              </label>
+              <label>
+                <span>Valor</span>
+                <input name="value" inputmode="decimal" required placeholder="0,00" />
+              </label>
+              <label>
+                <span>Forma de pagamento</span>
+                <select name="payment">
+                  <option value="Pix">Pix</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Cartao">Cartao</option>
+                  <option value="Boleto">Boleto</option>
+                  <option value="Transferencia">Transferencia</option>
+                </select>
+              </label>
+              <label>
+                <span>Status</span>
+                <select name="status">
+                  <option value="Recebido">Recebido</option>
+                  <option value="Pendente">Pendente</option>
+                  <option value="Cancelado">Cancelado</option>
+                </select>
+              </label>
+              <label class="full-width">
+                <span>Descricao</span>
+                <textarea name="description" rows="2"></textarea>
+              </label>
+            </div>
+            <button class="primary" type="submit">Adicionar pagamento</button>
+          </form>
+          <div id="financePaymentList" class="record-list compact-record-list"></div>
+        </section>
+
+        <section id="financeClientsPanel" class="service-order-view">
+          <div id="financeClientBillingList" class="record-list"></div>
+        </section>
+
+        <p id="financePanelMessage" class="action-message" aria-live="polite"></p>
       </section>
 
       <section id="settingsDashboardPanel" class="dashboard-panel">
@@ -1691,9 +1797,6 @@
         <div class="vehicle-detail-tabs" aria-label="Opcoes financeiras">
           <button class="finance-tab active" type="button" data-finance-view="advances">Vale</button>
           <button class="finance-tab" type="button" data-finance-view="commissions">Comissão</button>
-          <button class="finance-tab" type="button" data-finance-view="expenses">Despesas</button>
-          <button class="finance-tab" type="button" data-finance-view="monthly">Mensalistas</button>
-          <button class="finance-tab" type="button" data-finance-view="sporadic">Clientes Esporadicos</button>
         </div>
 
         <section id="financeAdvancesPanel" class="vehicle-detail-panel active">

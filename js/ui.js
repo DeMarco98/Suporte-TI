@@ -199,6 +199,11 @@ const emptyCompanyInfo = {
   stockTypes: defaultCompanyStockTypes,
   stockItems: [],
   finance: {},
+  financeGlobal: {
+    expenses: [],
+    payments: [],
+    clients: {}
+  },
   alertSettings: emptyAlertSettings,
   themeSettings: emptyThemeSettings,
   updatedAt: ""
@@ -587,16 +592,27 @@ const stockReportForm = document.querySelector("#stockReportForm");
 const vehicleReportForm = document.querySelector("#vehicleReportForm");
 const reportMessage = document.querySelector("#reportMessage");
 const financeUserList = document.querySelector("#financeUserList");
+const financeMainTabs = document.querySelectorAll(".finance-main-tab");
+const financeMainPanels = {
+  employees: document.querySelector("#financeEmployeesPanel"),
+  expenses: document.querySelector("#financeGlobalExpensesPanel"),
+  payments: document.querySelector("#financePaymentsPanel"),
+  clients: document.querySelector("#financeClientsPanel")
+};
+const financeGlobalExpenseForm = document.querySelector("#financeGlobalExpenseForm");
+const financeGlobalExpenseList = document.querySelector("#financeGlobalExpenseList");
+const financePaymentForm = document.querySelector("#financePaymentForm");
+const financePaymentClient = document.querySelector("#financePaymentClient");
+const financePaymentList = document.querySelector("#financePaymentList");
+const financeClientBillingList = document.querySelector("#financeClientBillingList");
+const financePanelMessage = document.querySelector("#financePanelMessage");
 const financeDialog = document.querySelector("#financeDialog");
 const financeDialogTitle = document.querySelector("#financeDialogTitle");
 const closeFinanceDialogButton = document.querySelector("#closeFinanceDialogButton");
 const financeTabs = document.querySelectorAll(".finance-tab");
 const financePanels = {
   advances: document.querySelector("#financeAdvancesPanel"),
-  commissions: document.querySelector("#financeCommissionsPanel"),
-  expenses: document.querySelector("#financeExpensesPanel"),
-  monthly: document.querySelector("#financeMonthlyPanel"),
-  sporadic: document.querySelector("#financeSporadicPanel")
+  commissions: document.querySelector("#financeCommissionsPanel")
 };
 const financeAdvanceForm = document.querySelector("#financeAdvanceForm");
 const financeAdvanceList = document.querySelector("#financeAdvanceList");
@@ -621,6 +637,7 @@ const temporarySporadicClientLabel = document.querySelector("#temporarySporadicC
 const temporarySporadicClientName = document.querySelector("#temporarySporadicClientName");
 const financeSporadicList = document.querySelector("#financeSporadicList");
 const financeMessage = document.querySelector("#financeMessage");
+let activeFinanceMainView = "employees";
 const panels = {
   profile: document.querySelector("#profilePanel"),
   equipment: document.querySelector("#equipmentPanel"),
@@ -691,6 +708,9 @@ clientReportForm.addEventListener("submit", generateClientReport);
 stockReportForm.addEventListener("submit", generateStockReport);
 vehicleReportForm.addEventListener("submit", generateVehicleReport);
 closeFinanceDialogButton.addEventListener("click", closeFinanceDialog);
+financeMainTabs.forEach((tab) => tab.addEventListener("click", () => switchFinanceMainView(tab.dataset.financeMainView)));
+financeGlobalExpenseForm.addEventListener("submit", addFinanceGlobalExpense);
+financePaymentForm.addEventListener("submit", addFinancePayment);
 financeTabs.forEach((tab) => tab.addEventListener("click", () => switchFinanceView(tab.dataset.financeView)));
 financeAdvanceForm.addEventListener("submit", addFinanceAdvance);
 financeCommissionForm.addEventListener("submit", addFinanceCommission);
@@ -882,6 +902,7 @@ function saveWorkspaceState() {
     activeInfrastructureAgendaView,
     activeCompanyView,
     activeSettingsView,
+    activeFinanceMainView,
     search: searchInput?.value || "",
     equipmentFilter: equipmentFilter?.value || "",
     agendaSearch: agendaSearchInput?.value || "",
@@ -929,6 +950,10 @@ function restoreWorkspaceState({ applyFields = true } = {}) {
 
   if (["theme", "alerts", "password", "logs", "system", "integrations", "backup"].includes(state.activeSettingsView)) {
     activeSettingsView = state.activeSettingsView;
+  }
+
+  if (["employees", "expenses", "payments", "clients"].includes(state.activeFinanceMainView)) {
+    activeFinanceMainView = state.activeFinanceMainView;
   }
 
   if (!applyFields) {
@@ -1087,7 +1112,7 @@ function applyFormDraft(formElement) {
 }
 
 function restoreVisibleFormDrafts() {
-  [form, agendaForm, infrastructureAgendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, financeAdvanceForm, financeCommissionForm, financeExpenseForm, financeMonthlyForm, financeSporadicForm, userForm].forEach((formElement) => {
+  [form, agendaForm, infrastructureAgendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, financeAdvanceForm, financeCommissionForm, financeExpenseForm, financeMonthlyForm, financeSporadicForm, financeGlobalExpenseForm, financePaymentForm, userForm].forEach((formElement) => {
     if (!formElement || formElement.offsetParent === null) {
       return;
     }
@@ -1101,7 +1126,7 @@ function restoreVisibleFormDrafts() {
 }
 
 function setupFormDraftAutosave() {
-  [form, agendaForm, infrastructureAgendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, financeAdvanceForm, financeCommissionForm, financeExpenseForm, financeMonthlyForm, financeSporadicForm, userForm].forEach((formElement) => {
+  [form, agendaForm, infrastructureAgendaForm, serviceOrderForm, companyForm, companyNetworkForm, companyVehicleForm, companyVehicleDetailsForm, companyStockForm, financeAdvanceForm, financeCommissionForm, financeExpenseForm, financeMonthlyForm, financeSporadicForm, financeGlobalExpenseForm, financePaymentForm, userForm].forEach((formElement) => {
     if (!formElement) {
       return;
     }
@@ -1194,6 +1219,7 @@ function normalizeCompanyInfo(info = {}) {
     stockTypes: Array.isArray(info.stockTypes) ? info.stockTypes : defaultCompanyStockTypes,
     stockItems: Array.isArray(info.stockItems) ? info.stockItems : [],
     finance: normalizeFinanceInfo(info.finance),
+    financeGlobal: normalizeFinanceGlobalInfo(info.financeGlobal),
     alertSettings: {
       ...emptyAlertSettings,
       ...(info.alertSettings || {})
@@ -1202,6 +1228,50 @@ function normalizeCompanyInfo(info = {}) {
       ...emptyThemeSettings,
       ...(info.themeSettings || {})
     }
+  };
+}
+
+function normalizeFinanceGlobalInfo(financeGlobal = {}) {
+  return {
+    expenses: Array.isArray(financeGlobal.expenses)
+      ? financeGlobal.expenses.map((item) => ({
+          id: item.id || createId("DES"),
+          date: item.date || "",
+          dueDate: item.dueDate || "",
+          category: item.category || "",
+          value: item.value || "",
+          payment: item.payment || "",
+          status: item.status || "Pendente",
+          description: item.description || "",
+          createdAt: item.createdAt || new Date().toISOString()
+        }))
+      : [],
+    payments: Array.isArray(financeGlobal.payments)
+      ? financeGlobal.payments.map((item) => ({
+          id: item.id || createId("PAG"),
+          date: item.date || "",
+          clientId: item.clientId || "",
+          clientName: item.clientName || "",
+          value: item.value || "",
+          payment: item.payment || "",
+          status: item.status || "Recebido",
+          description: item.description || "",
+          createdAt: item.createdAt || new Date().toISOString()
+        }))
+      : [],
+    clients: Object.entries(financeGlobal.clients && typeof financeGlobal.clients === "object" ? financeGlobal.clients : {}).reduce((records, [clientId, value]) => {
+      records[clientId] = {
+        monthlyValue: value?.monthlyValue || "",
+        dueDay: value?.dueDay || "",
+        paymentMethod: value?.paymentMethod || "",
+        billed: value?.billed || "Nao",
+        sendType: value?.sendType || "WhatsApp",
+        email: value?.email || "",
+        boletoSent: value?.boletoSent || "Nao",
+        updatedAt: value?.updatedAt || ""
+      };
+      return records;
+    }, {})
   };
 }
 
@@ -3561,6 +3631,10 @@ function render() {
   renderSettingsView();
   renderReportOptions();
   renderFinanceUsers();
+  renderFinanceMainView();
+  renderFinanceGlobalRecords();
+  renderFinancePaymentClientOptions();
+  renderFinanceClientBillingList();
   renderForm();
   renderEquipmentCategories();
   renderBrandOptions(equipmentBrand, equipmentModel);
@@ -4321,6 +4395,12 @@ function renderPermissions() {
   [...financeAdvanceForm.elements, ...financeCommissionForm.elements, ...financeExpenseForm.elements, ...financeMonthlyForm.elements, ...financeSporadicForm.elements].forEach((element) => {
     element.disabled = !canModifyFinance;
   });
+  [...financeGlobalExpenseForm.elements, ...financePaymentForm.elements].forEach((element) => {
+    element.disabled = !canModifyFinance;
+  });
+  financeClientBillingList.querySelectorAll("input, select, button, textarea").forEach((element) => {
+    element.disabled = !canModifyFinance;
+  });
   addTemporaryFinanceClientButton.disabled = !canModifyFinance;
   addTemporaryMonthlyClientButton.disabled = !canModifyFinance;
   addTemporarySporadicClientButton.disabled = !canModifyFinance;
@@ -4976,7 +5056,7 @@ function renderFinanceUsers() {
     title.textContent = user.name || user.login || "Usuario";
 
     const details = document.createElement("span");
-    details.textContent = `Vales: ${records.advances.length} | Comissoes: ${records.commissions.length} | Despesas: ${records.expenses.length} | Mensalistas: ${records.monthly.length} | Esporadicos: ${records.sporadic.length}`;
+    details.textContent = `Vales: ${records.advances.length} | Comissoes: ${records.commissions.length}`;
 
     card.addEventListener("click", () => openFinanceDialog(user.id));
     card.addEventListener("keydown", (event) => {
@@ -5008,15 +5088,8 @@ function openFinanceDialog(userId) {
   financeMessage.textContent = "";
   financeAdvanceForm.reset();
   financeCommissionForm.reset();
-  financeExpenseForm.reset();
-  financeMonthlyForm.reset();
-  financeSporadicForm.reset();
   renderFinanceClientOptions();
-  renderFinanceMonthlyClientOptions();
-  renderFinanceSporadicClientOptions();
   hideTemporaryFinanceClientField();
-  hideTemporaryMonthlyClientField();
-  hideTemporarySporadicClientField();
   renderFinanceRecords();
   switchFinanceView("advances");
   financeDialog.showModal();
@@ -5027,16 +5100,30 @@ function closeFinanceDialog() {
   editingFinanceUserId = "";
   financeAdvanceForm.reset();
   financeCommissionForm.reset();
-  financeExpenseForm.reset();
-  financeMonthlyForm.reset();
-  financeSporadicForm.reset();
   hideTemporaryFinanceClientField();
-  hideTemporaryMonthlyClientField();
-  hideTemporarySporadicClientField();
 
   if (financeDialog.open) {
     financeDialog.close();
   }
+}
+
+function switchFinanceMainView(viewName) {
+  activeFinanceMainView = financeMainPanels[viewName] ? viewName : "employees";
+  financePanelMessage.textContent = "";
+  saveWorkspaceState();
+  renderFinanceMainView();
+}
+
+function renderFinanceMainView() {
+  financeMainTabs.forEach((tab) => {
+    const isActive = tab.dataset.financeMainView === activeFinanceMainView;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  });
+
+  Object.entries(financeMainPanels).forEach(([name, panel]) => {
+    panel.classList.toggle("active", name === activeFinanceMainView);
+  });
 }
 
 function switchFinanceView(viewName) {
@@ -5057,6 +5144,10 @@ function renderFinanceClientOptions() {
   if (clients.length === 0) {
     showTemporaryFinanceClientField();
   }
+}
+
+function renderFinancePaymentClientOptions() {
+  fillFinanceClientSelect(financePaymentClient);
 }
 
 function renderFinanceMonthlyClientOptions() {
@@ -5230,6 +5321,75 @@ function addFinanceExpense(event) {
   renderFinanceUsers();
 }
 
+function addFinanceGlobalExpense(event) {
+  event.preventDefault();
+
+  if (!requireModify("finance")) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(financeGlobalExpenseForm).entries());
+  updateFinanceGlobalRecords((records) => ({
+    ...records,
+    expenses: [
+      {
+        id: createId("DES"),
+        date: data.date,
+        dueDate: data.dueDate || "",
+        category: data.category.trim(),
+        value: data.value.trim(),
+        payment: data.payment || "",
+        status: data.status || "Pendente",
+        description: data.description.trim(),
+        createdAt: new Date().toISOString()
+      },
+      ...records.expenses
+    ]
+  }));
+  financeGlobalExpenseForm.reset();
+  financePanelMessage.textContent = "Despesa adicionada.";
+  logActivity("Despesa financeira adicionada", `${data.category} - ${data.value}.`);
+  renderFinanceGlobalRecords();
+}
+
+function addFinancePayment(event) {
+  event.preventDefault();
+
+  if (!requireModify("finance")) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(financePaymentForm).entries());
+  const client = clients.find((item) => item.id === data.clientId);
+
+  if (!client) {
+    return;
+  }
+
+  updateFinanceGlobalRecords((records) => ({
+    ...records,
+    payments: [
+      {
+        id: createId("PAG"),
+        date: data.date,
+        clientId: client.id,
+        clientName: client.name || "Cliente sem nome",
+        value: data.value.trim(),
+        payment: data.payment || "",
+        status: data.status || "Recebido",
+        description: data.description.trim(),
+        createdAt: new Date().toISOString()
+      },
+      ...records.payments
+    ]
+  }));
+  financePaymentForm.reset();
+  renderFinancePaymentClientOptions();
+  financePanelMessage.textContent = "Pagamento adicionado.";
+  logActivity("Pagamento financeiro adicionado", `${client.name || "Cliente"} - ${data.value}.`);
+  renderFinanceGlobalRecords();
+}
+
 function addFinanceMonthly(event) {
   event.preventDefault();
 
@@ -5324,9 +5484,159 @@ function renderFinanceRecords() {
   const records = getFinanceRecords(editingFinanceUserId);
   renderFinanceRecordList(financeAdvanceList, records.advances, "Vale");
   renderFinanceRecordList(financeCommissionList, records.commissions, "Comissão");
-  renderFinanceRecordList(financeExpenseList, records.expenses, "Despesa");
-  renderFinanceRecordList(financeMonthlyList, records.monthly, "Mensalista");
-  renderFinanceRecordList(financeSporadicList, records.sporadic, "Esporadico");
+}
+
+function renderFinanceGlobalRecords() {
+  const records = getFinanceGlobalRecords();
+  renderFinanceRecordList(financeGlobalExpenseList, records.expenses, "Despesa");
+  renderFinanceRecordList(financePaymentList, records.payments, "Pagamento");
+}
+
+function renderFinanceClientBillingList() {
+  financeClientBillingList.innerHTML = "";
+
+  if (clients.length === 0) {
+    const emptyState = emptyRecordsTemplate.content.cloneNode(true);
+    emptyState.querySelector("strong").textContent = "Nenhum cliente cadastrado";
+    emptyState.querySelector("span").textContent = "Cadastre clientes para configurar o faturamento.";
+    financeClientBillingList.append(emptyState);
+    return;
+  }
+
+  const financeClients = getFinanceGlobalRecords().clients;
+  clients
+    .slice()
+    .sort((first, second) => (first.name || "").localeCompare(second.name || ""))
+    .forEach((client) => {
+      const billing = financeClients[client.id] || {};
+      const card = document.createElement("article");
+      card.className = "record-card";
+
+      const formElement = document.createElement("form");
+      formElement.className = "settings-form compact-create-form finance-client-billing-form";
+      formElement.dataset.clientId = client.id;
+      formElement.innerHTML = `
+        <div class="settings-header">
+          <div>
+            <span class="record-tag">${client.clientType || "Cliente"}</span>
+            <strong>${escapeHtml(client.name || "Cliente sem nome")}</strong>
+          </div>
+          <button class="primary" type="submit">Salvar</button>
+        </div>
+        <div class="form-grid compact-form-grid">
+          <label>
+            <span>Mensalidade</span>
+            <input name="monthlyValue" inputmode="decimal" placeholder="0,00" value="${escapeAttribute(billing.monthlyValue || "")}" />
+          </label>
+          <label>
+            <span>Vencimento</span>
+            <input name="dueDay" type="number" min="1" max="31" placeholder="Dia" value="${escapeAttribute(billing.dueDay || "")}" />
+          </label>
+          <label>
+            <span>Forma de pagamento</span>
+            <select name="paymentMethod">
+              ${createSelectOptions(["", "Pix", "Dinheiro", "Cartao", "Boleto", "Transferencia"], billing.paymentMethod || "", "Nao informado")}
+            </select>
+          </label>
+          <label>
+            <span>Faturado</span>
+            <select name="billed">
+              ${createSelectOptions(["Sim", "Nao"], billing.billed || "Nao")}
+            </select>
+          </label>
+          <label>
+            <span>Tipo de envio</span>
+            <select name="sendType" data-send-type>
+              ${createSelectOptions(["WhatsApp", "Email"], billing.sendType || "WhatsApp")}
+            </select>
+          </label>
+          <label data-email-wrap>
+            <span>Email de envio</span>
+            <input name="email" type="email" placeholder="financeiro@cliente.com.br" value="${escapeAttribute(billing.email || client.email || "")}" />
+          </label>
+          <label>
+            <span>Boleto enviado</span>
+            <select name="boletoSent">
+              ${createSelectOptions(["Sim", "Nao"], billing.boletoSent || "Nao")}
+            </select>
+          </label>
+        </div>
+      `;
+      formElement.addEventListener("submit", saveFinanceClientBilling);
+      const sendTypeSelect = formElement.querySelector("[data-send-type]");
+      const emailWrap = formElement.querySelector("[data-email-wrap]");
+      const emailInput = formElement.elements.email;
+      const toggleEmailField = () => {
+        const isEmail = sendTypeSelect.value === "Email";
+        emailWrap.classList.toggle("hidden", !isEmail);
+        emailInput.disabled = !isEmail || !canModify("finance");
+        emailInput.required = isEmail;
+      };
+      sendTypeSelect.addEventListener("change", toggleEmailField);
+      toggleEmailField();
+      card.append(formElement);
+      financeClientBillingList.append(card);
+    });
+}
+
+function saveFinanceClientBilling(event) {
+  event.preventDefault();
+
+  if (!requireModify("finance")) {
+    return;
+  }
+
+  const clientId = event.currentTarget.dataset.clientId;
+  const client = clients.find((item) => item.id === clientId);
+
+  if (!client) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+  updateFinanceGlobalRecords((records) => ({
+    ...records,
+    clients: {
+      ...records.clients,
+      [clientId]: {
+        monthlyValue: data.monthlyValue.trim(),
+        dueDay: data.dueDay || "",
+        paymentMethod: data.paymentMethod || "",
+        billed: data.billed || "Nao",
+        sendType: data.sendType || "WhatsApp",
+        email: data.sendType === "Email" ? data.email.trim() : "",
+        boletoSent: data.boletoSent || "Nao",
+        updatedAt: new Date().toISOString()
+      }
+    }
+  }));
+  financePanelMessage.textContent = "Dados do cliente salvos.";
+  logActivity("Faturamento do cliente atualizado", `${client.name || "Cliente sem nome"} atualizado no financeiro.`);
+  renderFinanceClientBillingList();
+  renderPermissions();
+}
+
+function createSelectOptions(options, selectedValue, emptyLabel = "") {
+  return options
+    .map((value) => {
+      const label = value || emptyLabel || value;
+      const selected = value === selectedValue ? " selected" : "";
+      return `<option value="${escapeAttribute(value)}"${selected}>${escapeHtml(label)}</option>`;
+    })
+    .join("");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value);
 }
 
 function renderFinanceRecordList(container, items, type) {
@@ -5370,8 +5680,22 @@ function updateFinanceRecords(userId, updater) {
   persistCompanyInfo();
 }
 
+function updateFinanceGlobalRecords(updater) {
+  const financeGlobal = updater(getFinanceGlobalRecords());
+  companyInfo = normalizeCompanyInfo({
+    ...companyInfo,
+    financeGlobal,
+    updatedAt: new Date().toISOString()
+  });
+  persistCompanyInfo();
+}
+
 function getFinanceRecords(userId) {
   return normalizeFinanceInfo(companyInfo.finance)[userId] || { advances: [], commissions: [], sporadic: [], expenses: [], monthly: [] };
+}
+
+function getFinanceGlobalRecords() {
+  return normalizeFinanceGlobalInfo(companyInfo.financeGlobal);
 }
 
 function getFinanceRecordTitle(item, type) {
@@ -5381,6 +5705,10 @@ function getFinanceRecordTitle(item, type) {
 
   if (type === "Despesa") {
     return `${item.category || "Despesa"} - ${item.value || "0,00"}`;
+  }
+
+  if (type === "Pagamento") {
+    return `${item.clientName || "Cliente"} - ${item.value || "0,00"}`;
   }
 
   if (type === "Mensalista") {
@@ -5401,6 +5729,17 @@ function getFinanceRecordDetails(item, type) {
       item.dueDate ? `Vencimento: ${formatSimpleDate(item.dueDate)}` : "",
       item.payment ? `Pagamento: ${item.payment}` : "",
       `Status: ${item.status || "Pendente"}`,
+      item.description
+    ]
+      .filter(Boolean)
+      .join(" | ");
+  }
+
+  if (type === "Pagamento") {
+    return [
+      `Data: ${formatSimpleDate(item.date)}`,
+      item.payment ? `Pagamento: ${item.payment}` : "",
+      `Status: ${item.status || "Recebido"}`,
       item.description
     ]
       .filter(Boolean)

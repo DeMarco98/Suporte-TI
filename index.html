@@ -53,7 +53,7 @@
           <button class="dashboard-tab active" type="button" data-dashboard-tab="overview">Dashboard</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="clients">Clientes</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="agenda">Agendamentos</button>
-          <button class="dashboard-tab" type="button" data-dashboard-tab="infrastructureAgenda">Agendamentos Infraestrutura</button>
+          <button class="dashboard-tab" type="button" data-dashboard-tab="infrastructureAgenda">Agendamentos Infra</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="serviceOrders">Ordem de Servico</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="company">Minha Empresa</button>
           <button class="dashboard-tab" type="button" data-dashboard-tab="users">Usuarios</button>
@@ -72,6 +72,21 @@
 
           <div class="user-top-actions">
             <span id="syncStatus" class="sync-status syncing">Sincronizando</span>
+            <div class="notification-wrap">
+              <button id="attendanceButton" class="notification-button attendance-button" type="button" aria-label="Atendimentos" title="Atendimentos">
+                <span aria-hidden="true">AT</span>
+                <strong id="attendanceCount">0</strong>
+              </button>
+              <div id="attendancePanel" class="notification-panel hidden">
+                <div class="settings-header">
+                  <div>
+                    <p class="eyebrow">Central</p>
+                    <h3>Atendimentos</h3>
+                  </div>
+                </div>
+                <div id="attendanceList" class="notification-list"></div>
+              </div>
+            </div>
             <div class="notification-wrap">
               <button id="alertButton" class="notification-button alert-button" type="button" aria-label="Alertas" title="Alertas">
                 <span aria-hidden="true">&#128680;</span>
@@ -537,7 +552,7 @@
             <select id="agendaStatusFilter">
               <option value="all">Todas</option>
               <option value="open">Em aberto</option>
-              <option value="analysis">Em analise</option>
+              <option value="analysis">Em atendimento</option>
               <option value="done">Concluidas</option>
               <option value="canceled">Canceladas</option>
             </select>
@@ -576,7 +591,7 @@
               <span>Status</span>
               <select id="agendaStatus" name="status">
                 <option value="Aberto">Aberto</option>
-                <option value="Em analise">Em analise</option>
+                <option value="Em atendimento">Em atendimento</option>
                 <option value="Concluido">Concluido</option>
                 <option value="Cancelado">Cancelado</option>
               </select>
@@ -600,7 +615,7 @@
       <section id="infrastructureAgendaDashboardPanel" class="dashboard-panel">
         <div class="panel-hero">
           <p class="eyebrow">Infraestrutura</p>
-          <h2>Agendamentos Infraestrutura</h2>
+          <h2>Agendamentos Infra</h2>
           <p>Registre ocorrencias da equipe de infraestrutura separadas dos agendamentos de atendimento.</p>
         </div>
 
@@ -620,7 +635,7 @@
             <select id="infrastructureAgendaStatusFilter">
               <option value="all">Todas</option>
               <option value="open">Em aberto</option>
-              <option value="analysis">Em analise</option>
+              <option value="analysis">Em atendimento</option>
               <option value="done">Concluidas</option>
               <option value="canceled">Canceladas</option>
             </select>
@@ -659,7 +674,7 @@
               <span>Status</span>
               <select id="infrastructureAgendaStatus" name="status">
                 <option value="Aberto">Aberto</option>
-                <option value="Em analise">Em analise</option>
+                <option value="Em atendimento">Em atendimento</option>
                 <option value="Concluido">Concluido</option>
                 <option value="Cancelado">Cancelado</option>
               </select>
@@ -1080,25 +1095,86 @@
               <p class="eyebrow">Estoque</p>
               <h3>Produtos internos</h3>
             </div>
+            <button id="openCompanyStockFormButton" class="primary" type="button">Adicionar</button>
           </div>
 
-          <form id="companyStockForm" class="inline-form company-stock-form compact-company-inline-form">
-            <label>
-              <span>Tipo de produto</span>
-              <select id="companyStockType" name="type" required></select>
-            </label>
+          <form id="companyStockForm" class="settings-form company-stock-form compact-create-form hidden">
+            <div class="form-grid compact-form-grid">
+              <label>
+                <span>Tipo de produto</span>
+                <select id="companyStockType" name="type" required></select>
+              </label>
 
-            <label>
-              <span>Quantidade</span>
-              <input id="companyStockQuantity" name="quantity" type="number" min="0" step="1" required />
-            </label>
+              <label>
+                <span>Quantidade</span>
+                <input id="companyStockQuantity" name="quantity" type="number" min="0" step="1" required />
+              </label>
 
-            <label id="newCompanyStockTypeLabel" class="hidden">
-              <span>Novo produto</span>
-              <input id="newCompanyStockType" name="newType" placeholder="Ex.: Toner" />
-            </label>
+              <label id="newCompanyStockTypeLabel" class="hidden">
+                <span>Novo produto</span>
+                <input id="newCompanyStockType" name="newType" placeholder="Ex.: Toner" />
+              </label>
 
-            <button id="companyStockSubmitButton" class="primary" type="submit" title="Adicionar produto" aria-label="Adicionar produto">Adicionar</button>
+              <label data-stock-detail="brandModel">
+                <span>Marca/modelo</span>
+                <input id="companyStockBrandModel" name="brandModel" placeholder="Ex.: Kingston, Dell, HP" />
+              </label>
+
+              <label data-stock-detail="size">
+                <span>Tamanho</span>
+                <select id="companyStockSize" name="size"></select>
+              </label>
+
+              <label data-stock-detail="ddr">
+                <span>DDR</span>
+                <select id="companyStockDdr" name="ddr">
+                  <option value="">Nao informado</option>
+                  <option value="DDR3">DDR3</option>
+                  <option value="DDR4">DDR4</option>
+                  <option value="DDR5">DDR5</option>
+                </select>
+              </label>
+
+              <label data-stock-detail="equipmentKind">
+                <span>Tipo</span>
+                <select id="companyStockEquipmentKind" name="equipmentKind">
+                  <option value="">Nao informado</option>
+                  <option value="Computador">Computador</option>
+                  <option value="Notebook">Notebook</option>
+                  <option value="All-In-One">All-In-One</option>
+                </select>
+              </label>
+
+              <label data-stock-detail="serial">
+                <span>S/N</span>
+                <input id="companyStockSerial" name="serial" />
+              </label>
+
+              <label data-stock-detail="processor">
+                <span>Processador</span>
+                <input id="companyStockProcessor" name="processor" placeholder="Ex.: i5 10a geracao" />
+              </label>
+
+              <label data-stock-detail="ram">
+                <span>Memoria RAM</span>
+                <select id="companyStockRam" name="ram"></select>
+              </label>
+
+              <label data-stock-detail="storage">
+                <span>Armazenamento</span>
+                <select id="companyStockStorage" name="storage"></select>
+              </label>
+
+              <label data-stock-detail="notes" class="full-width">
+                <span>Observacoes</span>
+                <textarea id="companyStockNotes" name="notes" rows="2"></textarea>
+              </label>
+            </div>
+
+            <div class="form-actions service-order-form-actions">
+              <button id="cancelCompanyStockFormButton" class="danger" type="button">Cancelar</button>
+              <button id="companyStockSubmitButton" class="primary" type="submit" title="Adicionar produto" aria-label="Adicionar produto">Adicionar</button>
+            </div>
           </form>
 
           <p id="companyStockMessage" class="action-message" aria-live="polite"></p>
@@ -2365,6 +2441,17 @@
           <label>
             <span>Login</span>
             <input id="newUserLogin" name="login" autocomplete="off" required />
+          </label>
+
+          <label>
+            <span>Setor</span>
+            <select id="newUserSector" name="sector" required>
+              <option value="T.I">T.I</option>
+              <option value="Infraestrutura">Infraestrutura</option>
+              <option value="Financeiro">Financeiro</option>
+              <option value="Coordenacao">Coordenacao</option>
+              <option value="Gerencia">Gerencia</option>
+            </select>
           </label>
 
           <label>

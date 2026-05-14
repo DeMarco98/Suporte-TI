@@ -528,6 +528,41 @@ button:focus-visible {
   animation: siren-pulse 0.9s ease-in-out infinite;
 }
 
+.attendance-button {
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.attendance-button.has-attendance {
+  border-color: rgba(22, 131, 58, 0.38);
+  background: #eefaf2;
+  color: #16833a;
+}
+
+.attendance-card {
+  border-left: 3px solid #16833a;
+}
+
+.notification-actions .success,
+.success {
+  border: 1px solid rgba(22, 131, 58, 0.25);
+  border-radius: 7px;
+  background: #e9f8ee;
+  color: #16833a;
+  min-height: 30px;
+  padding: 0 10px;
+  font-weight: 800;
+}
+
+body[data-theme-mode="dark"] .attendance-button.has-attendance,
+body[data-theme-mode="dark"] .attendance-card,
+body[data-theme-mode="dark"] .notification-actions .success,
+body[data-theme-mode="dark"] .success {
+  background: rgba(22, 131, 58, 0.16);
+  color: #54d27d;
+  border-color: rgba(84, 210, 125, 0.28);
+}
+
 @keyframes siren-pulse {
   0%,
   100% {
@@ -1475,7 +1510,7 @@ body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
 }
 
 .company-stock-form {
-  grid-template-columns: minmax(150px, 210px) minmax(80px, 110px) minmax(160px, 1fr) auto;
+  margin-top: 10px;
 }
 
 .company-stock-form button {
@@ -1506,6 +1541,65 @@ body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
 
 .compact-record-card {
   padding: 8px;
+}
+
+.finance-user-card {
+  align-items: flex-start;
+  min-height: 0;
+  padding: 8px 10px;
+}
+
+.finance-user-card .record-content {
+  width: 100%;
+  gap: 4px;
+}
+
+.finance-user-card .record-tag {
+  padding: 2px 7px;
+  font-size: 0.58rem;
+}
+
+.finance-user-card strong {
+  font-size: 0.88rem;
+  line-height: 1.15;
+}
+
+.finance-user-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(90px, 1fr));
+  gap: 5px;
+  width: 100%;
+}
+
+.finance-user-metrics span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  border: 1px solid rgba(37, 109, 133, 0.11);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.68);
+  padding: 4px 6px;
+  color: var(--text);
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
+.finance-user-metrics small {
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.finance-user-metrics .finance-user-net {
+  border-color: rgba(37, 109, 133, 0.26);
+  color: var(--accent);
+  font-weight: 800;
+}
+
+body[data-theme-mode="dark"] .finance-user-metrics span {
+  background: rgba(12, 18, 22, 0.72);
+  border-color: rgba(108, 184, 207, 0.18);
 }
 
 .finance-client-layout {
@@ -2384,6 +2478,10 @@ button:disabled {
   }
 
   .finance-employee-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .finance-user-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

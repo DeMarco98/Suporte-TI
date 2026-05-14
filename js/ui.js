@@ -28,10 +28,13 @@ const NEW_SERVICE_ORDER_EQUIPMENT_TYPE_VALUE = "__new_service_order_equipment_ty
 const NEW_EMAIL_TYPE_VALUE = "__new_email_type__";
 const NEW_COMPANY_STOCK_TYPE_VALUE = "__new_company_stock_type__";
 const serviceOrderStatuses = ["Aberta", "Em analise", "Aguardando orcamento", "Em conserto", "Conserto Externo", "Fechada", "Concluida", "Cancelada"];
-const agendaStatuses = ["Aberto", "Em analise", "Concluido", "Cancelado"];
+const agendaStatuses = ["Aberto", "Em atendimento", "Concluido", "Cancelado"];
+const userSectors = ["T.I", "Infraestrutura", "Financeiro", "Coordenacao", "Gerencia"];
 const defaultServiceOrderEquipmentTypes = ["Notebook", "Computador", "All-In-One", "Impressora"];
 const defaultEmailTypes = ["Comercial", "Financeiro", "Suporte", "Pessoal"];
-const defaultCompanyStockTypes = ["Toner", "Cabo", "Mouse", "Teclado", "Fonte", "HD", "SSD"];
+const defaultCompanyStockTypes = ["Toner", "Cabo", "Mouse", "Teclado", "Fonte", "HD", "SSD", "Memoria RAM", "Computador", "Notebook", "All-In-One"];
+const stockStorageSizes = ["120 GB", "128 GB", "240 GB", "250 GB", "256 GB", "480 GB", "500 GB", "512 GB", "1 TB", "2 TB", "4 TB", "8 TB"];
+const stockMemorySizes = ["2 GB", "4 GB", "8 GB", "16 GB", "32 GB", "64 GB", "128 GB"];
 
 async function createAgendaItem({ state, persistAgendaItems, createId, payload }) {
   const item = {
@@ -132,7 +135,7 @@ const dashboardSections = [
   { id: "overview", label: "Dashboard" },
   { id: "clients", label: "Clientes" },
   { id: "agenda", label: "Agendamentos" },
-  { id: "infrastructureAgenda", label: "Agendamentos Infraestrutura" },
+  { id: "infrastructureAgenda", label: "Agendamentos Infra" },
   { id: "serviceOrders", label: "Ordem de Servico" },
   { id: "company", label: "Minha Empresa" },
   { id: "users", label: "Usuarios" },
@@ -332,6 +335,10 @@ const loginMessage = document.querySelector("#loginMessage");
 const logoutButton = document.querySelector("#logoutButton");
 const adminStatus = document.querySelector(".user-name");
 const syncStatus = document.querySelector("#syncStatus");
+const attendanceButton = document.querySelector("#attendanceButton");
+const attendanceCount = document.querySelector("#attendanceCount");
+const attendancePanel = document.querySelector("#attendancePanel");
+const attendanceList = document.querySelector("#attendanceList");
 const alertButton = document.querySelector("#alertButton");
 const alertCount = document.querySelector("#alertCount");
 const alertPanel = document.querySelector("#alertPanel");
@@ -533,12 +540,18 @@ const vehicleIpvaPdfName = document.querySelector("#vehicleIpvaPdfName");
 const vehicleLicensingPdfName = document.querySelector("#vehicleLicensingPdfName");
 const companyVehicleMessage = document.querySelector("#companyVehicleMessage");
 const companyVehicleList = document.querySelector("#companyVehicleList");
+const openCompanyStockFormButton = document.querySelector("#openCompanyStockFormButton");
 const companyStockForm = document.querySelector("#companyStockForm");
 const companyStockType = document.querySelector("#companyStockType");
 const companyStockQuantity = document.querySelector("#companyStockQuantity");
 const companyStockSubmitButton = document.querySelector("#companyStockSubmitButton");
+const cancelCompanyStockFormButton = document.querySelector("#cancelCompanyStockFormButton");
 const newCompanyStockTypeLabel = document.querySelector("#newCompanyStockTypeLabel");
 const newCompanyStockType = document.querySelector("#newCompanyStockType");
+const companyStockSize = document.querySelector("#companyStockSize");
+const companyStockDdr = document.querySelector("#companyStockDdr");
+const companyStockRam = document.querySelector("#companyStockRam");
+const companyStockStorage = document.querySelector("#companyStockStorage");
 const companyStockMessage = document.querySelector("#companyStockMessage");
 const companyStockList = document.querySelector("#companyStockList");
 const dashboardTabs = document.querySelectorAll(".dashboard-tab");
@@ -700,6 +713,7 @@ loginForm.addEventListener("submit", loginAdmin);
 logoutButton.addEventListener("click", logoutAdmin);
 notificationButton.addEventListener("click", () => notificationPanel.classList.toggle("hidden"));
 alertButton.addEventListener("click", () => alertPanel.classList.toggle("hidden"));
+attendanceButton.addEventListener("click", () => attendancePanel.classList.toggle("hidden"));
 clearNotificationsButton.addEventListener("click", clearVisibleNotifications);
 document.addEventListener("click", closeFloatingPanelsOnOutsideClick);
 openUserFormButton.addEventListener("click", openUserDialog);
@@ -765,8 +779,11 @@ vehicleIpvaPdfInput.addEventListener("change", (event) => importCompanyVehicleDo
 vehicleLicensingPdfInput.addEventListener("change", (event) => importCompanyVehicleDocumentPdf(event, "licensing"));
 exportVehicleIpvaPdfButton.addEventListener("click", () => exportCompanyVehicleDocumentPdf("ipva"));
 exportVehicleLicensingPdfButton.addEventListener("click", () => exportCompanyVehicleDocumentPdf("licensing"));
+openCompanyStockFormButton.addEventListener("click", openCompanyStockForm);
 companyStockForm.addEventListener("submit", saveCompanyStockType);
-companyStockType.addEventListener("change", toggleNewCompanyStockTypeField);
+cancelCompanyStockFormButton.addEventListener("click", closeCompanyStockForm);
+companyStockType.addEventListener("change", toggleCompanyStockFields);
+newCompanyStockType.addEventListener("input", toggleCompanyStockFields);
 document.addEventListener(
   "blur",
   (event) => {
@@ -1158,7 +1175,7 @@ function restoreVisibleFormDrafts() {
 
   toggleComputerServiceOrderFields();
   toggleExternalRepairLocationFields();
-  toggleNewCompanyStockTypeField();
+  toggleCompanyStockFields();
 }
 
 function setupFormDraftAutosave() {
@@ -1253,7 +1270,7 @@ function normalizeCompanyInfo(info = {}) {
     ...info,
     vehicles: Array.isArray(info.vehicles) ? info.vehicles.map(normalizeCompanyVehicle) : [],
     stockTypes: Array.isArray(info.stockTypes) ? info.stockTypes : defaultCompanyStockTypes,
-    stockItems: Array.isArray(info.stockItems) ? info.stockItems : [],
+    stockItems: Array.isArray(info.stockItems) ? info.stockItems.map(normalizeCompanyStockItem) : [],
     finance: normalizeFinanceInfo(info.finance),
     financeGlobal: normalizeFinanceGlobalInfo(info.financeGlobal),
     alertSettings: {
@@ -1445,6 +1462,27 @@ function createEmptyVehicleDocumentation() {
   };
 }
 
+function normalizeCompanyStockItem(item = {}) {
+  return {
+    id: item.id || createId("EST"),
+    type: item.type || "",
+    quantity: Number(item.quantity ?? 0),
+    details: {
+      brandModel: item.details?.brandModel || item.brandModel || "",
+      size: item.details?.size || item.size || "",
+      ddr: item.details?.ddr || item.ddr || "",
+      equipmentKind: item.details?.equipmentKind || item.equipmentKind || "",
+      serial: item.details?.serial || item.serial || "",
+      processor: item.details?.processor || item.processor || "",
+      ram: item.details?.ram || item.ram || "",
+      storage: item.details?.storage || item.storage || "",
+      notes: item.details?.notes || item.notes || ""
+    },
+    createdAt: item.createdAt || new Date().toISOString(),
+    updatedAt: item.updatedAt || ""
+  };
+}
+
 function normalizeVehicleDocumentation(documentation = {}) {
   const emptyDocumentation = createEmptyVehicleDocumentation();
   return {
@@ -1466,6 +1504,7 @@ function normalizeUser(user) {
     email: user.email || "",
     name: user.name || "Usuario sem nome",
     login: user.login || "",
+    sector: userSectors.includes(user.sector) ? user.sector : "T.I",
     password: "",
     active: user.active !== false,
     role: user.role || "user",
@@ -2401,6 +2440,7 @@ function reloadStateFromLocalStorage() {
         uid: updatedCurrentUser.uid,
         login: updatedCurrentUser.login,
         name: updatedCurrentUser.name,
+        sector: updatedCurrentUser.sector || "T.I",
         role: updatedCurrentUser.role || "user"
       };
       isAdminLoggedIn = currentUser.role === "admin" || updatedCurrentUser.fullControl === true;
@@ -2503,7 +2543,7 @@ async function loginAdmin(event) {
     return;
   }
 
-  currentUser = { id: storedUser.id, uid: storedUser.uid, login: storedUser.login, name: storedUser.name, role: storedUser.role || "user" };
+  currentUser = { id: storedUser.id, uid: storedUser.uid, login: storedUser.login, name: storedUser.name, sector: storedUser.sector || "T.I", role: storedUser.role || "user" };
   isAdminLoggedIn = currentUser.role === "admin" || storedUser.fullControl === true;
   sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(currentUser));
   await hydrateFromFirebase();
@@ -2932,6 +2972,7 @@ async function createUser(event) {
   const formData = Object.fromEntries(new FormData(userForm).entries());
   const login = formData.login.trim();
   const name = formData.name.trim();
+  const sector = userSectors.includes(formData.sector) ? formData.sector : "T.I";
   const password = formData.password;
   const passwordConfirm = formData.passwordConfirm;
 
@@ -2961,6 +3002,7 @@ async function createUser(event) {
       email: firebaseAccount.email,
       name,
       login,
+      sector,
       active: true,
       fullControl: false,
       permissions: createDefaultPermissions(),
@@ -3111,6 +3153,7 @@ function createAgendaFromPayload(payload) {
   createAgendaItem({ state: appState, persistAgendaItems, createId, payload: { ...payload, number: getNextAgendaNumber() } });
   logActivity("Agenda criada", `${payload.clientName || "Cliente sem nome"}: ${payload.occurrence}`);
   renderAgendaItems();
+  renderAttendancePanel();
   updateDashboardTotals();
 }
 
@@ -3132,6 +3175,7 @@ function updateAgendaFromPayload(itemId, payload) {
   logActivity("Agenda editada", `${formatAgendaNumber(previousItem || {})} - ${payload.clientName || "Cliente sem nome"}.`);
   clearFormDraft(agendaForm);
   renderAgendaItems();
+  renderAttendancePanel();
 }
 
 function getNextAgendaNumber() {
@@ -3235,6 +3279,7 @@ function createInfrastructureAgendaFromPayload(payload) {
   persistInfrastructureAgendaItems();
   logActivity("Agendamento infraestrutura criado", `${payload.clientName || "Cliente sem nome"}: ${payload.occurrence}`);
   renderInfrastructureAgendaItems();
+  renderAttendancePanel();
   updateDashboardTotals();
 }
 
@@ -3256,6 +3301,7 @@ function updateInfrastructureAgendaFromPayload(itemId, payload) {
   logActivity("Agendamento infraestrutura editado", `${formatInfrastructureAgendaNumber(previousItem || {})} - ${payload.clientName || "Cliente sem nome"}.`);
   clearFormDraft(infrastructureAgendaForm);
   renderInfrastructureAgendaItems();
+  renderAttendancePanel();
 }
 
 function getNextInfrastructureAgendaNumber() {
@@ -3760,6 +3806,7 @@ function render() {
   renderLogs();
   renderSystemAlerts();
   renderNotifications();
+  renderAttendancePanel();
   renderPermissionList();
   renderSettingsView();
   renderReportOptions();
@@ -4082,6 +4129,137 @@ function renderNotifications() {
   });
 }
 
+function renderAttendancePanel() {
+  attendanceList.innerHTML = "";
+  const attendances = getVisibleAttendanceItems();
+  attendanceCount.textContent = String(attendances.length);
+  attendanceButton.classList.toggle("has-attendance", attendances.length > 0);
+
+  if (attendances.length === 0) {
+    const emptyState = document.createElement("div");
+    emptyState.className = "empty-state compact";
+    emptyState.innerHTML = "<strong>Nenhum atendimento</strong><span>Chamados em aberto ou em atendimento aparecerao aqui.</span>";
+    attendanceList.append(emptyState);
+    return;
+  }
+
+  attendances.forEach((entry) => {
+    const card = document.createElement("article");
+    card.className = "notification-card attendance-card";
+
+    const content = document.createElement("div");
+    content.className = "record-content";
+
+    const tag = document.createElement("span");
+    tag.className = "record-tag";
+    tag.textContent = entry.sourceLabel;
+
+    const title = document.createElement("strong");
+    title.textContent = `${entry.numberLabel} - ${entry.item.clientName || "Cliente sem nome"}`;
+
+    const details = document.createElement("span");
+    details.textContent = `${getAgendaStatusLabel(entry.item.status)} | ${formatSimpleDate(entry.item.date)} | ${entry.item.occurrence || "Sem ocorrencia"}`;
+
+    const actions = document.createElement("div");
+    actions.className = "notification-actions";
+
+    if (normalizeAgendaStatus(entry.item.status) === "Aberto") {
+      const startButton = document.createElement("button");
+      startButton.className = "success";
+      startButton.type = "button";
+      startButton.textContent = "Iniciar";
+      startButton.addEventListener("click", () => updateAttendanceItemStatus(entry.source, entry.item.id, "Em atendimento"));
+      actions.append(startButton);
+    }
+
+    if (normalizeAgendaStatus(entry.item.status) === "Em atendimento") {
+      const finishButton = document.createElement("button");
+      finishButton.className = "danger";
+      finishButton.type = "button";
+      finishButton.textContent = "Finalizar";
+      finishButton.addEventListener("click", () => updateAttendanceItemStatus(entry.source, entry.item.id, "Concluido"));
+      actions.append(finishButton);
+    }
+
+    content.append(tag, title, details);
+    card.append(content, actions);
+    attendanceList.append(card);
+  });
+}
+
+function getVisibleAttendanceItems() {
+  if (!currentUser) {
+    return [];
+  }
+
+  const storedUser = getCurrentStoredUser();
+  const sector = storedUser?.sector || currentUser.sector || "T.I";
+  const canSeeAgenda = sector === "T.I" || canApproveAuthorizationRequests();
+  const canSeeInfra = sector === "Infraestrutura" || canApproveAuthorizationRequests();
+  const isActiveAttendance = (item) => ["Aberto", "Em atendimento"].includes(normalizeAgendaStatus(item.status));
+  const items = [];
+
+  if (canSeeAgenda) {
+    agendaItems.filter(isActiveAttendance).forEach((item) => {
+      items.push({
+        source: "agenda",
+        sourceLabel: "Agendamento",
+        numberLabel: formatAgendaNumber(item),
+        item
+      });
+    });
+  }
+
+  if (canSeeInfra) {
+    infrastructureAgendaItems.filter(isActiveAttendance).forEach((item) => {
+      items.push({
+        source: "infrastructureAgenda",
+        sourceLabel: "Infra",
+        numberLabel: formatInfrastructureAgendaNumber(item),
+        item
+      });
+    });
+  }
+
+  return items.sort((first, second) => (first.item.date || "").localeCompare(second.item.date || ""));
+}
+
+function updateAttendanceItemStatus(source, itemId, nextStatus) {
+  nextStatus = normalizeAgendaStatus(nextStatus);
+
+  if (source === "agenda") {
+    const item = agendaItems.find((agendaItem) => agendaItem.id === itemId);
+
+    if (!item || !["Aberto", "Em atendimento"].includes(normalizeAgendaStatus(item.status))) {
+      renderAttendancePanel();
+      return;
+    }
+
+    agendaItems = agendaItems.map((agendaItem) => (agendaItem.id === itemId ? { ...agendaItem, status: nextStatus, updatedAt: new Date().toISOString() } : agendaItem));
+    persistAgendaItems();
+    logActivity("Atendimento atualizado", `${formatAgendaNumber(item)} alterado para ${nextStatus}.`);
+    renderAgendaItems();
+  }
+
+  if (source === "infrastructureAgenda") {
+    const item = infrastructureAgendaItems.find((agendaItem) => agendaItem.id === itemId);
+
+    if (!item || !["Aberto", "Em atendimento"].includes(normalizeAgendaStatus(item.status))) {
+      renderAttendancePanel();
+      return;
+    }
+
+    infrastructureAgendaItems = infrastructureAgendaItems.map((agendaItem) => (agendaItem.id === itemId ? { ...agendaItem, status: nextStatus, updatedAt: new Date().toISOString() } : agendaItem));
+    persistInfrastructureAgendaItems();
+    logActivity("Atendimento infra atualizado", `${formatInfrastructureAgendaNumber(item)} alterado para ${nextStatus}.`);
+    renderInfrastructureAgendaItems();
+  }
+
+  renderAttendancePanel();
+  renderSystemAlerts();
+  updateDashboardTotals();
+}
+
 function renderSystemAlerts() {
   alertList.innerHTML = "";
   const alerts = getSystemAlerts();
@@ -4150,6 +4328,7 @@ function getSystemAlerts() {
 
   if (settings.agendaDays > 0 && canAccess("agenda")) {
     agendaItems.forEach((item) => {
+      item = { ...item, status: normalizeAgendaStatus(item.status) };
       const reason = getAgendaAlertReason(item, settings.agendaDays);
 
       if (!reason) {
@@ -4334,6 +4513,10 @@ function closeFloatingPanelsOnOutsideClick(event) {
   if (!alertPanel.classList.contains("hidden") && !alertPanel.contains(event.target) && !alertButton.contains(event.target)) {
     alertPanel.classList.add("hidden");
   }
+
+  if (!attendancePanel.classList.contains("hidden") && !attendancePanel.contains(event.target) && !attendanceButton.contains(event.target)) {
+    attendancePanel.classList.add("hidden");
+  }
 }
 
 function updateDashboardTotals() {
@@ -4362,7 +4545,7 @@ function renderDashboardStatusList() {
   const items = [
     ["Agenda aberta", agendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Aberto").length],
     ["Infra aberta", infrastructureAgendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Aberto").length],
-    ["Agenda em análise", [...agendaItems, ...infrastructureAgendaItems].filter((item) => normalizeAgendaStatus(item.status) === "Em analise").length],
+    ["Agenda em atendimento", [...agendaItems, ...infrastructureAgendaItems].filter((item) => normalizeAgendaStatus(item.status) === "Em atendimento").length],
     ["Agenda concluída", [...agendaItems, ...infrastructureAgendaItems].filter((item) => normalizeAgendaStatus(item.status) === "Concluido").length],
     ["OS abertas", serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "open").length],
     ["OS em andamento", serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "inProgress").length],
@@ -4553,6 +4736,7 @@ function renderPermissions() {
   companyStockSubmitButton.textContent = editingCompanyStockItemId ? "Salvar" : "Adicionar";
   companyStockSubmitButton.title = editingCompanyStockItemId ? "Salvar produto" : "Adicionar produto";
   companyStockSubmitButton.setAttribute("aria-label", companyStockSubmitButton.title);
+  openCompanyStockFormButton.disabled = !canModifyCompany;
   toggleComputerServiceOrderFields();
   toggleExternalRepairLocationFields();
 
@@ -4584,7 +4768,7 @@ function renderUsers() {
     title.textContent = user.name;
 
     const details = document.createElement("span");
-    details.textContent = `Login: ${user.login} | ${user.active ? "Ativo" : "Inativo"}`;
+    details.textContent = `Login: ${user.login} | Setor: ${user.sector || "T.I"} | ${user.active ? "Ativo" : "Inativo"}`;
 
     const tag = document.createElement("span");
     tag.className = "record-tag";
@@ -5252,7 +5436,7 @@ function renderFinanceUsers() {
   visibleUsers.forEach((user) => {
     const records = getFinanceRecords(user.id);
     const card = document.createElement("article");
-    card.className = "record-card clickable";
+    card.className = "record-card clickable finance-user-card";
     card.tabIndex = 0;
 
     const content = document.createElement("div");
@@ -5266,8 +5450,14 @@ function renderFinanceUsers() {
     title.textContent = user.name || user.login || "Usuario";
 
     const totals = getFinanceTotals(records);
-    const details = document.createElement("span");
-    details.textContent = `Salario: ${formatMoney(totals.salary)} | Vales: ${formatMoney(totals.advances)} | Comissoes: ${formatMoney(totals.commissions)} | Liquido: ${formatMoney(totals.net)}`;
+    const details = document.createElement("div");
+    details.className = "finance-user-metrics";
+    details.innerHTML = `
+      <span><small>Salario</small>${escapeHtml(formatMoney(totals.salary))}</span>
+      <span><small>Vales</small>${escapeHtml(formatMoney(totals.advances))}</span>
+      <span><small>Comissoes</small>${escapeHtml(formatMoney(totals.commissions))}</span>
+      <span class="finance-user-net"><small>Liquido</small>${escapeHtml(formatMoney(totals.net))}</span>
+    `;
 
     card.addEventListener("click", () => openFinanceDialog(user.id));
     card.addEventListener("keydown", (event) => {
@@ -6394,7 +6584,7 @@ function generateStockReport(event) {
     addPdfSection(
       pdf,
       "Itens",
-      stockItems.map((item) => `${item.type || "Produto"} | Quantidade: ${Number(item.quantity || 0)}`)
+      stockItems.map((item) => `${item.type || "Produto"} | Quantidade: ${Number(item.quantity || 0)}${getCompanyStockDetailsText(item) ? ` | ${getCompanyStockDetailsText(item)}` : ""}`)
     );
   }
 
@@ -7022,7 +7212,10 @@ function renderCompanyStockTypes(selectedValue = companyStockType.value) {
     companyStockType.value = selectedValue;
   }
 
-  toggleNewCompanyStockTypeField();
+  renderStockSelectOptions(companyStockSize, stockStorageSizes);
+  renderStockSelectOptions(companyStockRam, stockMemorySizes);
+  renderStockSelectOptions(companyStockStorage, stockStorageSizes);
+  toggleCompanyStockFields();
 }
 
 async function saveCompanyStockType(event) {
@@ -7035,6 +7228,7 @@ async function saveCompanyStockType(event) {
   const isNewType = companyStockType.value === NEW_COMPANY_STOCK_TYPE_VALUE;
   const cleanType = isNewType ? newCompanyStockType.value.trim() : companyStockType.value;
   const quantity = Number(companyStockQuantity.value);
+  const details = getCompanyStockFormDetails(cleanType);
 
   if (!cleanType) {
     newCompanyStockType.focus();
@@ -7048,7 +7242,8 @@ async function saveCompanyStockType(event) {
 
   const stockItems = getCompanyStockItems();
   const editingItem = stockItems.find((item) => item.id === editingCompanyStockItemId);
-  const existingItem = stockItems.find((item) => normalize(item.type) === normalize(cleanType) && item.id !== editingCompanyStockItemId);
+  const nextKey = getCompanyStockItemKey({ type: cleanType, details });
+  const existingItem = stockItems.find((item) => getCompanyStockItemKey(item) === nextKey && item.id !== editingCompanyStockItemId);
   let nextStockItems;
 
   if (editingItem) {
@@ -7060,6 +7255,7 @@ async function saveCompanyStockType(event) {
               ? {
                   ...item,
                   quantity,
+                  details: { ...item.details, ...details },
                   updatedAt: new Date().toISOString()
                 }
               : item
@@ -7070,6 +7266,7 @@ async function saveCompanyStockType(event) {
                 ...item,
                 type: cleanType,
                 quantity,
+                details,
                 updatedAt: new Date().toISOString()
               }
             : item
@@ -7081,6 +7278,7 @@ async function saveCompanyStockType(event) {
             ? {
                 ...item,
                 quantity,
+                details: { ...item.details, ...details },
                 updatedAt: new Date().toISOString()
               }
             : item
@@ -7090,6 +7288,7 @@ async function saveCompanyStockType(event) {
             id: createId("EST"),
             type: cleanType,
             quantity,
+            details,
             createdAt: new Date().toISOString(),
             updatedAt: ""
           },
@@ -7106,8 +7305,8 @@ async function saveCompanyStockType(event) {
   };
   const saveResult = await persistCompanyInfo();
   clearFormDraft(companyStockForm);
-  companyStockForm.reset();
   editingCompanyStockItemId = "";
+  closeCompanyStockForm();
   renderCompanyStockTypes(cleanType);
   renderCompanyStockItems();
   companyStockMessage.textContent = getSaveResultMessage(saveResult, editingItem || existingItem ? "Produto atualizado." : "Produto adicionado ao estoque.");
@@ -7120,7 +7319,198 @@ function getCompanyStockTypes() {
 }
 
 function getCompanyStockItems() {
-  return Array.isArray(companyInfo.stockItems) ? companyInfo.stockItems : [];
+  return Array.isArray(companyInfo.stockItems) ? companyInfo.stockItems.map(normalizeCompanyStockItem) : [];
+}
+
+function renderStockSelectOptions(select, options) {
+  const currentValue = select.value;
+  select.innerHTML = `<option value="">Nao informado</option>`;
+  options.forEach((optionValue) => {
+    const option = document.createElement("option");
+    option.value = optionValue;
+    option.textContent = optionValue;
+    select.append(option);
+  });
+
+  if ([...select.options].some((option) => option.value === currentValue)) {
+    select.value = currentValue;
+  }
+}
+
+function openCompanyStockForm() {
+  if (!requireModify("company")) {
+    return;
+  }
+
+  companyStockForm.classList.remove("hidden");
+  companyStockMessage.textContent = "";
+  renderCompanyStockTypes(companyStockType.value);
+  renderPermissions();
+  companyStockType.focus();
+}
+
+function closeCompanyStockForm() {
+  editingCompanyStockItemId = "";
+  companyStockForm.reset();
+  companyStockForm.classList.add("hidden");
+  renderCompanyStockTypes();
+  toggleCompanyStockFields();
+  renderPermissions();
+}
+
+function getCompanyStockFormDetails(type) {
+  const data = Object.fromEntries(new FormData(companyStockForm).entries());
+  const cleanType = normalize(type);
+  const details = {
+    brandModel: data.brandModel?.trim() || "",
+    size: data.size || "",
+    ddr: data.ddr || "",
+    equipmentKind: data.equipmentKind || "",
+    serial: data.serial?.trim() || "",
+    processor: data.processor?.trim() || "",
+    ram: data.ram || "",
+    storage: data.storage || "",
+    notes: data.notes?.trim() || ""
+  };
+
+  if (cleanType === "hd" || cleanType === "ssd") {
+    return {
+      brandModel: details.brandModel,
+      size: details.size,
+      notes: details.notes
+    };
+  }
+
+  if (isMemoryStockType(type)) {
+    return {
+      brandModel: details.brandModel,
+      size: details.size,
+      ddr: details.ddr,
+      notes: details.notes
+    };
+  }
+
+  if (isComputerStockType(type)) {
+    return {
+      brandModel: details.brandModel,
+      equipmentKind: details.equipmentKind || type,
+      serial: details.serial,
+      processor: details.processor,
+      ram: details.ram,
+      ddr: details.ddr,
+      storage: details.storage,
+      notes: details.notes
+    };
+  }
+
+  return {
+    brandModel: details.brandModel,
+    notes: details.notes
+  };
+}
+
+function getCompanyStockItemKey(item) {
+  const details = item.details || {};
+  return normalize([item.type, details.brandModel, details.size, details.ddr, details.equipmentKind, details.serial, details.processor, details.ram, details.storage].filter(Boolean).join("|"));
+}
+
+function isMemoryStockType(type) {
+  return normalize(type).includes("memoria") || normalize(type).includes("ram");
+}
+
+function isComputerStockType(type) {
+  const cleanType = normalize(type);
+  return ["computador", "notebook", "all-in-one", "all in one", "aio"].some((value) => cleanType.includes(value));
+}
+
+function toggleCompanyStockFields() {
+  const isAdding = companyStockType.value === NEW_COMPANY_STOCK_TYPE_VALUE;
+  const selectedType = isAdding ? newCompanyStockType.value : companyStockType.value;
+  const cleanType = normalize(selectedType);
+  const showStorage = cleanType === "hd" || cleanType === "ssd";
+  const showMemory = isMemoryStockType(selectedType);
+  const showComputer = isComputerStockType(selectedType);
+
+  newCompanyStockTypeLabel.classList.toggle("hidden", !isAdding);
+  newCompanyStockType.required = isAdding;
+
+  if (!isAdding) {
+    newCompanyStockType.value = "";
+  }
+
+  toggleStockDetailField("brandModel", true);
+  toggleStockDetailField("size", showStorage || showMemory);
+  toggleStockDetailField("ddr", showMemory || showComputer);
+  toggleStockDetailField("equipmentKind", showComputer);
+  toggleStockDetailField("serial", showComputer);
+  toggleStockDetailField("processor", showComputer);
+  toggleStockDetailField("ram", showComputer);
+  toggleStockDetailField("storage", showComputer);
+  toggleStockDetailField("notes", true);
+
+  if (showMemory) {
+    renderStockSelectOptions(companyStockSize, stockMemorySizes);
+  } else {
+    renderStockSelectOptions(companyStockSize, stockStorageSizes);
+  }
+}
+
+function toggleStockDetailField(fieldName, visible) {
+  const wrapper = companyStockForm.querySelector(`[data-stock-detail="${fieldName}"]`);
+
+  if (!wrapper) {
+    return;
+  }
+
+  wrapper.classList.toggle("hidden", !visible);
+  wrapper.querySelectorAll("input, select, textarea").forEach((input) => {
+    input.disabled = !visible;
+    if (!visible) {
+      input.value = "";
+    }
+  });
+}
+
+function fillCompanyStockFormDetails(details = {}) {
+  Object.entries({
+    brandModel: details.brandModel || "",
+    size: details.size || "",
+    ddr: details.ddr || "",
+    equipmentKind: details.equipmentKind || "",
+    serial: details.serial || "",
+    processor: details.processor || "",
+    ram: details.ram || "",
+    storage: details.storage || "",
+    notes: details.notes || ""
+  }).forEach(([name, value]) => {
+    const field = companyStockForm.elements[name];
+
+    if (field && [...(field.options || [])].some((option) => option.value === value)) {
+      field.value = value;
+      return;
+    }
+
+    if (field && !field.options) {
+      field.value = value;
+    }
+  });
+}
+
+function getCompanyStockDetailsText(item) {
+  const details = item.details || {};
+  return [
+    details.brandModel,
+    details.size,
+    details.ddr,
+    details.equipmentKind,
+    details.serial ? `S/N: ${details.serial}` : "",
+    details.processor,
+    details.ram ? `RAM: ${details.ram}` : "",
+    details.storage ? `Armazenamento: ${details.storage}` : "",
+    details.notes
+  ]
+    .filter(Boolean)
+    .join(" | ");
 }
 
 function renderCompanyStockItems() {
@@ -7136,6 +7526,7 @@ function renderCompanyStockItems() {
   }
 
   stockItems.forEach((item) => {
+    const detailsText = getCompanyStockDetailsText(item);
     const card = document.createElement("article");
     card.className = "record-card";
 
@@ -7150,7 +7541,7 @@ function renderCompanyStockItems() {
     title.textContent = item.type || "Produto sem nome";
 
     const details = document.createElement("span");
-    details.textContent = `Quantidade: ${item.quantity ?? 0}`;
+    details.textContent = [`Quantidade: ${item.quantity ?? 0}`, detailsText].filter(Boolean).join(" | ");
 
     const actions = document.createElement("div");
     actions.className = "record-actions";
@@ -7196,6 +7587,10 @@ function editCompanyStockItem(itemId) {
   renderCompanyStockTypes(item.type);
   companyStockType.value = item.type;
   companyStockQuantity.value = item.quantity ?? 0;
+  fillCompanyStockFormDetails(item.details || {});
+  companyStockForm.classList.remove("hidden");
+  toggleCompanyStockFields();
+  fillCompanyStockFormDetails(item.details || {});
   companyStockMessage.textContent = "Editando produto do estoque.";
   renderPermissions();
   companyStockQuantity.focus();
@@ -7242,24 +7637,13 @@ async function deleteCompanyStockItem(itemId, askConfirmation = true) {
 
   if (editingCompanyStockItemId === itemId) {
     editingCompanyStockItemId = "";
-    companyStockForm.reset();
-    renderCompanyStockTypes();
+    closeCompanyStockForm();
   }
 
   companyStockMessage.textContent = getSaveResultMessage(saveResult, "Produto excluido.");
   logActivity("Estoque atualizado", `${item.type || "Produto"} foi excluido do estoque.`);
   renderCompanyStockItems();
   renderPermissions();
-}
-
-function toggleNewCompanyStockTypeField() {
-  const isAdding = companyStockType.value === NEW_COMPANY_STOCK_TYPE_VALUE;
-  newCompanyStockTypeLabel.classList.toggle("hidden", !isAdding);
-  newCompanyStockType.required = isAdding;
-
-  if (!isAdding) {
-    newCompanyStockType.value = "";
-  }
 }
 
 function renderPermissionList() {
@@ -7838,6 +8222,7 @@ function updateAgendaStatus(itemId, nextStatus) {
   persistAgendaItems();
   logActivity("Status da agenda alterado", `${item.clientName || "Cliente"} alterado para ${nextStatus}.`);
   renderAgendaItems();
+  renderAttendancePanel();
   renderSystemAlerts();
   renderNotifications();
 }
@@ -7889,6 +8274,7 @@ function deleteAgendaItem(itemId) {
   persistAgendaItems();
   logActivity("Agenda excluida", `${formatAgendaNumber(item)} - ${item.clientName || "Cliente sem nome"}.`);
   renderAgendaItems();
+  renderAttendancePanel();
   updateDashboardTotals();
 }
 
@@ -8039,6 +8425,7 @@ function updateInfrastructureAgendaStatus(itemId, nextStatus) {
   persistInfrastructureAgendaItems();
   logActivity("Status da infraestrutura alterado", `${item.clientName || "Cliente"} alterado para ${nextStatus}.`);
   renderInfrastructureAgendaItems();
+  renderAttendancePanel();
   renderSystemAlerts();
   renderNotifications();
 }
@@ -8090,6 +8477,7 @@ function deleteInfrastructureAgendaItem(itemId) {
   persistInfrastructureAgendaItems();
   logActivity("Agendamento infraestrutura excluido", `${formatInfrastructureAgendaNumber(item)} - ${item.clientName || "Cliente sem nome"}.`);
   renderInfrastructureAgendaItems();
+  renderAttendancePanel();
   updateDashboardTotals();
 }
 
@@ -8101,7 +8489,7 @@ function matchesAgendaFilter(item, filter) {
   }
 
   if (filter === "analysis") {
-    return status === "Em analise";
+    return status === "Em atendimento";
   }
 
   if (filter === "done") {
@@ -8189,7 +8577,7 @@ function getAgendaStatusClass(status) {
     return "status-open";
   }
 
-  if (normalizedStatus === "Em analise") {
+  if (normalizedStatus === "Em atendimento") {
     return "status-analysis";
   }
 
@@ -8205,8 +8593,8 @@ function getAgendaStatusClass(status) {
 }
 
 function normalizeAgendaStatus(status) {
-  if (status === "Em andamento") {
-    return "Em analise";
+  if (status === "Em andamento" || status === "Em analise") {
+    return "Em atendimento";
   }
 
   return agendaStatuses.includes(status) ? status : "Aberto";

@@ -553,7 +553,7 @@ const dashboardPanels = {
   finance: document.querySelector("#financeDashboardPanel"),
   settings: document.querySelector("#settingsDashboardPanel")
 };
-const settingsViewButtons = document.querySelectorAll(".settings-tab");
+const settingsViewButtons = document.querySelectorAll("[data-settings-view]");
 const settingsPanels = {
   theme: document.querySelector("#settingsThemePanel"),
   alerts: document.querySelector("#settingsAlertsPanel"),

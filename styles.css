@@ -1067,8 +1067,61 @@ textarea:focus {
 .finance-employee-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+#financeDashboardPanel .panel-hero {
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+#financeDashboardPanel .panel-hero h2 {
+  font-size: 1.15rem;
+}
+
+#financeDashboardPanel .panel-hero p:last-child {
+  margin-top: 4px;
+  font-size: 0.78rem;
+}
+
+#financeDashboardPanel .service-order-tabs {
+  margin-top: 8px;
+  gap: 4px;
+}
+
+#financeDashboardPanel .settings-tab {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 0.76rem;
+}
+
+#financeDashboardPanel .service-order-view.active {
+  padding-top: 10px;
+}
+
+#financeDashboardPanel .compact-filter-form {
+  max-width: 460px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+}
+
+#financeDashboardPanel .compact-create-form {
+  max-width: 780px;
+  padding: 9px;
+}
+
+#financeDashboardPanel .compact-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 8px;
-  margin-bottom: 12px;
+}
+
+#financeDashboardPanel .record-list {
+  gap: 7px;
+}
+
+#financeDashboardPanel .action-message {
+  margin-top: 8px;
 }
 
 .finance-net-value strong {
@@ -1546,12 +1599,12 @@ body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
 .finance-user-card {
   align-items: flex-start;
   min-height: 0;
-  padding: 8px 10px;
+  padding: 7px 9px;
 }
 
 .finance-user-card .record-content {
   width: 100%;
-  gap: 4px;
+  gap: 3px;
 }
 
 .finance-user-card .record-tag {
@@ -1560,14 +1613,14 @@ body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
 }
 
 .finance-user-card strong {
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   line-height: 1.15;
 }
 
 .finance-user-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(90px, 1fr));
-  gap: 5px;
+  gap: 4px;
   width: 100%;
 }
 
@@ -1578,9 +1631,9 @@ body[data-theme-mode="dark"] .compact-create-form .compact-nested-form {
   border: 1px solid rgba(37, 109, 133, 0.11);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.68);
-  padding: 4px 6px;
+  padding: 3px 5px;
   color: var(--text);
-  font-size: 0.72rem;
+  font-size: 0.69rem;
   line-height: 1.15;
 }
 
@@ -1604,30 +1657,109 @@ body[data-theme-mode="dark"] .finance-user-metrics span {
 
 .finance-client-layout {
   display: grid;
-  grid-template-columns: minmax(210px, 280px) minmax(0, 1fr);
-  gap: 14px;
-  margin-top: 12px;
+  grid-template-columns: minmax(190px, 250px) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 8px;
 }
 
 .finance-client-sidebar,
 .finance-client-details {
-  min-height: 360px;
+  min-height: 300px;
 }
 
 .finance-client-sidebar {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 253, 248, 0.72);
-  padding: 10px;
+  padding: 7px;
 }
 
 .finance-client-details {
-  padding: 14px;
+  padding: 8px;
 }
 
 .finance-client-details .settings-guide,
 .finance-client-details .settings-form {
   margin-top: 0;
+}
+
+.finance-client-sidebar .client-list {
+  gap: 6px;
+}
+
+.finance-client-sidebar .client-item {
+  min-height: 44px;
+  padding: 7px 8px;
+}
+
+.finance-client-sidebar .client-name {
+  font-size: 0.8rem;
+}
+
+.finance-client-sidebar .client-meta {
+  font-size: 0.68rem;
+}
+
+.finance-client-details .compact-summary {
+  padding: 9px;
+}
+
+.finance-client-details .service-order-summary {
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 6px;
+}
+
+.finance-record-card {
+  min-height: 0;
+  padding: 7px 9px;
+}
+
+.finance-record-card .record-content {
+  gap: 2px;
+}
+
+.finance-record-card .record-content strong {
+  font-size: 0.82rem;
+}
+
+.finance-record-card .record-content span {
+  font-size: 0.7rem;
+}
+
+#financeDialog .modal-content {
+  max-width: 860px;
+  gap: 10px;
+}
+
+#financeDialog .settings-header {
+  margin-bottom: 0;
+}
+
+#financeDialog .vehicle-detail-tabs {
+  margin: 4px 0 8px;
+}
+
+#financeDialog .finance-tab {
+  padding: 5px 8px;
+  font-size: 0.76rem;
+}
+
+#financeDialog .compact-create-form {
+  padding: 8px;
+  gap: 8px;
+}
+
+#financeDialog .compact-filter-form {
+  margin: 8px 0 6px;
+  padding: 6px 8px;
+}
+
+#financeDialog .record-list {
+  gap: 6px;
+}
+
+#financeDialog .finance-employee-summary .summary-item {
+  padding: 6px 8px;
 }
 
 .vehicle-detail-tabs {

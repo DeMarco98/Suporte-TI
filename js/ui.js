@@ -3995,14 +3995,10 @@ function previewThemeSettings() {
 
 function restoreDefaultTheme() {
   if (!canModifyGlobalTheme()) {
-    const theme = {
-      ...getGlobalThemeSettings(),
-      mode: emptyThemeSettings.mode
-    };
-    saveLocalThemeSettings({ mode: emptyThemeSettings.mode });
+    saveLocalThemeSettings(emptyThemeSettings);
     renderThemeSettings();
-    applyThemeSettings(theme);
-    themeSettingsMessage.textContent = "Tema local restaurado.";
+    applyThemeSettings(emptyThemeSettings);
+    themeSettingsMessage.textContent = "Tema padrao restaurado apenas para seu usuario.";
     return;
   }
 
@@ -4679,7 +4675,6 @@ function renderPermissions() {
   const canModifyCompany = canModify("company");
   const canModifyFinance = canModify("finance");
   const canModifySettings = canModify("settings");
-  const canModifyTheme = canModifyGlobalTheme();
   const canModifyLocalTheme = Boolean(currentUser);
   const canBackup = canManageBackups();
   const hasLocalBackup = Boolean(getLocalSystemBackup());
@@ -4760,17 +4755,7 @@ function renderPermissions() {
     element.disabled = !canModifySettings;
   });
   [...themeSettingsForm.elements].forEach((element) => {
-    if (canModifyTheme) {
-      element.disabled = false;
-      return;
-    }
-
-    if (element.name === "mode" || element.type === "submit") {
-      element.disabled = !canModifyLocalTheme;
-      return;
-    }
-
-    element.disabled = true;
+    element.disabled = !canModifyLocalTheme;
   });
   restoreDefaultThemeButton.disabled = !canModifyLocalTheme;
   clearAllLogsButton.disabled = !canModifySettings;
@@ -5052,13 +5037,10 @@ function saveThemeSettings(event) {
   const themeSettings = readThemeSettings();
 
   if (!canModifyGlobalTheme()) {
-    saveLocalThemeSettings({ mode: themeSettings.mode });
-    applyThemeSettings({
-      ...getGlobalThemeSettings(),
-      mode: themeSettings.mode
-    });
+    saveLocalThemeSettings(themeSettings);
+    applyThemeSettings(themeSettings);
     themeSettingsMessage.textContent = "Tema salvo apenas para seu usuario.";
-    logActivity("Tema local atualizado", `Modo ${themeSettings.mode === "dark" ? "escuro" : "claro"} salvo por ${currentUser?.login || "usuario"}.`);
+    logActivity("Tema local atualizado", `Configuracoes visuais salvas apenas para ${currentUser?.login || "usuario"}.`);
     return;
   }
 
@@ -5790,7 +5772,6 @@ async function addFinanceAdvance(event) {
   financeMessage.textContent = getSaveResultMessage(saveResult, isEditing ? "Vale atualizado." : "Vale adicionado.");
   logActivity(isEditing ? "Vale financeiro atualizado" : "Vale financeiro adicionado", `${getFinanceUserName(editingFinanceUserId)} recebeu um vale de ${value}.`);
   renderFinanceEmployeeSettings();
-  renderFinanceEmployeeSettings();
   renderFinanceRecords();
   renderFinanceUsers();
 }
@@ -6305,7 +6286,7 @@ function renderFinanceRecordList(container, items, type) {
 
   visibleItems.forEach((item) => {
     const card = document.createElement("article");
-    card.className = "record-card compact-record-card";
+    card.className = "record-card compact-record-card finance-record-card";
 
     const content = document.createElement("div");
     content.className = "record-content";

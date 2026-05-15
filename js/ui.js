@@ -1651,13 +1651,18 @@ function ensureAgendaNumbers(items) {
   }, 0);
 
   return items.map((item) => {
+    const normalizedItem = {
+      ...item,
+      status: normalizeAgendaStatus(item.status)
+    };
+
     if (Number.isInteger(Number(item.number)) && Number(item.number) > 0) {
-      return item;
+      return normalizedItem;
     }
 
     nextNumber += 1;
     return {
-      ...item,
+      ...normalizedItem,
       number: nextNumber
     };
   });
@@ -4158,7 +4163,7 @@ function renderAttendancePanel() {
     title.textContent = `${entry.numberLabel} - ${entry.item.clientName || "Cliente sem nome"}`;
 
     const details = document.createElement("span");
-    details.textContent = `${getAgendaStatusLabel(entry.item.status)} | ${formatSimpleDate(entry.item.date)} | ${entry.item.occurrence || "Sem ocorrencia"}`;
+    details.textContent = `${getAgendaStatusDisplay(entry.item)} | ${formatSimpleDate(entry.item.date)} | ${entry.item.occurrence || "Sem ocorrencia"}`;
 
     const actions = document.createElement("div");
     actions.className = "notification-actions";
@@ -4224,6 +4229,22 @@ function getVisibleAttendanceItems() {
   return items.sort((first, second) => (first.item.date || "").localeCompare(second.item.date || ""));
 }
 
+function getDashboardAttendanceItems() {
+  const isActiveAttendance = (item) => ["Aberto", "Em atendimento"].includes(normalizeAgendaStatus(item.status));
+  return [
+    ...agendaItems.filter(isActiveAttendance).map((item) => ({
+      sourceLabel: "Agendamento",
+      numberLabel: formatAgendaNumber(item),
+      item
+    })),
+    ...infrastructureAgendaItems.filter(isActiveAttendance).map((item) => ({
+      sourceLabel: "Infra",
+      numberLabel: formatInfrastructureAgendaNumber(item),
+      item
+    }))
+  ].sort((first, second) => (first.item.date || "").localeCompare(second.item.date || ""));
+}
+
 function updateAttendanceItemStatus(source, itemId, nextStatus) {
   nextStatus = normalizeAgendaStatus(nextStatus);
 
@@ -4235,7 +4256,7 @@ function updateAttendanceItemStatus(source, itemId, nextStatus) {
       return;
     }
 
-    agendaItems = agendaItems.map((agendaItem) => (agendaItem.id === itemId ? { ...agendaItem, status: nextStatus, updatedAt: new Date().toISOString() } : agendaItem));
+    agendaItems = agendaItems.map((agendaItem) => (agendaItem.id === itemId ? applyAttendanceStatusUpdate(agendaItem, nextStatus) : agendaItem));
     persistAgendaItems();
     logActivity("Atendimento atualizado", `${formatAgendaNumber(item)} alterado para ${nextStatus}.`);
     renderAgendaItems();
@@ -4249,7 +4270,7 @@ function updateAttendanceItemStatus(source, itemId, nextStatus) {
       return;
     }
 
-    infrastructureAgendaItems = infrastructureAgendaItems.map((agendaItem) => (agendaItem.id === itemId ? { ...agendaItem, status: nextStatus, updatedAt: new Date().toISOString() } : agendaItem));
+    infrastructureAgendaItems = infrastructureAgendaItems.map((agendaItem) => (agendaItem.id === itemId ? applyAttendanceStatusUpdate(agendaItem, nextStatus) : agendaItem));
     persistInfrastructureAgendaItems();
     logActivity("Atendimento infra atualizado", `${formatInfrastructureAgendaNumber(item)} alterado para ${nextStatus}.`);
     renderInfrastructureAgendaItems();
@@ -4258,6 +4279,38 @@ function updateAttendanceItemStatus(source, itemId, nextStatus) {
   renderAttendancePanel();
   renderSystemAlerts();
   updateDashboardTotals();
+}
+
+function applyAttendanceStatusUpdate(item, nextStatus) {
+  const updatedItem = {
+    ...item,
+    status: nextStatus,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (nextStatus === "Em atendimento") {
+    updatedItem.attendingByName = currentUser?.name || currentUser?.login || "Usuario";
+    updatedItem.attendingByLogin = currentUser?.login || "";
+    updatedItem.attendingStartedAt = new Date().toISOString();
+  }
+
+  if (["Aberto", "Concluido", "Cancelado"].includes(nextStatus)) {
+    updatedItem.attendingByName = "";
+    updatedItem.attendingByLogin = "";
+    updatedItem.attendingStartedAt = "";
+  }
+
+  return updatedItem;
+}
+
+function getAgendaStatusDisplay(item) {
+  const status = normalizeAgendaStatus(item.status);
+
+  if (status === "Em atendimento" && item.attendingByName) {
+    return `Em atendimento: ${item.attendingByName}`;
+  }
+
+  return getAgendaStatusLabel(status);
 }
 
 function renderSystemAlerts() {
@@ -4521,7 +4574,9 @@ function closeFloatingPanelsOnOutsideClick(event) {
 
 function updateDashboardTotals() {
   const openAgenda = [...agendaItems, ...infrastructureAgendaItems].filter((item) => normalizeAgendaStatus(item.status) === "Aberto").length;
+  const attendingAgenda = [...agendaItems, ...infrastructureAgendaItems].filter((item) => normalizeAgendaStatus(item.status) === "Em atendimento").length;
   const openOrders = serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "open").length;
+  const inProgressOrders = serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "inProgress").length;
   const pendingAuthorizations = getVisibleAuthorizationRequests().filter((item) => item.status === "Pendente").length;
   const alerts = getSystemAlerts().length;
 
@@ -4530,9 +4585,9 @@ function updateDashboardTotals() {
   dashboardUserTotal.textContent = String(users.length);
   dashboardActiveUserTotal.textContent = `${users.filter((user) => user.active).length} ativos`;
   dashboardAgendaTotal.textContent = String(agendaItems.length + infrastructureAgendaItems.length);
-  dashboardOpenAgendaTotal.textContent = `${openAgenda} em aberto`;
+  dashboardOpenAgendaTotal.textContent = `${openAgenda} em aberto | ${attendingAgenda} em atendimento`;
   dashboardServiceOrderTotal.textContent = String(serviceOrders.length);
-  dashboardOpenServiceOrderTotal.textContent = `${openOrders} em aberto`;
+  dashboardOpenServiceOrderTotal.textContent = `${openOrders} abertas | ${inProgressOrders} em andamento`;
   dashboardAlertTotal.textContent = String(alerts);
   dashboardAuthorizationTotal.textContent = String(pendingAuthorizations);
   renderDashboardStatusList();
@@ -4544,8 +4599,10 @@ function renderDashboardStatusList() {
   dashboardStatusList.innerHTML = "";
   const items = [
     ["Agenda aberta", agendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Aberto").length],
+    ["Agenda em atendimento", agendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Em atendimento").length],
     ["Infra aberta", infrastructureAgendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Aberto").length],
-    ["Agenda em atendimento", [...agendaItems, ...infrastructureAgendaItems].filter((item) => normalizeAgendaStatus(item.status) === "Em atendimento").length],
+    ["Infra em atendimento", infrastructureAgendaItems.filter((item) => normalizeAgendaStatus(item.status) === "Em atendimento").length],
+    ["Total em atendimento", [...agendaItems, ...infrastructureAgendaItems].filter((item) => normalizeAgendaStatus(item.status) === "Em atendimento").length],
     ["Agenda concluída", [...agendaItems, ...infrastructureAgendaItems].filter((item) => normalizeAgendaStatus(item.status) === "Concluido").length],
     ["OS abertas", serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "open").length],
     ["OS em andamento", serviceOrders.filter((order) => getServiceOrderStatusGroup(order.status) === "inProgress").length],
@@ -4566,7 +4623,12 @@ function createDashboardStatusItem(label, value) {
 
 function renderDashboardPendingList() {
   dashboardPendingList.innerHTML = "";
+  const activeAttendances = getDashboardAttendanceItems().slice(0, 5).map((entry) => ({
+    title: `${entry.numberLabel} - ${entry.item.clientName || "Cliente sem nome"}`,
+    details: `${entry.sourceLabel} | ${getAgendaStatusDisplay(entry.item)} | ${formatSimpleDate(entry.item.date)}`
+  }));
   const items = [
+    ...activeAttendances,
     ...getSystemAlerts().slice(0, 4).map((alert) => ({ title: alert.title, details: alert.details })),
     ...getVisibleAuthorizationRequests()
       .filter((request) => request.status === "Pendente")
@@ -8170,7 +8232,8 @@ function renderAgendaItems() {
     summary.append(
       createServiceOrderSummaryItem("Data", formatSimpleDate(item.date)),
       createServiceOrderSummaryItem("Solicitante", item.requester || "Nao informado"),
-      createServiceOrderSummaryItem("Aberto por", item.openedByName || "Nao informado")
+      createServiceOrderSummaryItem("Aberto por", item.openedByName || "Nao informado"),
+      createServiceOrderSummaryItem("Status", getAgendaStatusDisplay(item))
     );
 
     const occurrence = document.createElement("span");
@@ -8218,7 +8281,7 @@ function updateAgendaStatus(itemId, nextStatus) {
     return;
   }
 
-  agendaItems = agendaItems.map((agendaItem) => (agendaItem.id === itemId ? { ...agendaItem, status: nextStatus, updatedAt: new Date().toISOString() } : agendaItem));
+  agendaItems = agendaItems.map((agendaItem) => (agendaItem.id === itemId ? applyAttendanceStatusUpdate(agendaItem, nextStatus) : agendaItem));
   persistAgendaItems();
   logActivity("Status da agenda alterado", `${item.clientName || "Cliente"} alterado para ${nextStatus}.`);
   renderAgendaItems();
@@ -8371,7 +8434,8 @@ function renderInfrastructureAgendaItems() {
     summary.append(
       createServiceOrderSummaryItem("Data", formatSimpleDate(item.date)),
       createServiceOrderSummaryItem("Solicitante", item.requester || "Nao informado"),
-      createServiceOrderSummaryItem("Aberto por", item.openedByName || "Nao informado")
+      createServiceOrderSummaryItem("Aberto por", item.openedByName || "Nao informado"),
+      createServiceOrderSummaryItem("Status", getAgendaStatusDisplay(item))
     );
 
     const occurrence = document.createElement("span");
@@ -8420,7 +8484,7 @@ function updateInfrastructureAgendaStatus(itemId, nextStatus) {
   }
 
   infrastructureAgendaItems = infrastructureAgendaItems.map((agendaItem) =>
-    agendaItem.id === itemId ? { ...agendaItem, status: nextStatus, updatedAt: new Date().toISOString() } : agendaItem
+    agendaItem.id === itemId ? applyAttendanceStatusUpdate(agendaItem, nextStatus) : agendaItem
   );
   persistInfrastructureAgendaItems();
   logActivity("Status da infraestrutura alterado", `${item.clientName || "Cliente"} alterado para ${nextStatus}.`);
@@ -8520,7 +8584,8 @@ function matchesAgendaSearch(item) {
       item.date,
       formatSimpleDate(item.date),
       item.occurrence,
-      item.status
+      item.status,
+      item.attendingByName
     ]
       .filter(Boolean)
       .join(" ")
@@ -8546,7 +8611,8 @@ function matchesInfrastructureAgendaSearch(item) {
       item.date,
       formatSimpleDate(item.date),
       item.occurrence,
-      item.status
+      item.status,
+      item.attendingByName
     ]
       .filter(Boolean)
       .join(" ")
